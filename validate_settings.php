@@ -77,14 +77,14 @@ $successboth = '
 $failboth = '
 
 <h2>Configuration problem</h2>
-<p>There is a problem with both your API key and your URL. We suggest revisiting <a href="blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and rechecking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
+<p>There is a problem with both your API key and your URL. We suggest revisiting <a href="https://blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and rechecking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
 
 ';
 
 $failone = '
 
 <h2>Configuration problem</h2>
-<p>There is a problem with some of your settings. We suggest revisiting <a href="blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and checking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
+<p>There is a problem with some of your settings. We suggest revisiting <a href="https://blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and checking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
 
 ';
 
