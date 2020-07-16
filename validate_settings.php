@@ -1,10 +1,31 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-//this will validate the settings
+/**
+ * This file  will validate the settings.
+ *
+ * @package    block_blc_modules
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+ 
 
 require_once(dirname(__FILE__).'/../../config.php');
-//require_once('curl.php');
-global $DB,$USER,$CFG;
+require_once('curl.php');
+global $DB, $USER, $CFG;
 require_login(null, false);
 
 // PERMISSION.
@@ -13,7 +34,6 @@ require_capability('moodle/user:viewdetails', context_system::instance(), $USER-
 $title = get_string('pluginname', 'block_blc_modules');
 $heading = $SITE->fullname;
 $url = '/blocks/blc_modules/validate_settings.php';
-
 
 $baseurl = new moodle_url($url);
 
@@ -27,7 +47,6 @@ $PAGE->set_cacheable(false);
 
 echo $OUTPUT->header();
 
-
 $requesturi = $CFG->wwwroot;	
 $apikey = get_config('block_blc_modules', 'api_key');
 
@@ -37,83 +56,41 @@ $domainname = get_config('block_blc_modules', 'domainname');
 $function_name = 'validate_blc_settings';
 $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
  . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi;
-$curl = new curl;
+$curl = new blccurl;
 $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
-
-$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-
-
+$responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
 
 $apisuccess = '<div class="alert alert-success alert-block fade in " role="alert">
-    
-    Success: Your <b>API Key</b> is configured correctly.
-</div>';
+				'.get_string('apisuccess', 'block_blc_modules').'</div>';
 
 $urlsuccess = '<div class="alert alert-success alert-block fade in " role="alert">
-    
-    Success: Your <b>Moodle URL</b> is configured correctly.
-</div>';
+    '.get_string('urlsuccess', 'block_blc_modules').' </div>';
 
 $apifail = '<div class="alert alert-warning alert-block fade in " role="alert">
-    
-    Failure: Your <b>API Key</b> is not configured correctly.
-</div>';
+     '.get_string('apifail', 'block_blc_modules').' </div>';
 
 $urlfail = '<div class="alert alert-warning alert-block fade in " role="alert">
-    
-    Failure: Your <b>Moodle URL</b> is not configured correctly.
-</div>';
+         '.get_string('urlfail', 'block_blc_modules').' </div>';
 
+$successboth =get_string('successboth', 'block_blc_modules');
 
+$failboth = get_string('failboth', 'block_blc_modules');
 
-$successboth = '
+$failone = get_string('failone', 'block_blc_modules');
 
-<h2>Fully Working</h2>
-<p>We can\'t see anything wrong with your configuration. If you experience any issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
-';
-
-$failboth = '
-
-<h2>Configuration problem</h2>
-<p>There is a problem with both your API key and your URL. We suggest revisiting <a href="blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and rechecking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
-';
-
-$failone = '
-
-<h2>Configuration problem</h2>
-<p>There is a problem with some of your settings. We suggest revisiting <a href="blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and checking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
-';
-
-$returntosettings = '
-
-<div class="row">
+$returntosettings = '<div class="row">
                 <div class="col-sm-3" >
-				<button onclick="window.location.href = \''.$CFG->wwwroot.'/blocks/blc_modules/validate_settings.php\';" class="btn btn-primary" >Refresh</button>
+				<button onclick="window.location.href = \''.$CFG->wwwroot.'/blocks/blc_modules/validate_settings.php\';" class="btn btn-primary" >'.get_string('refresh', 'block_blc_modules').'</button>
 				</div>
                 <div class="col-sm-3" >    
-                    <button onclick="window.location.href = \''.$CFG->wwwroot.'/admin/settings.php?section=blocksettingblc_modules\';" class="btn btn-secondary" >Return to Settings</button>
+                    <button onclick="window.location.href = \''.$CFG->wwwroot.'/admin/settings.php?section=blocksettingblc_modules\';" class="btn btn-secondary" >'.get_string('return', 'block_blc_modules').'</button>
                 </div>
-            </div>
-
-
-
-
-';
-
+            </div>';
 
 $bothresponses = explode(",",$responses);
 $urlokay = $bothresponses[0];
 $apiokay = $bothresponses[1];
-
-//print_r($bothresponses);
-
-//echo $apiokay . "  ". $urlokay;
-
-
 
 if(strpos($urlokay, 'true') !== false && strpos($apiokay, 'true') !== false) {
     echo $apisuccess . "<br />" . $urlsuccess . "<br />";
@@ -137,4 +114,3 @@ if(strpos($urlokay, 'true') !== false && strpos($apiokay, 'true') !== false) {
 }
 
 echo $OUTPUT->footer();
-?>

@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Privacy Subsystem implementation for block_blc_modules.
+ * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  2018 Zig Tan <zig@moodle.com>
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

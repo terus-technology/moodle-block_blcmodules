@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Activity modules block caps.
+ * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  Mark Nelson <markn@moodle.com>
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

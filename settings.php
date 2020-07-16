@@ -18,14 +18,18 @@
  * Defines the form for editing add scorm block instances.
  *
  * @package    block_blc_modules
- * @copyright  2016 Stephen Bourget
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
 
+    // Update Scorm.
+	$settings->add(new admin_setting_heading('updatescorm','',get_string('updatescorm', 'block_blc_modules')));
+	$settings->add(new admin_setting_heading('updatedoc','',get_string('updatedoc', 'block_blc_modules')));
+            
     // Default Api key.
     $setting = new admin_setting_configtext('block_blc_modules/api_key',
         new lang_string('api_key', 'block_blc_modules'),
@@ -43,7 +47,5 @@ if ($ADMIN->fulltree) {
         new lang_string('domainname', 'block_blc_modules'),
         new lang_string('domainname_desc', 'block_blc_modules'), 'https://blc.howcollege.ac.uk/', PARAM_TEXT);
     $settings->add($setting);
-
-
 
 }

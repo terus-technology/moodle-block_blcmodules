@@ -1,16 +1,39 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This file contains the Activity modules block.
+ *
+ * @package    block_blc_modules
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+ 
 /**
  * cURL class
  *
  * This is a wrapper class for curl, it is quite easy to use:
  * <code>
- * $c = new curl;
+ * $c = new blccurl;
  * // enable cache
- * $c = new curl(array('cache'=>true));
+ * $c = new blccurl(array('cache'=>true));
  * // enable cookie
- * $c = new curl(array('cookie'=>true));
+ * $c = new blccurl(array('cookie'=>true));
  * // enable proxy
- * $c = new curl(array('proxy'=>true));
+ * $c = new blccurl(array('proxy'=>true));
  *
  * // HTTP GET Method
  * $html = $c->get('http://example.com');
@@ -24,7 +47,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
 
-class curl {
+class blccurl {
     /** @var bool */
     public  $cache    = false;
     public  $proxy    = false;
@@ -67,8 +90,8 @@ class curl {
             }
         }
         if (!empty($options['cache'])) {
-            if (class_exists('curl_cache')) {
-                $this->cache = new curl_cache();
+            if (class_exists('blccurl_cache')) {
+                $this->cache = new blccurl_cache();
             }
         }
     }
@@ -209,8 +232,8 @@ class curl {
         $this->cleanopt();
         // set cookie
         if (!empty($this->cookie) || !empty($options['cookie'])) {
-            $this->setopt(array('cookiejar'=>$this->cookie,
-                            'cookiefile'=>$this->cookie
+            $this->setopt(array('cookiejar' => $this->cookie,
+                            'cookiefile' => $this->cookie
                              ));
         }
 
@@ -253,7 +276,7 @@ class curl {
      * Calls {@link multi()} with specific download headers
      *
      * <code>
-     * $c = new curl;
+     * $c = new blccurl;
      * $c->download(array(
      *              array('url'=>'http://localhost/', 'file'=>fopen('a', 'wb')),
      *              array('url'=>'http://localhost/20/', 'file'=>fopen('b', 'wb'))
@@ -284,7 +307,7 @@ class curl {
         $main    = curl_multi_init();
         for ($i = 0; $i < $count; $i++) {
             $url = $requests[$i];
-            foreach($url as $n=>$v){
+            foreach($url as $n => $v){
                 $options[$n] = $url[$n];
             }
             $handles[$i] = curl_init($url['url']);
@@ -374,7 +397,7 @@ class curl {
      * @param array $data - the final data array containing all POST parameters : 1 row = 1 parameter
      */
     function format_array_postdata_for_curlcall($arraydata, $currentdata, &$data) {
-        foreach ($arraydata as $k=>$v) {
+        foreach ($arraydata as $k => $v) {
             $newcurrentdata = $currentdata;
             if (is_object($v)) {
                 $v = (array) $v;
@@ -399,7 +422,7 @@ class curl {
             $postdata = (array) $postdata;
         }
         $data = array();
-        foreach ($postdata as $k=>$v) {
+        foreach ($postdata as $k => $v) {
             if (is_object($v)) {
                 $v = (array) $v;
             }
@@ -468,7 +491,7 @@ class curl {
         $options['CURLOPT_INFILESIZE'] = $size;
         $options['CURLOPT_INFILE']     = $fp;
         if (!isset($this->options['CURLOPT_USERPWD'])){
-            $this->setopt(array('CURLOPT_USERPWD'=>'anonymous: noreply@moodle.org'));
+            $this->setopt(array('CURLOPT_USERPWD' => 'anonymous: noreply@moodle.org'));
         }
         $ret = $this->request($url, $options);
         fclose($fp);
@@ -525,7 +548,7 @@ class curl {
  *
  * <code>
  *
- * $c = new curl(array('cache'=>true), 'module_cache'=>'repository');
+ * $c = new blccurl(array('cache'=>true), 'module_cache'=>'repository');
  * $ret = $c->get('http://www.google.com');
  * </code>
  *
@@ -534,12 +557,12 @@ class curl {
  * @copyright  1999 onwards Martin Dougiamas  {@link http://moodle.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class curl_cache {
+class blccurl_cache {
     /** @var string */
     public $dir = '';
     /**
      *
-     * @param string @module which module is using curl_cache
+     * @param string @module which module is using blccurl_cache
      *
      */
     function __construct() {
