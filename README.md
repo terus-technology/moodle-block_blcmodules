@@ -25,8 +25,16 @@ Site administration / Plugins / Activity modules / SCORM package
 
 This is a standard Moodle block, there are two options for installing:
 
-*Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at site administration / Plugins / Install Plugins.
+*Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at Site Administration / Plugins / Install Plugins.
 
 *Option 2:* The plugin can also be installed manually by placing the (unzipped version) in the 'blocks' directory of your Moodle.
 
 You will be prompted to enter your API key upon Installation. There is also a tool on the plugin settings page which allows you to check both your API key and URL.
+
+# Updating this plugin
+
+The guidance for updating is similar to the guidance for installation. 
+
+*Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at site administration / Plugins / Install Plugins.
+
+*Option 2:* The plugin can also be installed manually by overwriting the existing plugin in the 'blocks' directory of your Moodle.
