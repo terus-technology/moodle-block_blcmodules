@@ -55,7 +55,7 @@ if($action == 'continue' ){
 	$requesturi = $CFG->wwwroot;	
 	$token = get_config('block_blc_modules', 'token');
 	$domainname = get_config('block_blc_modules', 'domainname');
-	$apikey = get_config('block_blc_modules', 'api_key');//'jvm1sad1bm88oog';
+	$apikey = get_config('block_blc_modules', 'api_key');
 
 	$function_name = 'local_scormurl_get_bulkupscormurls';
 	 $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
