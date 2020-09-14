@@ -149,7 +149,7 @@ foreach($scormurls as $url){
 		$scorminstance->name = $scormname;
 		$scorminstance->section = $section;
 		$scorminstance->module = $moduleid;
-		$scorminstance->modulename = 'scorm';
+		$scorminstance->modulename = 'SCORM';
 		$scorminstance->intro       = '';
 		$scorminstance->introformat = 1;
 		$scorminstance->version = 'SCORM_1.2';
@@ -171,6 +171,7 @@ foreach($scormurls as $url){
 		$scorminstance->skipview = 2;
 		$scorminstance->packageurl = $scormurl;
 		$scorminstance->scormtype = 'localsync';
+		sleep(5);
 		$id = scorm_add_instance($scorminstance);
 
 		$record = new stdClass();
