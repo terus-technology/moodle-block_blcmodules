@@ -39,10 +39,12 @@ class block_blc_modules_edit_form extends block_edit_form {
         // Fields for editing blc_modules block title and contents.
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
-        $mform->addElement('text', 'api_key',
-                get_string('api_key', 'block_blc_modules'));
-        $mform->setDefault('api_key', $blockconfig->api_key);
-        $mform->setType('api_key', PARAM_TEXT);
+        if (has_capability('moodle/site:config', context_system::instance())) {
+            $mform->addElement('text', 'api_key',
+                    get_string('api_key', 'block_blc_modules'));
+            $mform->setDefault('api_key', $blockconfig->api_key);
+            $mform->setType('api_key', PARAM_TEXT);
+        }
    
     }
 }
