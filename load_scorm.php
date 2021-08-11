@@ -367,6 +367,10 @@ foreach($scormurls as $url){
     							 'filename' => $file_name);
     
     			$file = $fs->create_file_from_url($filerecord, $filepath);
+
+                if(!empty($file)){
+                    $file = $fs->create_file_from_url($filerecord, $filepath);  
+                }
     
     			$record = new stdClass();
     			$record->id = $sectionid;

@@ -24,7 +24,15 @@
 
 	}
 
-    
+function sortByValue(jsObj){
+    var sortedArray = [];
+    for(var i in jsObj)
+    {
+        // Push each JSON Object entry in array by [value, key]
+        sortedArray.push([jsObj[i], i]);
+    }
+    return sortedArray.sort();
+}
 
 	function fillSubject() {
 
@@ -44,14 +52,20 @@
 
 			}
 
-				jQuery.each( data, function( key, val ) {
+				/*jQuery.each( data, function( key, val ) {
 
 						items.push( "<option value='" + key + "'>" + val + "</option>" );
 
 				});
 
-				items = items.sort();
-
+				items = items.sort();*/
+				var sortedbyValueJSONArray= sortByValue(data);
+				items.push( "<option value='0'>Select Subject</option>" );
+				 $.each( sortedbyValueJSONArray , function( key,val ) {
+						 var keey = val[1];
+                         var value = val[0];
+						items.push( "<option value='" + keey + "'>" + value + "</option>" );
+				});
 			  jQuery("#scormsubject").html( items.join( "" ) );			
 
 		}); 
