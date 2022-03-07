@@ -34,7 +34,7 @@ $string['domainname_desc'] = 'The BLC Moodle URL. We recommend you do not change
 $string['blc_modules:viewblock'] = 'BLC Module Picker viewblock';
 $string['token_value'] = 'd623555b36cb7e3db03cd06178ccb284';
 $string['webserviceaddress'] = 'https://blc.howcollege.ac.uk';
-$string['updatescorm'] = 'To update BLC Modules in bulk, please click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/bulk_update.php">Here</a>.';
+$string['updatescorm'] = '<h4>Updates</h4>To update BLC Modules in bulk, please click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/bulk_update.php">Here</a>.';
 $string['updatescormmesage'] =  'Successfully upated';
 $string['updatedoc'] = 'To automatically add an accessibility document under each BLC Module, please click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/add_doc.php">Here</a>.';
 $string['updatedocmesage'] =  'Successfully added accessibility documents';
@@ -65,5 +65,16 @@ $string['successboth'] =  '
 $string['updatescormconfirm'] =  'Are you sure?';
 $string['updateconfirmmessage'] =  'Please be aware that updating SCORM packages can have implications for in-progress attempts.<br/> Students may loose their progress, and need to restart the module. They may also continue to be served the old version.<br/>It may be a good idea to do this during a strategic time in the academic year.<br/>We will try our best to track down and update all modules, however this may not always be possible, especially if a module has moved, been duplicated or renamed. ';
 $string['failupdatescormmesage'] =  'The server is currently busy updating another BLC college. Please try again later.';
-
-
+$string['scormreport'] = '<h4>Report</h4>Click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/scorm_report.php">here</a> to access a report detailing the usage of BLC modules and accessibility documents added via this plugin.<h4>Plugin Settings</h4><br/>';
+$string['scormreports'] = 'Report';
+$string['resource'] = 'Resource';
+$string['usage'] = 'Total';
+$string['subject'] = 'Subject';
+$string['blcmodules'] = 'BLC Modules';
+$string['accessdoc'] = 'Accessibility Documents';
+$string['blcresource'] = 'BLC Resources';
+$string['blcresourceinfo'] = 'Below you will find some basic statistics on BLC Resource used across your Moodle.<br/><br/>';
+$string['countbycourse'] = 'BLC Modules by course';
+$string['topcourses'] = 'Here are the top courses, making best use of BLC modules.';
+$string['countbysubject'] = 'BLC Modules by subject';
+$string['topsubjects'] = 'Here are the top 5 subjects making best use of BLC resources.';
