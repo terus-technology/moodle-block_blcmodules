@@ -48,7 +48,7 @@ $PAGE->set_title("Bulk Update");
 $PAGE->set_heading($heading);
 $PAGE->set_cacheable(false);
 $PAGE->requires->jquery();
-$PAGE->requires->js(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/custom-bulk.js'));
+$PAGE->requires->js_call_amd('block_blc_modules/module','bulkUpdateInit');
 
 if($action == 'continue' ){
 	echo $OUTPUT->header();
