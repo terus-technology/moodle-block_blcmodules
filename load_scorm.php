@@ -32,6 +32,8 @@ require_once($CFG->dirroot . '/mod/resource/lib.php');
 require_once('curl.php');
 require_login(null, false);
 
+use block_blc_modules\middleware\services as BLCService;
+
 $courseid = optional_param('id', '', PARAM_INT);
 $section = optional_param('sectionNumber', '', PARAM_INT);
 $apikey = optional_param('apikey', '', PARAM_TEXT);
@@ -126,7 +128,7 @@ foreach ($scormurls as $url) {
 
 	sleep(5);
 
-	if (blcscormurl_filesize($scormurl)) {
+	if (BLCService::blcscormurl_filesize($scormurl)) {
 		$scormsection = $DB->get_record('course_sections', array('course' => $courseid, 'section' => $section));
 		$sectionid = $scormsection->id;
 
@@ -200,7 +202,7 @@ foreach ($scormurls as $url) {
 		$scorminstance->scormtype = 'localsync';
 		$scorminstance->cmidnumber = '';
 
-		$id = blcscorm_add_instance($scorminstance);
+		$id = BLCService::blcscorm_add_instance($scorminstance);
 
 		$record = new stdClass();
 		$record->id = $sectionid;
@@ -224,7 +226,6 @@ foreach ($scormurls as $url) {
 
 		$blcmoduleid = $DB->insert_record('block_blc_modules', $scormrecord);
 
-
 		$scormcm = $DB->get_record('course_modules', array('id' => $coursemodule));
 		$scormtoupdate = new stdClass();
 		$scormtoupdate->course = $courseid;
@@ -238,7 +239,6 @@ foreach ($scormurls as $url) {
 		$scormtoupdate->id = $id;
 		scorm_update_instance($scormtoupdate);
 
-
 		$sql = "UPDATE " . $CFG->prefix . "scorm SET scormtype = 'local' WHERE id = " . $id;
 		$DB->execute($sql, array($params = null));
 		$scormtoview = $DB->get_record('scorm', array('id' => $id));
@@ -248,7 +248,6 @@ foreach ($scormurls as $url) {
 			. '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
 		$curl = new blccurl;
 		$curl->setHeader('Content-Type: application/json; charset=utf-8');
-
 
 		$responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
 
@@ -352,7 +351,6 @@ foreach ($scormurls as $url) {
 				\core_completion\api::update_completion_date_event($resourcecoursemodule, 'resource', $id, $completiontimeexpected);
 			}
 
-
 			$filepath = $docurl;
 			$syscontext = context_system::instance();
 			$file_name = $docname . '.docx';
@@ -413,177 +411,8 @@ foreach ($scormurls as $url) {
 	}
 	$count++;
 }
+
 if ($notdownloaded == 1) {
 	$scormmessage = "Something went wrong. Please re-select the modules below and try again.";
 	echo json_encode($scormmessage);
-}
-
-function blcscorm_add_instance($scorm, $mform = null)
-{
-	global $CFG, $DB;
-
-	require_once($CFG->dirroot . '/mod/scorm/locallib.php');
-
-	if (empty($scorm->timeopen)) {
-		$scorm->timeopen = 0;
-	}
-	if (empty($scorm->timeclose)) {
-		$scorm->timeclose = 0;
-	}
-	if (empty($scorm->completionstatusallscos)) {
-		$scorm->completionstatusallscos = 0;
-	}
-	$cmid       = $scorm->coursemodule;
-	$cmidnumber = $scorm->cmidnumber;
-	$courseid   = $scorm->course;
-
-	$context = context_module::instance($cmid);
-
-	$scorm = scorm_option2text($scorm);
-	$scorm->width  = (int)str_replace('%', '', $scorm->width);
-	$scorm->height = (int)str_replace('%', '', $scorm->height);
-
-	if (!isset($scorm->whatgrade)) {
-		$scorm->whatgrade = 0;
-	}
-
-	$id = $DB->insert_record('scorm', $scorm);
-
-	// Update course module record - from now on this instance properly exists and all function may be used.
-	$DB->set_field('course_modules', 'instance', $id, array('id' => $cmid));
-
-	// Reload scorm instance.
-	$record = $DB->get_record('scorm', array('id' => $id));
-
-	$record->reference = $scorm->packageurl;
-
-	// Save reference.
-	$DB->update_record('scorm', $record);
-
-	// Extra fields required in grade related functions.
-	$record->course     = $courseid;
-	$record->cmidnumber = $cmidnumber;
-	$record->cmid       = $cmid;
-
-	blcscorm_parse($record, false);
-
-	scorm_grade_item_update($record);
-	scorm_update_calendar($record, $cmid);
-	if (!empty($scorm->completionexpected)) {
-		\core_completion\api::update_completion_date_event($cmid, 'scorm', $record, $scorm->completionexpected);
-	}
-
-	return $record->id;
-}
-function blcscorm_parse($scorm, $full)
-{
-	global $CFG, $DB;
-	$cfgscorm = get_config('scorm');
-
-	if (!isset($scorm->cmid)) {
-		$cm = get_coursemodule_from_instance('scorm', $scorm->id);
-		$scorm->cmid = $cm->id;
-	}
-	$context = context_module::instance($scorm->cmid);
-	$newhash = $scorm->sha1hash;
-
-	$fs = get_file_storage();
-	$packagefile = false;
-	$packagefileimsmanifest = false;
-
-	if (!$cfgscorm->allowtypelocalsync) {
-		// Sorry - localsync disabled.
-		return;
-	}
-
-	$fs->delete_area_files($context->id, 'mod_scorm', 'package');
-	$filerecord = array(
-		'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
-		'itemid' => 0, 'filepath' => '/'
-	);
-	$options = array('calctimeout' => true, 'connecttimeout' => 600, 'skipcertverify' => true);
-	$filerecord = (array)$filerecord;  // Do not modify the submitted record, this cast unlinks objects.
-	$filerecord = (object)$filerecord; // We support arrays too.
-
-	$headers        = isset($options['headers'])        ? $options['headers'] : null;
-	$postdata       = isset($options['postdata'])       ? $options['postdata'] : null;
-	$fullresponse   = isset($options['fullresponse'])   ? $options['fullresponse'] : false;
-	$timeout        = isset($options['timeout'])        ? $options['timeout'] : 300;
-	$connecttimeout = isset($options['connecttimeout']) ? $options['connecttimeout'] : 20;
-	$skipcertverify = isset($options['skipcertverify']) ? $options['skipcertverify'] : false;
-	$calctimeout    = isset($options['calctimeout'])    ? $options['calctimeout'] : false;
-
-	if (!isset($filerecord->filename)) {
-		$parts = explode('/', $scorm->reference);
-		$filename = array_pop($parts);
-		$filerecord->filename = clean_param($filename, PARAM_FILE);
-	}
-	$source = !empty($filerecord->source) ? $filerecord->source : $scorm->reference;
-	$filerecord->source = clean_param($source, PARAM_URL);
-
-	$content = download_file_content($scorm->reference, $headers, $postdata, $fullresponse, $timeout, $connecttimeout, $skipcertverify, NULL, $calctimeout);
-	$filesize = strlen($content);
-	//print_r($filesize);
-
-	if ($packagefile = $fs->create_file_from_string($filerecord, $content)) {
-		//if ($packagefile = $fs->create_file_from_url($filerecord, $scorm->reference, $options, true)) {
-		$newhash = $packagefile->get_contenthash();
-	} else {
-		$newhash = null;
-	}
-
-	//print_r($packagefile);
-
-	//require_once("$CFG->dirroot/mod/scorm/datamodels/scormlib.php");
-
-	//scorm_parse_scorm($scorm, $packagefile);
-	$scorm->revision++;
-	$scorm->sha1hash = $newhash;
-	$DB->update_record('scorm', $scorm);
-}
-
-function blcscormurl_filesize($scormurl)
-{
-	global $CFG, $DB, $COURSE;
-
-	$fs = get_file_storage();
-	$packagefile = false;
-	$packagefileimsmanifest = false;
-	$context = context_course::instance($COURSE->id);
-
-	$fs->delete_area_files($context->id, 'mod_scorm', 'package');
-	$filerecord = array(
-		'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
-		'itemid' => 0, 'filepath' => '/'
-	);
-	$options = array('calctimeout' => true, 'connecttimeout' => 600, 'skipcertverify' => true);
-	$filerecord = (array)$filerecord;  // Do not modify the submitted record, this cast unlinks objects.
-	$filerecord = (object)$filerecord; // We support arrays too.
-
-	$headers        = isset($options['headers'])        ? $options['headers'] : null;
-	$postdata       = isset($options['postdata'])       ? $options['postdata'] : null;
-	$fullresponse   = isset($options['fullresponse'])   ? $options['fullresponse'] : false;
-	$timeout        = isset($options['timeout'])        ? $options['timeout'] : 300;
-	$connecttimeout = isset($options['connecttimeout']) ? $options['connecttimeout'] : 20;
-	$skipcertverify = isset($options['skipcertverify']) ? $options['skipcertverify'] : false;
-	$calctimeout    = isset($options['calctimeout'])    ? $options['calctimeout'] : false;
-
-	if (!isset($filerecord->filename)) {
-		$parts = explode('/', $scormurl);
-		$filename = array_pop($parts);
-		$filerecord->filename = clean_param($filename, PARAM_FILE);
-	}
-
-	$source = !empty($filerecord->source) ? $filerecord->source : $scormurl;
-	$filerecord->source = clean_param($source, PARAM_URL);
-
-	$content = download_file_content($scormurl, $headers, $postdata, $fullresponse, $timeout, $connecttimeout, $skipcertverify, NULL, $calctimeout);
-	$filesize = strlen($content);
-	//print_r($filesize);
-	if ($filesize == 0)
-		return false;
-	else if ($filesize > 0)
-		return true;
-	else
-		return false;
 }
