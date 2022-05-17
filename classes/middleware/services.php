@@ -164,7 +164,7 @@ class services
         $fs = get_file_storage();
         $packagefile = false;
         $packagefileimsmanifest = false;
-        $context = context_module::instance($COURSE->id);
+        $context = \context_course::instance($COURSE->id);
 
         $fs->delete_area_files($context->id, 'mod_scorm', 'package');
         $filerecord = array(
