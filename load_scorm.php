@@ -237,7 +237,7 @@ foreach ($scormurls as $url) {
 		$scormtoupdate->scormtype = 'localsync';
 		$scormtoupdate->packageurl = $scormurl;
 		$scormtoupdate->id = $id;
-		scorm_update_instance($scormtoupdate);
+		BLCService::blc_scorm_update_instance($scormtoupdate);
 
 		$sql = "UPDATE " . $CFG->prefix . "scorm SET scormtype = 'local' WHERE id = " . $id;
 		$DB->execute($sql, array($params = null));
@@ -366,7 +366,7 @@ foreach ($scormurls as $url) {
 				'filename' => $file_name
 			);
 
-			$file = $fs->create_file_from_url($filerecord, $filepath);
+			$file = $fs->create_file_from_url($filerecord, $filepath, array('calctimeout' => true, 'skipcertverify' => true));
 
 			$record = new stdClass();
 			$record->id = $sectionid;
