@@ -202,4 +202,143 @@ class services
         else
             return false;
     }
+    
+    public static function blc_scorm_update_instance($scorm, $mform = null)
+    {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/mod/scorm/locallib.php');
+
+        if (empty($scorm->timeopen)) {
+            $scorm->timeopen = 0;
+        }
+        if (empty($scorm->timeclose)) {
+            $scorm->timeclose = 0;
+        }
+        if (empty($scorm->completionstatusallscos)) {
+            $scorm->completionstatusallscos = 0;
+        }
+
+        $cmid       = $scorm->coursemodule;
+        $cmidnumber = $scorm->cmidnumber;
+        $courseid   = $scorm->course;
+
+        $scorm->id = $scorm->instance;
+
+        $context = context_module::instance($cmid);
+
+        $scorm->reference = $scorm->packageurl;
+
+        $scorm = scorm_option2text($scorm);
+        $scorm->width        = (int)str_replace('%', '', $scorm->width);
+        $scorm->height       = (int)str_replace('%', '', $scorm->height);
+        $scorm->timemodified = time();
+
+        if (!isset($scorm->whatgrade)) {
+            $scorm->whatgrade = 0;
+        }
+
+        $DB->update_record('scorm', $scorm);
+        // We need to find this out before we blow away the form data.
+        $completionexpected = (!empty($scorm->completionexpected)) ? $scorm->completionexpected : null;
+
+        $scorm = $DB->get_record('scorm', array('id' => $scorm->id));
+
+        // Extra fields required in grade related functions.
+        $scorm->course   = $courseid;
+        $scorm->idnumber = $cmidnumber;
+        $scorm->cmid     = $cmid;
+
+        self::scorm_parse($scorm, (bool)$scorm->updatefreq);
+
+        scorm_grade_item_update($scorm);
+        scorm_update_grades($scorm);
+        scorm_update_calendar($scorm, $cmid);
+        \core_completion\api::update_completion_date_event($cmid, 'scorm', $scorm, $completionexpected);
+
+        return true;
+    }
+
+    private static function scorm_parse($scorm, $full)
+    {
+        global $CFG, $DB;
+        $cfgscorm = get_config('scorm');
+
+        if (!isset($scorm->cmid)) {
+            $cm = get_coursemodule_from_instance('scorm', $scorm->id);
+            $scorm->cmid = $cm->id;
+        }
+        $context = context_module::instance($scorm->cmid);
+        $newhash = $scorm->sha1hash;
+
+        $fs = get_file_storage();
+        $packagefile = false;
+        $packagefileimsmanifest = false;
+
+        if (!$cfgscorm->allowtypelocalsync) {
+            // Sorry - localsync disabled.
+            return;
+        }
+        if ($scorm->reference !== '') {
+            $fs->delete_area_files($context->id, 'mod_scorm', 'package');
+            $filerecord = array(
+                'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
+                'itemid' => 0, 'filepath' => '/'
+            );
+            if ($packagefile = $fs->create_file_from_url($filerecord, $scorm->reference, array('calctimeout' => true, 'skipcertverify' => true), true)) {
+                $newhash = $packagefile->get_contenthash();
+            } else {
+                $newhash = null;
+            }
+        }
+
+        if ($packagefile) {
+            if (!$full and $packagefile and $scorm->sha1hash === $newhash) {
+                if (strpos($scorm->version, 'SCORM') !== false) {
+                    if ($packagefileimsmanifest || $fs->get_file($context->id, 'mod_scorm', 'content', 0, '/', 'imsmanifest.xml')) {
+                        // No need to update.
+                        return;
+                    }
+                } else if (strpos($scorm->version, 'AICC') !== false) {
+                    // TODO: add more sanity checks - something really exists in scorm_content area.
+                    return;
+                }
+            }
+            if (!$packagefileimsmanifest) {
+                // Now extract files.
+                $fs->delete_area_files($context->id, 'mod_scorm', 'content');
+
+                $packer = get_file_packer('application/zip');
+                $packagefile->extract_to_storage($packer, $context->id, 'mod_scorm', 'content', 0, '/');
+            }
+        } else if (!$full) {
+            return;
+        }
+        if ($packagefileimsmanifest) {
+            require_once("$CFG->dirroot/mod/scorm/datamodels/scormlib.php");
+            // Direct link to imsmanifest.xml file.
+            if (!scorm_parse_scorm($scorm, $packagefile)) {
+                $scorm->version = 'ERROR';
+            }
+        } else if ($manifest = $fs->get_file($context->id, 'mod_scorm', 'content', 0, '/', 'imsmanifest.xml')) {
+            require_once("$CFG->dirroot/mod/scorm/datamodels/scormlib.php");
+            // SCORM.
+            if (!scorm_parse_scorm($scorm, $manifest)) {
+                $scorm->version = 'ERROR';
+            }
+        } else {
+            require_once("$CFG->dirroot/mod/scorm/datamodels/aicclib.php");
+            // AICC.
+            $result = scorm_parse_aicc($scorm);
+            if (!$result) {
+                $scorm->version = 'ERROR';
+            } else {
+                $scorm->version = 'AICC';
+            }
+        }
+
+        $scorm->revision++;
+        $scorm->sha1hash = $newhash;
+        $DB->update_record('scorm', $scorm);
+    }
 }
