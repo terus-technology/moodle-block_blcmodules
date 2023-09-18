@@ -23,6 +23,7 @@
  */
 
 import $ from 'jquery';
+import tippy from 'tippy.js';
 
 var root = M.cfg.wwwroot;
 var x = '';
@@ -55,7 +56,7 @@ const fillSubject = () => {
 
     var apikey = $('#apikey').val();
 
-    $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function (data) {
+    $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function(data) {
 
         var items = [];
 
@@ -67,7 +68,7 @@ const fillSubject = () => {
 
         }
 
-        $.each(data, function (key, val) {
+        $.each(data, function(key, val) {
 
             items.push("<option value='" + key + "'>" + val + "</option>");
 
@@ -85,11 +86,11 @@ const checkVersion = (id) => {
 
     var apikey = $('#apikey').val();
 
-    $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function (data) {
+    $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function(data) {
 
         var items = [];
 
-        $.each(data, function (key, val) {
+        $.each(data, function(key, val) {
 
             $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm"  style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
 
@@ -109,15 +110,15 @@ const fillscorm = () => {
 
     if (scormsubject != 0) {
 
-        $.getJSON(root + "/blocks/blc_modules/load_scormurls.php?apikey=" + encodeURIComponent(apikey) + "&subject=" + encodeURIComponent(scormsubject), function (data) {
+        $.getJSON(root + "/blocks/blc_modules/load_scormurls.php?apikey=" + encodeURIComponent(apikey) + "&subject=" + encodeURIComponent(scormsubject), function(data) {
 
             var items = [];
 
-            $.each(data, function (key, val) {
+            $.each(data, function(key, val) {
 
                 var sanVal = val.replace(".zip", "");
 
-                var key = key.replace("'", "’");
+                key = key.replace("'", "’");
 
                 items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
 
@@ -141,23 +142,19 @@ const updateScorm = (cmid, version) => {
 
         data: 'cmid=' + cmid + '&version=' + version,
 
-        beforeSend: function () {
+        beforeSend: function() {
 
             $("#module-" + cmid + " .mod-indent-outer .cmid-version").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
-
-
         },
 
-        success: function () {
+        success: function() {
 
             location.reload(true);
 
         }
 
     });
-
-
 
 }
 
@@ -173,12 +170,15 @@ export const init = () => {
 
     var notifyeditingon = $("#userediting").val();
 
-    if (notifyeditingon == 1)
+    if (notifyeditingon == 1) {
+
         checkVersion(id);
+
+    }
 
     if ($("#addscorm").hasClass("block_blc_modules")) {
 
-        var notifyeditingon = $("#userediting").val();
+        notifyeditingon = $("#userediting").val();
 
         var allowstealthval = $("#allowstealthvalue").val();
 
@@ -203,17 +203,108 @@ export const init = () => {
 
         }
 
-        $(".course-content").append('<div style="display:none;" class="modal fade" id="bsModal3" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true"> <div class="modal-dialog modal-md"> <div class="modal-content"> <div class="modal-header"> <h4 class="modal-title" id="mySmallModalLabel">Select BLC Modules</h4> </div> <div class="modal-body"> <p class="statusMsg"></p> <form role="form"> <div class="form-group"> <select style="min-width:100%;" class="form-control" id="scormsubject" name="scormsubject"> </select> </div> <div class="form-group"> <select style="min-width:100%;" class="form-control" id="scormurls" name="scormurls" multiple > </select> </div> <div class="additional_settings"> <h3>SCORM Settings</h3> <div class="blcrow"> <div class="blcrow"> <span style="float:left; margin-right:10px;" class="text-nowrap"> <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id=""  role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to \'Show on course page\', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to \'Hide from students\', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to \'Make available but not shown on course page\'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> " data-html="true" tabindex="0" data-trigger="focus"> <img src="' + root + '/blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" /> </a> </span> <label style="line-height: 18px;" class="blclabel" for="id_visible"> Availability </label> </div> <div class="blcrow" data-fieldtype="modvisible"> <select class="custom-select " name="visible" id="id_visible"> <option value="1" selected="">Show on course page</option> <option value="0">Hide from students</option>' + allowstealthstring + '</select> <div class="form-control-feedback invalid-feedback" id="id_error_visible"> </div> </div> </div> <br/> <div class="blcrow" > <div class="blccolmd6"> <span style="float:left; margin-right:10px;" class="text-nowrap"> <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus"> <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" /> </a> </span> <label style="line-height: 18px;" class="blclabel" for="id_hidebrowse"> Disable preview mode </label> </div> <div class="blcrow" style="" data-fieldtype="selectyesno"> <select class="custom-select " name="hidebrowse" id="id_hidebrowse"> <option value="0">No</option> <option value="1" selected="">Yes</option> </select> <div class="form-control-feedback invalid-feedback" id="id_error_hidebrowse"> </div> </div> </div> <br/> <div class="blcrow" > <div class="blccolmd6"> <span style="float:left; margin-right:10px;" class="text-nowrap"> <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus"> <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" /> </a> </span> <label class="blclabel" style="line-height: 18px;" for="id_completion"> Completion tracking </label> </div> <div class="blccolmd6"  style="" data-fieldtype="select" >' + completionstring + '</div> </div> </div> </div> </div> <div class="modal-footer"> <button type="button" class="btn btn-default closeModal" data-dismiss="modal">Close</button> <button type="button" disabled="disabled" class="btn btn-primary submitForm" >Add Modules</button> </div> </div> </div> </div> ');
+        $(".course-content").append(`
+            <div style="display:none;" class="modal fade" id="bsModal3" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title" id="mySmallModalLabel">
+                                Select BLC Modules
+                            </h4>
+                        </div>
+                    <div class="modal-body">
+                        <p class="statusMsg"></p>
+                        <form role="form">
+                        <div class="form-group">
+                            <select style="min-width:100%;" class="form-control" id="scormsubject" name="scormsubject"></select>
+                        </div>
+                        <div class="form-group">
+                            <select style="min-width:100%;" class="form-control" id="scormurls" name="scormurls" multiple ></select>
+                        </div>
+                        <div class="additional_settings">
+                            <h3>SCORM Settings</h3>
+                            <div class="blcrow">
+                                <div class="blcrow">
+                                    <span style="float:left; margin-right:10px;" class="text-nowrap">
+                                        <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
+                                            <img src="` + root + `/blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                        </a>
+                                    </span>
+                                    <label style="line-height: 18px;" class="blclabel" for="id_visible">
+                                        Availability
+                                    </label>
+                                    </div>
+                                    <div class="blcrow" data-fieldtype="modvisible">
+                                        <select class="custom-select " name="visible" id="id_visible">
+                                            <option value="1" selected="">Show on course page</option>
+                                            <option value="0">Hide from students</option>
+                                            ` + allowstealthstring + `
+                                        </select>
+                                        <div class="form-control-feedback invalid-feedback" id="id_error_visible"></div>
+                                    </div>
+                                </div>
+                                <br/>
+                                <div class="blcrow">
+                                    <div class="blccolmd6">
+                                        <span style="float:left; margin-right:10px;" class="text-nowrap">
+                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
+                                                <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                            </a>
+                                        </span>
+                                        <label style="line-height: 18px;" class="blclabel" for="id_hidebrowse">
+                                            Disable preview mode
+                                        </label>
+                                    </div>
+                                    <div class="blcrow" style="" data-fieldtype="selectyesno">
+                                        <select class="custom-select" name="hidebrowse" id="id_hidebrowse">
+                                            <option value="0">No</option>
+                                            <option value="1" selected="">Yes</option>
+                                        </select>
+                                        <div class="form-control-feedback invalid-feedback" id="id_error_hidebrowse"></div>
+                                    </div>
+                                </div>
+                                <br/>
+                                <div class="blcrow">
+                                    <div class="blccolmd6">
+                                        <span style="float:left; margin-right:10px;" class="text-nowrap">
+                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
+                                                <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                            </a>
+                                        </span>
+                                        <label class="blclabel" style="line-height: 18px;" for="id_completion">
+                                            Completion tracking
+                                        </label>
+                                    </div>
+                                    <div class="blccolmd6" style="" data-fieldtype="select">
+                                        ` + completionstring + `
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default closeModal" data-dismiss="modal">
+                            Close
+                        </button>
+                        <button type="button" disabled="disabled" class="btn btn-primary submitForm">
+                            Add Modules
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `);
 
         var mright = $("#section-0 .content").css("margin-right");
         var count = 0;
         var wwwroothidden = $('#wwwroot_hidden').html();
 
-        $(".section.main").each(function () {
+        $(".section.main").each(function() {
 
-            if (notifyeditingon == 1)
+            if (notifyeditingon == 1) {
 
                 $(this).append("<a style='float:right; margin-right:" + mright + "; cursor: pointer; color: #a864a8;' class='add-scrom' data-toggle='modal' data-target='#bsModal3'><img style='padding-bottom:3px;' src='" + root + "/blocks/blc_modules/pix/blc.png'/>   Add BLC modules</a>");
+
+            }
 
             var margin = $(".row").css("margin-left");
 
@@ -227,13 +318,13 @@ export const init = () => {
 
         });
 
-        $("#scormsubject").change(function () {
+        $("#scormsubject").change(function() {
 
             fillscorm();
 
         });
 
-        $(".course-content").on("click", ".add-scrom", function () {
+        $(".course-content").on("click", ".add-scrom", function() {
 
             fillSubject();
 
@@ -245,13 +336,13 @@ export const init = () => {
 
         });
 
-        $("#scormurls").click(function () {
+        $("#scormurls").click(function() {
 
             $('.submitForm').removeAttr("disabled");
 
         });
 
-        $(".course-content").on("click", ".submitForm", function () {
+        $(".course-content").on("click", ".submitForm", function() {
 
             var apikey = $('#apikey').val();
             var scormurls = [];
@@ -259,7 +350,7 @@ export const init = () => {
             var hidebrowse = $("#id_hidebrowse").val();
             var completion = $("#id_completion").val();
 
-            $.each($("#scormurls option:selected"), function () {
+            $.each($("#scormurls option:selected"), function() {
 
                 var urll = $(this).val();
 
@@ -279,7 +370,6 @@ export const init = () => {
 
             $.get(root + "/blocks/blc_modules/load_scorm.php",
                 {
-
                     id: id,
                     sectionNumber: x,
                     scormurls: scormurls,
@@ -287,10 +377,9 @@ export const init = () => {
                     visibility: visibility,
                     hidebrowse: hidebrowse,
                     completion: completion
-
                 },
 
-                function (data, status) {
+                function(data, status) {
 
                     if (data == '"completed"') {
 
@@ -312,7 +401,7 @@ export const init = () => {
 
     }
 
-    $(".activityinstance").on("click", ".fa-refresh", function () {
+    $(".activityinstance").on("click", ".fa-refresh", function() {
 
         var data = $(this).closest(".cmid-version").attr('id');
 
@@ -327,26 +416,40 @@ export const init = () => {
 
 export const tippyInit = () => {
 
-    tippy('.avail', { content: "<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> ", theme: "light", arrow: true, placement: "right" });
+    tippy('.avail', {
+        content: "<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> ",
+        theme: "light",
+        arrow: true,
+        placement: "right"
+    });
 
-    tippy('.prev', { content: "<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> ", theme: "light", arrow: true, placement: "right" });
+    tippy('.prev', {
+        content: "<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> ",
+        theme: "light",
+        arrow: true,
+        placement: "right"
+    });
 
-    tippy('.comp', { content: "<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>", theme: "light", arrow: true, placement: "right" });
-
+    tippy('.comp', {
+        content: "<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>",
+        theme: "light",
+        arrow: true,
+        placement: "right"
+    });
 
 };
 
 export const bulkUpdateInit = () => {
 
-    $(document).ready(function () {
+    $(document).ready(function() {
 
-        var checkExist = setInterval(function () {
+        var checkExist = setInterval(function() {
 
             if ($("#modalForm").modal) {
 
                 $("#modalForm").modal('show');
 
-                $("#bulkupdatecont").click(function () {
+                $("#bulkupdatecont").click(function() {
 
                     $("#bulkupdatesubmit").submit();
 
