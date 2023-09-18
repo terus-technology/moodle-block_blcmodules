@@ -63,4 +63,5 @@ global $DB, $USER, $CFG;
 		}
 	}
 	$scorm = array_unique($scorm);
+	sort($scorm);
 	echo json_encode($scorm);

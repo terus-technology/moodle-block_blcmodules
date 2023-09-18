@@ -50,8 +50,7 @@ class block_blc_modules extends block_list
         $this->page->requires->jquery();
         $this->page->requires->css(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippytheme.css'));
-
-        $this->page->requires->js(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippy.js'), true);
+        $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/select2.css'));
 
         $this->page->requires->js_call_amd('block_blc_modules/module', 'init');
         $this->page->requires->js_call_amd('block_blc_modules/module', 'tippyInit');
