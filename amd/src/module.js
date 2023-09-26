@@ -69,6 +69,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
 
             var apikey = $('#apikey').val();
 
+            $("#scormurls").html('');
+
             $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function(data) {
 
                 var items = [];
@@ -80,6 +82,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                     $('.statusMsg').html('<span style="color:red;">An error has occured.</p>');
 
                 }
+
+                items.push("<option disabled selected>Select a module</option>");
 
                 $.each(data, function(key, val) {
 
@@ -227,7 +231,9 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                             <p class="statusMsg"></p>
                             <form role="form">
                             <div class="form-group">
-                                <select style="width:100%;" class="form-control select2" id="scormsubject" name="scormsubject"></select>
+                                <select style="width:100%;" class="form-control select2" id="scormsubject" name="scormsubject">
+                                    <option disabled selected>Select a module</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <select style="min-width:100%;" class="form-control" id="scormurls" name="scormurls" multiple></select>
