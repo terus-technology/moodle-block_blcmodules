@@ -244,7 +244,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                                     <div class="blcrow">
                                         <span style="float:left; margin-right:10px;" class="text-nowrap">
                                             <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
-                                                <img src="` + root + `/blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                            <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>
                                             </a>
                                         </span>
                                         <label style="line-height: 18px;" class="blclabel" for="id_visible">
@@ -265,7 +265,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
                                                 <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
-                                                    <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                                   
+                                                <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
                                                 </a>
                                             </span>
                                             <label style="line-height: 18px;" class="blclabel" for="id_hidebrowse">
@@ -285,7 +286,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
                                                 <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
-                                                    <img src="../blocks/blc_modules/pix/question.png" style="max-width: 20px;" onclick="event.preventDefault();" aria-hidden="true" title="Help with Availability" aria-label="Help with Availability" />
+                                                        <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
+                                            
                                                 </a>
                                             </span>
                                             <label class="blclabel" style="line-height: 18px;" for="id_completion">
@@ -318,9 +320,15 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                 $(".section.main").each(function() {
 
                     if (notifyeditingon == 1) {
-
-                        $(this).append("<a style='float:right; margin-right:" + mright + "; cursor: pointer; color: #a864a8;' class='add-scrom' data-toggle='modal' data-target='#bsModal3'><img style='padding-bottom:3px;' src='" + root + "/blocks/blc_modules/pix/blc.png'/>   Add BLC modules</a>");
-
+                        $(this).append(`
+                            <button class="btn add-content d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right" 
+                                    data-toggle='modal' data-target='#bsModal3'>
+                                <div class="px-1">
+                                    <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
+                                    <span class="activity-add-text pr-1">Add BLC modules</span>
+                                </div>
+                            </button>
+                        `);
                     }
 
                     var margin = $(".row").css("margin-left");
