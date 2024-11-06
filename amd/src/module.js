@@ -342,7 +342,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
 
                 if (notifyeditingon == 1) {
                     $(this).append(`
-                            <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right" 
+                            <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
                                     data-toggle='modal' data-target='#bsModal3' style="float:right">
                                 <div class="px-1">
                                     <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
