@@ -27,198 +27,219 @@
 var root = M.cfg.wwwroot;
 var x = '';
 
-define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], function($, tippy, select2) {
-        return {
-            getUrlParameter: getUrlParameter,
-            fillSubject: fillSubject,
-            checkVersion: checkVersion,
-            fillscorm: fillscorm,
-            updateScorm: updateScorm,
-            init: init,
-            tippyInit: tippyInit,
-            bulkUpdateInit: bulkUpdateInit
-        };
+define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], function ($, tippy, select2) {
+    return {
+        getUrlParameter: getUrlParameter,
+        fillSubject: fillSubject,
+        checkVersion: checkVersion,
+        fillscorm: fillscorm,
+        updateScorm: updateScorm,
+        init: init,
+        tippyInit: tippyInit,
+        bulkUpdateInit: bulkUpdateInit
+    };
 
-        function getUrlParameter(url, sParam) {
+    function getUrlParameter(url, sParam) {
 
-            var sPageURL = decodeURIComponent(url.split("?")[1]),
+        var sPageURL = decodeURIComponent(url.split("?")[1]),
 
-                sURLVariables = sPageURL.split('#'),
+            sURLVariables = sPageURL.split('#'),
 
-                sParameterName,
+            sParameterName,
 
-                i;
+            i;
 
-            for (i = 0; i < sURLVariables.length; i++) {
+        for (i = 0; i < sURLVariables.length; i++) {
 
-                sParameterName = sURLVariables[i].split('=');
+            sParameterName = sURLVariables[i].split('=');
 
-                if (sParameterName[0] === sParam) {
+            if (sParameterName[0] === sParam) {
 
-                    return sParameterName[1] === undefined ? true : sParameterName[1];
-
-                }
+                return sParameterName[1] === undefined ? true : sParameterName[1];
 
             }
 
-            return false;
-
         }
 
-        function fillSubject() {
+        return false;
 
-            var apikey = $('#apikey').val();
+    }
 
-            $("#scormurls").html('');
+    function fillSubject() {
 
-            $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function(data) {
+        var apikey = $('#apikey').val();
+
+        $("#scormurls").html('');
+
+        $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function (data) {
+
+            var items = [];
+
+            if (data.length == 0) {
+
+                $('.submitForm').attr("disabled", "disabled");
+
+                $('.statusMsg').html('<span style="color:red;">An error has occured.</p>');
+
+            }
+
+            items.push("<option disabled selected>Select a module</option>");
+
+            $.each(data, function (key, val) {
+
+                items.push("<option value='" + key + "'>" + val + "</option>");
+
+            });
+
+            $("#scormsubject").html(items.join(""));
+
+        });
+
+    }
+
+    function checkVersion(id) {
+
+        var apikey = $('#apikey').val();
+
+        $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function (data) {
+
+            var items = [];
+
+            $.each(data, function (key, val) {
+
+                $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm"  style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
+
+            });
+
+            // $("#scormsubject").html( items.join( "" ) );
+
+        });
+
+    }
+
+    function fillscorm() {
+
+        var scormsubject = $('#scormsubject option:selected').text();
+
+        var apikey = $('#apikey').val();
+
+        if (scormsubject != 0) {
+
+            $.getJSON(root + "/blocks/blc_modules/load_scormurls.php?apikey=" + encodeURIComponent(apikey) + "&subject=" + encodeURIComponent(scormsubject), function (data) {
 
                 var items = [];
 
-                if (data.length == 0) {
+                $.each(data, function (key, val) {
 
-                    $('.submitForm').attr("disabled", "disabled");
+                    var sanVal = val.replace(".zip", "");
 
-                    $('.statusMsg').html('<span style="color:red;">An error has occured.</p>');
+                    key = key.replace("'", "’");
 
-                }
-
-                items.push("<option disabled selected>Select a module</option>");
-
-                $.each(data, function(key, val) {
-
-                    items.push("<option value='" + key + "'>" + val + "</option>");
+                    items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
 
                 });
 
-                $("#scormsubject").html(items.join(""));
+                $("#scormurls").html(items.join(""));
 
             });
 
         }
 
-        function checkVersion(id) {
+    }
 
-            var apikey = $('#apikey').val();
+    function updateScorm(cmid, version) {
 
-            $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function(data) {
+        $.ajax({
 
-                var items = [];
+            type: 'GET',
 
-                $.each(data, function(key, val) {
+            url: root + '/blocks/blc_modules/update_scorm.php',
 
-                    $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm"  style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
+            data: 'cmid=' + cmid + '&version=' + version,
 
-                });
+            beforeSend: function () {
 
-                // $("#scormsubject").html( items.join( "" ) );
+                $("#module-" + cmid + " .mod-indent-outer .cmid-version").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
-            });
+            },
 
-        }
+            success: function () {
 
-        function fillscorm() {
-
-            var scormsubject = $('#scormsubject option:selected').text();
-
-            var apikey = $('#apikey').val();
-
-            if (scormsubject != 0) {
-
-                $.getJSON(root + "/blocks/blc_modules/load_scormurls.php?apikey=" + encodeURIComponent(apikey) + "&subject=" + encodeURIComponent(scormsubject), function(data) {
-
-                    var items = [];
-
-                    $.each(data, function(key, val) {
-
-                        var sanVal = val.replace(".zip", "");
-
-                        key = key.replace("'", "’");
-
-                        items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
-
-                    });
-
-                    $("#scormurls").html(items.join(""));
-
-                });
+                location.reload(true);
 
             }
 
+        });
+
+    }
+
+    const createButtonAddBlc = () => {
+        const button = document.querySelector('.btn-blc-modules');
+
+    
+        const defaultBackgroundColor = '#cfe2f2';
+        const hoverBackgroundColor = '#0f6cbf';
+        const hoverTextColor = 'white';
+        const defaultTextColor = 'black'; 
+        
+        button.addEventListener('mouseenter', () => {
+            button.style.backgroundColor = hoverBackgroundColor;
+            button.style.color = hoverTextColor;
+        });
+
+        button.addEventListener('mouseleave', () => {
+            button.style.backgroundColor = defaultBackgroundColor;
+            button.style.color = defaultTextColor;
+        });
+
+    }
+    function init() {
+
+        var pageURL = $(location).attr("href");
+
+
+
+        pageURL = pageURL.split("&")[0];
+
+        pageURL = pageURL.split("#")[0];
+        var id = getUrlParameter(pageURL, "id");
+
+        var notifyeditingon = $("#userediting").val();
+
+        if (notifyeditingon == 1) {
+
+            checkVersion(id);
+
         }
 
-        function updateScorm(cmid, version) {
+        if ($("#addscorm").hasClass("block_blc_modules")) {
 
-            $.ajax({
+            notifyeditingon = $("#userediting").val();
 
-                type: 'GET',
+            var allowstealthval = $("#allowstealthvalue").val();
 
-                url: root + '/blocks/blc_modules/update_scorm.php',
+            var allowstealthstring = '';
 
-                data: 'cmid=' + cmid + '&version=' + version,
+            if (allowstealthval == 1) {
 
-                beforeSend: function() {
-
-                    $("#module-" + cmid + " .mod-indent-outer .cmid-version").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
-
-                },
-
-                success: function() {
-
-                    location.reload(true);
-
-                }
-
-            });
-
-        }
-
-        function init() {
-
-            var pageURL = $(location).attr("href");
-
-            pageURL = pageURL.split("&")[0];
-
-            pageURL = pageURL.split("#")[0];
-
-            var id = getUrlParameter(pageURL, "id");
-
-            var notifyeditingon = $("#userediting").val();
-
-            if (notifyeditingon == 1) {
-
-                checkVersion(id);
+                allowstealthstring = '<option value="-1">Make available but not shown</option>';
 
             }
 
-            if ($("#addscorm").hasClass("block_blc_modules")) {
+            var completionon = $("#completionon").val();
+            var completionstring = '';
 
-                notifyeditingon = $("#userediting").val();
+            if (completionon == 1) {
 
-                var allowstealthval = $("#allowstealthvalue").val();
+                completionstring = '<select class="custom-select " name="completion" id="id_completion"> <option value="0">Off</option> <option value="1" >Manual</option> <option value="2" selected="">Automatic</option> </select> <div class="form-control-feedback invalid-feedback" id="id_error_completion">';
 
-                var allowstealthstring = '';
+            } else {
 
-                if (allowstealthval == 1) {
+                completionstring = '<p>Activity completion is not enabled on this course.</p><div class="form-control-feedback invalid-feedback" id="id_error_completion">';
 
-                    allowstealthstring = '<option value="-1">Make available but not shown</option>';
+            }
 
-                }
-
-                var completionon = $("#completionon").val();
-                var completionstring = '';
-
-                if (completionon == 1) {
-
-                    completionstring = '<select class="custom-select " name="completion" id="id_completion"> <option value="0">Off</option> <option value="1" >Manual</option> <option value="2" selected="">Automatic</option> </select> <div class="form-control-feedback invalid-feedback" id="id_error_completion">';
-
-                } else {
-
-                    completionstring = '<p>Activity completion is not enabled on this course.</p><div class="form-control-feedback invalid-feedback" id="id_error_completion">';
-
-                }
-
-                $(".course-content").append(`
+            $(".course-content").append(`
                 <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-md">
                         <div class="modal-content">
@@ -313,184 +334,186 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                 </div>
             `);
 
-                var mright = $("#section-0 .content").css("margin-right");
-                var count = 0;
-                var wwwroothidden = $('#wwwroot_hidden').html();
+            var mright = $("#section-0 .content").css("margin-right");
+            var count = 0;
+            var wwwroothidden = $('#wwwroot_hidden').html();
 
-                $(".section.main").each(function() {
+            $(".section.main").each(function () {
 
-                    if (notifyeditingon == 1) {
-                        $(this).append(`
-                            <button class="btn add-content d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right" 
-                                    data-toggle='modal' data-target='#bsModal3'>
+                if (notifyeditingon == 1) {
+                    $(this).append(`
+                            <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right" 
+                                    data-toggle='modal' data-target='#bsModal3' style="float:right">
                                 <div class="px-1">
                                     <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
                                     <span class="activity-add-text pr-1">Add BLC modules</span>
                                 </div>
                             </button>
                         `);
-                    }
 
-                    var margin = $(".row").css("margin-left");
+                    createButtonAddBlc();
+                }
 
-                    if (margin == "-30px" || margin == "-20px") {
+                var margin = $(".row").css("margin-left");
 
-                        $(".form-group").css("margin-left", "5px");
+                if (margin == "-30px" || margin == "-20px") {
 
-                        $(".float-sm-right").css("float", "left");
+                    $(".form-group").css("margin-left", "5px");
 
-                    }
+                    $(".float-sm-right").css("float", "left");
+
+                }
+
+            });
+
+            $("#scormsubject").change(function () {
+
+                fillscorm();
+
+            });
+
+            $(".course-content").on("click", ".add-scrom", function () {
+
+                fillSubject();
+
+                var secId = $(this).closest(".section").attr('id');
+
+                var secNum = secId.split("-")[1];
+
+                x = secNum;
+
+            });
+
+            $("#scormurls").click(function () {
+
+                $('.submitForm').removeAttr("disabled");
+
+            });
+
+            $(".course-content").on("click", ".submitForm", function () {
+
+                var apikey = $('#apikey').val();
+                var scormurls = [];
+                var visibility = $("#id_visible").val();
+                var hidebrowse = $("#id_hidebrowse").val();
+                var completion = $("#id_completion").val();
+
+                $.each($("#scormurls option:selected"), function () {
+
+                    var urll = $(this).val();
+
+                    urll = urll.replace(",", "qqq");
+
+                    scormurls.push(urll);
 
                 });
 
-                $("#scormsubject").change(function() {
+                $('.statusMsg').html('');
 
-                    fillscorm();
+                $('.submitForm').attr("disabled", "disabled");
 
-                });
+                $('.closeModal').attr("disabled", "disabled");
 
-                $(".course-content").on("click", ".add-scrom", function() {
+                $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
-                    fillSubject();
+                $.get(root + "/blocks/blc_modules/load_scorm.php",
+                    {
+                        id: id,
+                        sectionNumber: x,
+                        scormurls: scormurls,
+                        apikey: apikey,
+                        visibility: visibility,
+                        hidebrowse: hidebrowse,
+                        completion: completion
+                    },
 
-                    var secId = $(this).closest(".section").attr('id');
+                    function (data, status) {
 
-                    var secNum = secId.split("-")[1];
+                        if (data == '"completed"') {
 
-                    x = secNum;
+                            location.reload(true);
 
-                });
+                        } else {
 
-                $("#scormurls").click(function() {
+                            $('.statusMsg').html('<span style="color:red;">' + data + '</p>');
 
-                    $('.submitForm').removeAttr("disabled");
+                            $('.submitForm').removeAttr("disabled");
 
-                });
+                            $(".modal-header .fa.fa-spinner").remove();
 
-                $(".course-content").on("click", ".submitForm", function() {
-
-                    var apikey = $('#apikey').val();
-                    var scormurls = [];
-                    var visibility = $("#id_visible").val();
-                    var hidebrowse = $("#id_hidebrowse").val();
-                    var completion = $("#id_completion").val();
-
-                    $.each($("#scormurls option:selected"), function() {
-
-                        var urll = $(this).val();
-
-                        urll = urll.replace(",", "qqq");
-
-                        scormurls.push(urll);
+                        }
 
                     });
 
-                    $('.statusMsg').html('');
-
-                    $('.submitForm').attr("disabled", "disabled");
-
-                    $('.closeModal').attr("disabled", "disabled");
-
-                    $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
-
-                    $.get(root + "/blocks/blc_modules/load_scorm.php",
-                        {
-                            id: id,
-                            sectionNumber: x,
-                            scormurls: scormurls,
-                            apikey: apikey,
-                            visibility: visibility,
-                            hidebrowse: hidebrowse,
-                            completion: completion
-                        },
-
-                        function(data, status) {
-
-                            if (data == '"completed"') {
-
-                                location.reload(true);
-
-                            } else {
-
-                                $('.statusMsg').html('<span style="color:red;">' + data + '</p>');
-
-                                $('.submitForm').removeAttr("disabled");
-
-                                $(".modal-header .fa.fa-spinner").remove();
-
-                            }
-
-                        });
-
-                });
-
-                $('.select2').select2({
-                    dropdownParent: $("#bsModal3")
-                });
-
-            }
-
-            $(".activityinstance").on("click", ".fa-refresh", function() {
-
-                var data = $(this).closest(".cmid-version").attr('id');
-
-                var cmid = data.split("-")[0];
-
-                var version = data.split("-")[1];
-
-                updateScorm(cmid, version);
-
-            });
-        }
-
-        function tippyInit() {
-
-            tippy('.avail', {
-                content: "<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> ",
-                theme: "light",
-                arrow: true,
-                placement: "right"
             });
 
-            tippy('.prev', {
-                content: "<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> ",
-                theme: "light",
-                arrow: true,
-                placement: "right"
-            });
-
-            tippy('.comp', {
-                content: "<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>",
-                theme: "light",
-                arrow: true,
-                placement: "right"
+            $('.select2').select2({
+                dropdownParent: $("#bsModal3")
             });
 
         }
 
-        function bulkUpdateInit() {
+        $(".activityinstance").on("click", ".fa-refresh", function () {
 
-            $(document).ready(function() {
+            var data = $(this).closest(".cmid-version").attr('id');
 
-                var checkExist = setInterval(function() {
+            var cmid = data.split("-")[0];
 
-                    if ($("#modalForm").modal) {
+            var version = data.split("-")[1];
 
-                        $("#modalForm").modal('show');
+            updateScorm(cmid, version);
 
-                        $("#bulkupdatecont").click(function() {
-
-                            $("#bulkupdatesubmit").submit();
-
-                        });
-
-                        clearInterval(checkExist);
-                    }
-
-                }, 500);
-
-            });
-
-        }
+        });
     }
+
+    function tippyInit() {
+
+        tippy('.avail', {
+            content: "<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> ",
+            theme: "light",
+            arrow: true,
+            placement: "right"
+        });
+
+        tippy('.prev', {
+            content: "<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> ",
+            theme: "light",
+            arrow: true,
+            placement: "right"
+        });
+
+        tippy('.comp', {
+            content: "<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>",
+            theme: "light",
+            arrow: true,
+            placement: "right"
+        });
+
+    }
+
+    function bulkUpdateInit() {
+
+        $(document).ready(function () {
+
+            var checkExist = setInterval(function () {
+
+                if ($("#modalForm").modal) {
+
+                    $("#modalForm").modal('show');
+
+                    $("#bulkupdatecont").click(function () {
+
+                        $("#bulkupdatesubmit").submit();
+
+                    });
+
+                    clearInterval(checkExist);
+                }
+
+            }, 500);
+
+        });
+
+    }
+}
 );
