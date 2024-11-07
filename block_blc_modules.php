@@ -48,7 +48,7 @@ class block_blc_modules extends block_list
         $course = $this->page->course;
 
         $this->page->requires->jquery();
-        $this->page->requires->css(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'));
+        // $this->page->requires->css(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippytheme.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/select2.css'));
 
