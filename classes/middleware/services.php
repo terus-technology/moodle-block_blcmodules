@@ -161,38 +161,13 @@ class services
     {
         global $CFG, $DB, $COURSE;
 
-        $fs = get_file_storage();
-        $packagefile = false;
-        $packagefileimsmanifest = false;
-        $context = \context_course::instance($COURSE->id);
-
-        $fs->delete_area_files($context->id, 'mod_scorm', 'package');
-        $filerecord = array(
-            'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
-            'itemid' => 0, 'filepath' => '/'
-        );
-        $options = array('calctimeout' => true, 'connecttimeout' => 600, 'skipcertverify' => true);
-        $filerecord = (array)$filerecord;  // Do not modify the submitted record, this cast unlinks objects.
-        $filerecord = (object)$filerecord; // We support arrays too.
-
-        $headers        = isset($options['headers'])        ? $options['headers'] : null;
-        $postdata       = isset($options['postdata'])       ? $options['postdata'] : null;
-        $fullresponse   = isset($options['fullresponse'])   ? $options['fullresponse'] : false;
-        $timeout        = isset($options['timeout'])        ? $options['timeout'] : 300;
-        $connecttimeout = isset($options['connecttimeout']) ? $options['connecttimeout'] : 20;
-        $skipcertverify = isset($options['skipcertverify']) ? $options['skipcertverify'] : false;
-        $calctimeout    = isset($options['calctimeout'])    ? $options['calctimeout'] : false;
-
-        if (!isset($filerecord->filename)) {
-            $parts = explode('/', $scormurl);
-            $filename = array_pop($parts);
-            $filerecord->filename = clean_param($filename, PARAM_FILE);
+        // Check if this is a pluginfile URL (internal Moodle file)
+        if (strpos($scormurl, '/pluginfile.php/') !== false) {
+            return self::check_pluginfile_exists($scormurl);
         }
 
-        $source = !empty($filerecord->source) ? $filerecord->source : $scormurl;
-        $filerecord->source = clean_param($source, PARAM_URL);
-
-        $content = download_file_content($scormurl, $headers, $postdata, $fullresponse, $timeout, $connecttimeout, $skipcertverify, NULL, $calctimeout);
+        // For external URLs, try to download and check size
+        $content = download_file_content($scormurl, null, null, false, 300, 20, true);
         $filesize = strlen($content);
         
         if ($filesize == 0)
@@ -202,7 +177,50 @@ class services
         else
             return false;
     }
-    
+
+    /**
+     * Check if a pluginfile URL corresponds to an existing file in Moodle's file storage.
+     *
+     * @param string $pluginfile_url The pluginfile URL to check
+     * @return bool True if file exists, false otherwise
+     */
+    private static function check_pluginfile_exists($pluginfile_url)
+    {
+        // Parse the pluginfile URL to extract file information
+        // URL format: /pluginfile.php/{contextid}/{component}/{filearea}/{itemid}/{filepath}/{filename}
+        $url_parts = parse_url($pluginfile_url);
+        $path = $url_parts['path'];
+        
+        // Remove /pluginfile.php/ from the beginning
+        $path = str_replace('/pluginfile.php/', '', $path);
+        $parts = explode('/', $path);
+        
+        if (count($parts) < 5) {
+            return false;
+        }
+
+        $contextid = (int)$parts[0];
+        $component = $parts[1];
+        $filearea = $parts[2];
+        $itemid = (int)$parts[3];
+        
+        // The filename is the last part, filepath is everything in between
+        $filename = array_pop($parts);
+        $filepath = '/' . implode('/', array_slice($parts, 4)) . '/';
+        
+        // If there are no parts after itemid, filepath should be just '/'
+        if (empty(array_slice($parts, 4))) {
+            $filepath = '/';
+        }
+
+        // Get the file from storage
+        $fs = get_file_storage();
+        $file = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename);
+
+        // Return true if file exists and is not a directory
+        return ($file && !$file->is_directory());
+    }
+
     public static function blc_scorm_update_instance($scorm, $mform = null)
     {
         global $CFG, $DB;

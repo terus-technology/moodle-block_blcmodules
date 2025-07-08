@@ -34,6 +34,107 @@ require_login(null, false);
 
 use block_blc_modules\middleware\services as BLCService;
 
+/**
+ * Create a file by copying from a pluginfile URL source.
+ * 
+ * @param file_storage $fs File storage instance
+ * @param array $filerecord File record for the new file
+ * @param string $pluginfile_url The pluginfile URL to copy from
+ * @return stored_file|false The created file or false on failure
+ */
+function create_file_from_pluginfile_url($fs, $filerecord, $pluginfile_url) {
+    // Parse the pluginfile URL to extract file information
+    // URL format: /pluginfile.php/{contextid}/{component}/{filearea}/{itemid}/{filepath}/{filename}
+    $url_parts = parse_url($pluginfile_url);
+    $path = $url_parts['path'];
+    
+    // Remove /pluginfile.php/ from the beginning
+    $path = str_replace('/pluginfile.php/', '', $path);
+    $parts = explode('/', $path);
+    
+    if (count($parts) < 5) {
+        return false;
+    }
+
+    $source_contextid = (int)$parts[0];
+    $source_component = $parts[1];
+    $source_filearea = $parts[2];
+    $source_itemid = (int)$parts[3];
+    
+    // The filename is the last part, filepath is everything in between
+    $source_filename = array_pop($parts);
+    $source_filepath = '/' . implode('/', array_slice($parts, 4)) . '/';
+    
+    // If there are no parts after itemid, filepath should be just '/'
+    if (empty(array_slice($parts, 4))) {
+        $source_filepath = '/';
+    }
+
+    // Get the source file from storage
+    $source_file = $fs->get_file($source_contextid, $source_component, $source_filearea, $source_itemid, $source_filepath, $source_filename);
+
+    if (!$source_file || $source_file->is_directory()) {
+        return false;
+    }
+
+    // Create the new file by copying content from the source file
+    try {
+        $new_file = $fs->create_file_from_storedfile($filerecord, $source_file);
+        return $new_file;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Create a file from an external URL with enhanced handling for Google Drive and other cloud services.
+ * 
+ * @param file_storage $fs File storage instance
+ * @param array $filerecord File record for the new file
+ * @param string $url The external URL to download from
+ * @return stored_file|false The created file or false on failure
+ */
+function create_file_from_external_url($fs, $filerecord, $url) {
+    // Convert Google Drive sharing URLs to direct download URLs
+    $download_url = convert_google_drive_url($url);
+    
+    // Use Moodle's robust download_file_content function
+    $content = download_file_content($download_url, null, null, false, 300, 20, true);
+    
+    if ($content === false || empty($content)) {
+        return false;
+    }
+    
+    // Create file from the downloaded content
+    try {
+        $file = $fs->create_file_from_string($filerecord, $content);
+        return $file;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Convert Google Drive sharing URL to direct download URL.
+ *
+ * @param string $url Original URL
+ * @return string Converted URL for direct download
+ */
+function convert_google_drive_url($url) {
+    // Check if this is a Google Drive sharing URL
+    if (preg_match('/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/', $url, $matches)) {
+        $fileid = $matches[1];
+        // Convert to direct download URL
+        return "https://drive.google.com/uc?export=download&id=" . $fileid;
+    }
+
+    // For other cloud storage services, add similar conversions here if needed
+    // For example, Dropbox, OneDrive, etc.
+
+    // Return original URL if no conversion is needed
+    return $url;
+}
+
 $courseid = optional_param('id', '', PARAM_INT);
 $section = optional_param('sectionNumber', '', PARAM_INT);
 $apikey = optional_param('apikey', '', PARAM_TEXT);
@@ -127,7 +228,6 @@ foreach ($scormurls as $url) {
 	}
 
 	sleep(5);
-
 	if (BLCService::blcscormurl_filesize($scormurl)) {
 		$scormsection = $DB->get_record('course_sections', array('course' => $courseid, 'section' => $section));
 		$sectionid = $scormsection->id;
@@ -282,7 +382,7 @@ foreach ($scormurls as $url) {
 			foreach ($docs as $key => $doc) {
 				if ($scorm->scormurl) {
 					$docname = chop($doc->docname, ".docx");
-					$docversion = $doc->version;
+					$docversion = !empty($doc->version) ? $doc->version : '5'; // Default version if null
 					$docid = $doc->id;
 					$docurl = $doc->tempdocurl;
 					$docurl = str_replace("ppp", ",", $docurl);
@@ -366,7 +466,13 @@ foreach ($scormurls as $url) {
 				'filename' => $file_name
 			);
 
-			$file = $fs->create_file_from_url($filerecord, $filepath, array('calctimeout' => true, 'skipcertverify' => true));
+			// Check if this is a pluginfile URL and handle it differently
+			if (strpos($filepath, '/pluginfile.php/') !== false) {
+				$file = create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+			} else {
+				// For external URLs (like Google Drive), use the enhanced download method
+				$file = create_file_from_external_url($fs, $filerecord, $filepath);
+			}
 
 			$record = new stdClass();
 			$record->id = $sectionid;
