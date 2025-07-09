@@ -95,21 +95,31 @@ function create_file_from_pluginfile_url($fs, $filerecord, $pluginfile_url) {
  * @return stored_file|false The created file or false on failure
  */
 function create_file_from_external_url($fs, $filerecord, $url) {
+    error_log("DEBUG: create_file_from_external_url called with URL: " . $url);
+    
     // Convert Google Drive sharing URLs to direct download URLs
     $download_url = convert_google_drive_url($url);
+    error_log("DEBUG: Converted URL: " . $download_url);
     
     // Use Moodle's robust download_file_content function
     $content = download_file_content($download_url, null, null, false, 300, 20, true);
     
     if ($content === false || empty($content)) {
+        error_log("ERROR: Failed to download content from URL: " . $download_url);
+        error_log("ERROR: Content is " . ($content === false ? "FALSE" : "EMPTY"));
         return false;
     }
     
+    error_log("DEBUG: Downloaded content size: " . strlen($content) . " bytes");
+    
     // Create file from the downloaded content
     try {
+        error_log("DEBUG: Creating file with record: " . json_encode($filerecord));
         $file = $fs->create_file_from_string($filerecord, $content);
+        error_log("DEBUG: File created successfully: " . $file->get_filename());
         return $file;
     } catch (Exception $e) {
+        error_log("ERROR: Exception creating file: " . $e->getMessage());
         return false;
     }
 }
@@ -472,6 +482,14 @@ foreach ($scormurls as $url) {
 			} else {
 				// For external URLs (like Google Drive), use the enhanced download method
 				$file = create_file_from_external_url($fs, $filerecord, $filepath);
+			}
+
+			// Validate that the file was created successfully
+			if (!$file) {
+				debugging("ERROR: Failed to create file from URL: " . $filepath);
+				// Continue with the process even if file creation fails
+			} else {
+				debugging("SUCCESS: File created successfully: " . $file->get_filename() . " (Size: " . $file->get_filesize() . " bytes)");
 			}
 
 			$record = new stdClass();

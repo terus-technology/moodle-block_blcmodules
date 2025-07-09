@@ -77,6 +77,9 @@ class services
         $record = $DB->get_record('scorm', array('id' => $id));
 
         $record->reference = $scorm->packageurl;
+        
+        // Debug: Check if packageurl is being set correctly
+        debugging('Setting SCORM reference to: ' . $scorm->packageurl, DEBUG_DEVELOPER);
 
         // Save reference.
         $DB->update_record('scorm', $record);
@@ -118,43 +121,121 @@ class services
             return;
         }
 
+        // Clear existing files in the package area.
         $fs->delete_area_files($context->id, 'mod_scorm', 'package');
-        $filerecord = array(
-            'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
-            'itemid' => 0, 'filepath' => '/'
-        );
-        $options = array('calctimeout' => true, 'connecttimeout' => 600, 'skipcertverify' => true);
-        $filerecord = (array)$filerecord;  // Do not modify the submitted record, this cast unlinks objects.
-        $filerecord = (object)$filerecord; // We support arrays too.
+        
+        // Prepare file record for the SCORM package.
+        $filerecord = [
+            'contextid' => $context->id,
+            'component' => 'mod_scorm',
+            'filearea' => 'package',
+            'itemid' => 0,
+            'filepath' => '/',
+        ];
 
-        $headers        = isset($options['headers'])        ? $options['headers'] : null;
-        $postdata       = isset($options['postdata'])       ? $options['postdata'] : null;
-        $fullresponse   = isset($options['fullresponse'])   ? $options['fullresponse'] : false;
-        $timeout        = isset($options['timeout'])        ? $options['timeout'] : 300;
-        $connecttimeout = isset($options['connecttimeout']) ? $options['connecttimeout'] : 20;
-        $skipcertverify = isset($options['skipcertverify']) ? $options['skipcertverify'] : false;
-        $calctimeout    = isset($options['calctimeout'])    ? $options['calctimeout'] : false;
-
-        if (!isset($filerecord->filename)) {
+        // Extract filename from URL if not provided.
+        if (!isset($filerecord['filename'])) {
             $parts = explode('/', $scorm->reference);
             $filename = array_pop($parts);
-            $filerecord->filename = clean_param($filename, PARAM_FILE);
+            $filerecord['filename'] = clean_param($filename, PARAM_FILE);
         }
-        $source = !empty($filerecord->source) ? $filerecord->source : $scorm->reference;
-        $filerecord->source = clean_param($source, PARAM_URL);
+        
+        // Set source URL.
+        $filerecord['source'] = clean_param($scorm->reference, PARAM_URL);
 
-        $content = download_file_content($scorm->reference, $headers, $postdata, $fullresponse, $timeout, $connecttimeout, $skipcertverify, NULL, $calctimeout);
-        $filesize = strlen($content);
+        // Download options for the SCORM package.
+        $options = [
+            'calctimeout' => true,
+            'connecttimeout' => 600,
+            'skipcertverify' => true,
+            'timeout' => 300,
+        ];
 
-        if ($packagefile = $fs->create_file_from_string($filerecord, $content)) {
-            $newhash = $packagefile->get_contenthash();
+        // Debug: Check if reference URL is set
+        if (empty($scorm->reference)) {
+            debugging('SCORM reference URL is empty in blcscorm_parse. Scorm object: ' . print_r($scorm, true), DEBUG_DEVELOPER);
+            return;
+        }
+        
+        debugging('Attempting to download SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
+        
+        // Download the file content using the same method as blcscormurl_filesize (which works)
+        $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
+        
+        if ($content !== false && strlen($content) > 0) {
+            try {
+                // Create file from the downloaded content
+                $packagefile = $fs->create_file_from_string($filerecord, $content);
+                if ($packagefile) {
+                    $newhash = $packagefile->get_contenthash();
+                } else {
+                    $newhash = null;
+                    debugging('Failed to create SCORM package file from downloaded content', DEBUG_DEVELOPER);
+                }
+            } catch (Exception $e) {
+                $newhash = null;
+                debugging('Error creating SCORM package file: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
         } else {
             $newhash = null;
+            debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
         }
 
+        // Update SCORM record with new hash.
         $scorm->revision++;
         $scorm->sha1hash = $newhash;
         $DB->update_record('scorm', $scorm);
+
+        // Process the downloaded package if successful.
+        if ($packagefile) {
+            self::process_scorm_package($scorm, $packagefile, $context, $fs);
+        }
+    }
+
+    /**
+     * Process the downloaded SCORM package and extract its contents.
+     *
+     * @param stdClass $scorm The SCORM instance
+     * @param stored_file $packagefile The downloaded package file
+     * @param context $context The module context
+     * @param file_storage $fs File storage instance
+     */
+    private static function process_scorm_package($scorm, $packagefile, $context, $fs)
+    {
+        global $CFG;
+
+        // Check if package needs processing.
+        if (!$packagefile || $packagefile->is_directory()) {
+            return;
+        }
+
+        // Clear existing content files.
+        $fs->delete_area_files($context->id, 'mod_scorm', 'content');
+
+        // Extract the SCORM package.
+        $packer = get_file_packer('application/zip');
+        if ($packer) {
+            $packagefile->extract_to_storage($packer, $context->id, 'mod_scorm', 'content', 0, '/');
+        }
+
+        // Check for imsmanifest.xml and parse SCORM content.
+        $manifest = $fs->get_file($context->id, 'mod_scorm', 'content', 0, '/', 'imsmanifest.xml');
+        if ($manifest) {
+            require_once("$CFG->dirroot/mod/scorm/datamodels/scormlib.php");
+            // Parse SCORM manifest.
+            if (!scorm_parse_scorm($scorm, $manifest)) {
+                $scorm->version = 'ERROR';
+            }
+        } else {
+            // Try AICC format.
+            require_once("$CFG->dirroot/mod/scorm/datamodels/aicclib.php");
+            $result = scorm_parse_aicc($scorm);
+            if (!$result) {
+                $scorm->version = 'ERROR';
+            } else {
+                $scorm->version = 'AICC';
+            }
+        }
     }
 
     public static function blcscormurl_filesize($scormurl)
@@ -163,7 +244,7 @@ class services
 
         // Check if this is a pluginfile URL (internal Moodle file)
         if (strpos($scormurl, '/pluginfile.php/') !== false) {
-            return self::check_pluginfile_exists($scormurl);
+            //return self::check_pluginfile_exists($scormurl);
         }
 
         // For external URLs, try to download and check size
@@ -297,21 +378,61 @@ class services
             // Sorry - localsync disabled.
             return;
         }
+
         if ($scorm->reference !== '') {
+            debugging('SCORM reference URL found in scorm_parse: ' . $scorm->reference, DEBUG_DEVELOPER);
+            
             $fs->delete_area_files($context->id, 'mod_scorm', 'package');
-            $filerecord = array(
-                'contextid' => $context->id, 'component' => 'mod_scorm', 'filearea' => 'package',
-                'itemid' => 0, 'filepath' => '/'
-            );
-            if ($packagefile = $fs->create_file_from_url($filerecord, $scorm->reference, array('calctimeout' => true, 'skipcertverify' => true), true)) {
-                $newhash = $packagefile->get_contenthash();
+            
+            $filerecord = [
+                'contextid' => $context->id,
+                'component' => 'mod_scorm',
+                'filearea' => 'package',
+                'itemid' => 0,
+                'filepath' => '/',
+            ];
+
+            // Extract filename from URL.
+            $parts = explode('/', $scorm->reference);
+            $filename = array_pop($parts);
+            $filerecord['filename'] = clean_param($filename, PARAM_FILE);
+            $filerecord['source'] = clean_param($scorm->reference, PARAM_URL);
+
+            $options = [
+                'calctimeout' => true,
+                'skipcertverify' => true,
+                'connecttimeout' => 600,
+                'timeout' => 300,
+            ];
+
+            // Download the file content using the same method as blcscormurl_filesize (which works)
+            $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
+            
+            if ($content !== false && strlen($content) > 0) {
+                try {
+                    // Create file from the downloaded content
+                    $packagefile = $fs->create_file_from_string($filerecord, $content);
+                    if ($packagefile) {
+                        $newhash = $packagefile->get_contenthash();
+                    } else {
+                        $newhash = null;
+                        debugging('Failed to create SCORM package file from downloaded content', DEBUG_DEVELOPER);
+                    }
+                } catch (Exception $e) {
+                    $newhash = null;
+                    debugging('Error creating SCORM package file: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
             } else {
                 $newhash = null;
+                debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
             }
+        } else {
+            debugging('SCORM reference URL is empty in scorm_parse. Scorm object: ' . print_r($scorm, true), DEBUG_DEVELOPER);
+            return;
         }
 
         if ($packagefile) {
-            if (!$full and $packagefile and $scorm->sha1hash === $newhash) {
+            if (!$full && $packagefile && $scorm->sha1hash === $newhash) {
                 if (strpos($scorm->version, 'SCORM') !== false) {
                     if ($packagefileimsmanifest || $fs->get_file($context->id, 'mod_scorm', 'content', 0, '/', 'imsmanifest.xml')) {
                         // No need to update.
@@ -322,16 +443,20 @@ class services
                     return;
                 }
             }
+            
             if (!$packagefileimsmanifest) {
                 // Now extract files.
                 $fs->delete_area_files($context->id, 'mod_scorm', 'content');
 
                 $packer = get_file_packer('application/zip');
-                $packagefile->extract_to_storage($packer, $context->id, 'mod_scorm', 'content', 0, '/');
+                if ($packer) {
+                    $packagefile->extract_to_storage($packer, $context->id, 'mod_scorm', 'content', 0, '/');
+                }
             }
         } else if (!$full) {
             return;
         }
+
         if ($packagefileimsmanifest) {
             require_once("$CFG->dirroot/mod/scorm/datamodels/scormlib.php");
             // Direct link to imsmanifest.xml file.
