@@ -33,20 +33,20 @@ if ($ADMIN->fulltree) {
             
     // Default Api key.
     $setting = new admin_setting_configtext('block_blc_modules/api_key',
-        new lang_string('api_key', 'block_blc_modules'),
-        new lang_string('api_key_desc', 'block_blc_modules'), '', PARAM_TEXT);
+        get_string('api_key', 'block_blc_modules'),
+        get_string('api_key_desc', 'block_blc_modules'), '', PARAM_TEXT);
     $settings->add($setting);
     
     // Default Token.
     $setting = new admin_setting_configtext('block_blc_modules/token',
-        new lang_string('token', 'block_blc_modules'),
-        new lang_string('token_desc', 'block_blc_modules'), 'd623555b36cb7e3db03cd06178ccb284', PARAM_TEXT);
+        get_string('token', 'block_blc_modules'),
+        get_string('token_desc', 'block_blc_modules'), 'd623555b36cb7e3db03cd06178ccb284', PARAM_TEXT);
     $settings->add($setting);
     
     // Default domain name.
     $setting = new admin_setting_configtext('block_blc_modules/domainname',
-        new lang_string('domainname', 'block_blc_modules'),
-        new lang_string('domainname_desc', 'block_blc_modules'), 'https://blc.howcollege.ac.uk/', PARAM_TEXT);
+        get_string('domainname', 'block_blc_modules'),
+        get_string('domainname_desc', 'block_blc_modules'), 'https://blc.howcollege.ac.uk/', PARAM_TEXT);
     $settings->add($setting);
 
 }

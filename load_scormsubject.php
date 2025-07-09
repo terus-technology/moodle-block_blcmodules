@@ -43,8 +43,12 @@ global $DB, $USER, $CFG;
 	
 	$scorm = array();
 	$xml = (array)simplexml_load_string($responses);
+	if (!isset($xml['MULTIPLE'])) {
+		echo json_encode([]);
+		exit;
+	}
 	$multiplearray = $xml['MULTIPLE'];
-	$multiple =  (array) $multiplearray;
+	$multiple = (array) $multiplearray;
 	if(!isset($multiple[0])){
 		$scorm = array('0' => "Select Subject");
 		$singlearray = $multiple['SINGLE'];

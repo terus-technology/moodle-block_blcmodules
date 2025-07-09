@@ -12,7 +12,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
+/* eslint-disable */
 /**
  * Manager for the blc_modules block.
  *
@@ -36,7 +36,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
         updateScorm: updateScorm,
         init: init,
         tippyInit: tippyInit,
-        bulkUpdateInit: bulkUpdateInit
+        bulkUpdateInit: bulkUpdateInit,
+        createButtonAddBlc: createButtonAddBlc
     };
 
     function getUrlParameter(url, sParam) {
@@ -103,15 +104,12 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
 
         $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function (data) {
 
-            var items = [];
 
             $.each(data, function (key, val) {
 
                 $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm"  style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
 
             });
-
-            // $("#scormsubject").html( items.join( "" ) );
 
         });
 
@@ -173,10 +171,9 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
 
     }
 
-    const createButtonAddBlc = () => {
+    function createButtonAddBlc() {
         const button = document.querySelector('.btn-blc-modules');
 
-    
         const defaultBackgroundColor = '#cfe2f2';
         const hoverBackgroundColor = '#0f6cbf';
         const hoverTextColor = 'white';
@@ -191,7 +188,6 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
             button.style.backgroundColor = defaultBackgroundColor;
             button.style.color = defaultTextColor;
         });
-
     }
     function init() {
 
@@ -438,6 +434,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                             $('.statusMsg').html('<span style="color:red;">' + data + '</p>');
 
                             $('.submitForm').removeAttr("disabled");
+
+                            $('.closeModal').removeAttr("disabled");
 
                             $(".modal-header .fa.fa-spinner").remove();
 

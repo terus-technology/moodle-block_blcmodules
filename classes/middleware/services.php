@@ -237,9 +237,7 @@ class services
             }
         }
     }
-
-    public static function blcscormurl_filesize($scormurl)
-    {
+    public static function blcscormurl_filesize($scormurl){
         global $CFG, $DB, $COURSE;
 
         // Check if this is a pluginfile URL (internal Moodle file)
@@ -247,16 +245,21 @@ class services
             //return self::check_pluginfile_exists($scormurl);
         }
 
-        // For external URLs, try to download and check size
-        $content = download_file_content($scormurl, null, null, false, 300, 20, true);
-        $filesize = strlen($content);
-        
-        if ($filesize == 0)
-            return false;
-        else if ($filesize > 0)
-            return true;
-        else
-            return false;
+        // For external URLs, use HEAD request to get Content-Length
+        $headers = @get_headers($scormurl, 1);
+        if ($headers && isset($headers['Content-Length'])) {
+            // Content-Length can be an array if there are redirects
+            $length = is_array($headers['Content-Length']) ? end($headers['Content-Length']) : $headers['Content-Length'];
+            $filesize = (int)$length;
+            if ($filesize > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        // If Content-Length is not available, fallback to false
+        return false;
     }
 
     /**
