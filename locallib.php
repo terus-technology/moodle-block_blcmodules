@@ -26,19 +26,20 @@ defined('MOODLE_INTERNAL') || die;
 
 function get_subjects(){
 	global $DB;
-	$blc_modules = $DB->get_records('block_blc_modules');
-	if($blc_modules){
-		foreach($blc_modules as $blc_module){
-			$scormurl = $blc_module->scormurl;
-			$scormurls = explode('/', $scormurl);
-			$count = count($scormurls);
-			$subject = $scormurls[$count-2];
-			$subjects[$subject] = $subject;  
-		}
-		
-	}
-	return $subjects;
-
+    $subjects = [];
+    $blc_modules = $DB->get_records('block_blc_modules');
+    if ($blc_modules) {
+        foreach ($blc_modules as $blc_module) {
+            $scormurl = $blc_module->scormurl;
+            $scormurls = explode('/', $scormurl);
+            $count = count($scormurls);
+            if ($count > 1) {
+                $subject = $scormurls[$count - 2];
+                $subjects[$subject] = $subject;
+            }
+        }
+    }
+    return $subjects;
 }
 
 function array_sort($array, $on, $order){

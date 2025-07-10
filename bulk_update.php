@@ -41,7 +41,7 @@ $url = '/blocks/blc_modules/bulk_update.php';
 
 $baseurl = new moodle_url($url);
 
-$PAGE->set_url($url);
+$PAGE->set_url(new moodle_url($url));
 $PAGE->set_pagelayout('admin');
 $PAGE->set_context(context_system::instance());
 $PAGE->set_title("Bulk Update");
@@ -62,7 +62,6 @@ if($action == 'continue' ){
 	 . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5';
 	$curl = new blccurl;
 	$curl->setHeader('Content-Type: application/json; charset=utf-8');
-
 
 	$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
 	$scorms =array();
@@ -105,8 +104,6 @@ if($action == 'continue' ){
 	}
 	
 	foreach($updatescorm as $coursemodule=>$version){
-			
-
 		$coursescorm = $DB->get_record('block_blc_modules',array('cmid'=>$coursemodule));
 		$url =$coursescorm->scormurl;
 		
@@ -122,6 +119,7 @@ if($action == 'continue' ){
 		
 		$scorms =array();
 		$xml=(array)simplexml_load_string($responses);
+		
 		if(isset($xml['SINGLE'])){
 			$single = $xml['SINGLE'];
 			$singlearray =  (array) $single;
@@ -174,8 +172,8 @@ if($action == 'continue' ){
 
 
 				$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-				$sql = "UPDATE ".$CFG->prefix."scorm SET scormtype = 'local' WHERE id = ".$scormcm->instance;
-				$DB->execute($sql, array($params=null));
+				$sql = "UPDATE {scorm} SET scormtype = 'local' WHERE id = :id";
+				$DB->execute($sql, ['id' => $scormcm->instance]);
 			
 			}
 		}
@@ -184,14 +182,12 @@ if($action == 'continue' ){
 	}
 	$redirect = new moodle_url('/admin/settings.php', array('section' => 'blocksettingblc_modules'));
 
-	echo '<br /><div class="alert alert-success alert-block fade in " role="alert">
-				'.get_string('updatescormmesage', 'block_blc_modules').'</div><br />';
+	echo $OUTPUT->notification(get_string('updatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_SUCCESS);
 
 	}
 	else{
 		
-		echo '<br /><div class="alert alert-warning alert-block fade in " role="alert">
-		 '.get_string('failupdatescormmesage', 'block_blc_modules').' </div><br />';
+		echo $OUTPUT->notification(get_string('failupdatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_WARNING);
 		
 	}
 
@@ -205,12 +201,11 @@ if($action == 'continue' ){
             </div>';
             		echo $OUTPUT->footer();
 
-}
-	else{	
+}else{	
 		echo $OUTPUT->header();
 		echo '<script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
 
-          <div class="modal fade" id="modalForm" role="dialog">
+    <div class="modal fade" id="modalForm" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">      <!-- Modal Header -->
                 <div class="modal-header">
@@ -235,8 +230,6 @@ if($action == 'continue' ){
                 </div>
             </div>
         </div>
-    </div>
-    ';
-		echo $OUTPUT->footer();
-
+    </div>';
+	echo $OUTPUT->footer();
 }

@@ -35,7 +35,7 @@ $string['blc_modules:viewblock'] = 'BLC Module Picker viewblock';
 $string['token_value'] = 'd623555b36cb7e3db03cd06178ccb284';
 $string['webserviceaddress'] = 'https://blc.howcollege.ac.uk';
 $string['updatescorm'] = '<h4>Updates</h4>To update BLC Modules in bulk, please click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/bulk_update.php">Here</a>.';
-$string['updatescormmesage'] =  'Successfully upated';
+$string['updatescormmesage'] =  'Successfully updated';
 $string['updatedoc'] = 'To automatically add an accessibility document under each BLC Module, please click <a href="'.$CFG->wwwroot.'/blocks/blc_modules/add_doc.php">Here</a>.';
 $string['updatedocmesage'] =  'Successfully added accessibility documents';
 $string['apisuccess'] =  'Success: Your <b>API Key</b> is configured correctly.';

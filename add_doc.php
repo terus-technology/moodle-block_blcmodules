@@ -42,15 +42,13 @@ $resourceid=$resourcemodule->id;
 
 $sql = "select min(blcmoduleid) as blcmoduleid from {block_blc_modules_doc} ";
 $blcdoc = $DB->get_record_sql($sql);
-$sql = "select * from {block_blc_modules} ";
-
-if($blcdoc){
-	$blcid = $blcdoc->blcmoduleid;
-	if(!empty($blcid))
-		$sql .=" where id < ".$blcid;
+$sql = "SELECT * FROM {block_blc_modules}";
+$params = [];
+if ($blcdoc && !empty($blcdoc->blcmoduleid)) {
+    $sql .= " WHERE id < :blcid";
+    $params['blcid'] = $blcdoc->blcmoduleid;
 }
-
-	$blcmodules = $DB->get_records_sql($sql);
+	$blcmodules = $DB->get_records_sql($sql, $params);
 	if($blcmodules){
 		
 		foreach($blcmodules as $blcmodule){
@@ -97,7 +95,7 @@ if($blcdoc){
 					$single = $xml['SINGLE'];
 					$singlearray =  (array) $single;
 					$keyarray = $singlearray['KEY'];
-					$docobject = new stdclass();
+					$docobject = new stdClass();
 					foreach($keyarray as $key){
 						$key =  (array) $key;
 						$field = $key['@attributes']['name'];

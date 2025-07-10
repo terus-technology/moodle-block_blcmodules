@@ -43,16 +43,16 @@ $completion = intval($completion);
 
 global $DB, $USER, $CFG;
 
-if(is_array($scormurls))
-	$scormurls = implode(",", $scormurls);
-$scormurls = explode(",", $scormurls);
+if (!is_array($scormurls)) {
+    $scormurls = explode(",", $scormurls);
+}
 
 $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
 
 $scormmodule = $DB->get_record('modules', array('name' => 'scorm'));
 $moduleid = $scormmodule->id;
-$scormmodule = $DB->get_record('modules', array('name' => 'resource'));
-$resourceid = $scormmodule->id;
+$resourcemodule = $DB->get_record('modules', array('name' => 'resource'));
+$resourceid = $resourcemodule->id;
 $token = get_config('block_blc_modules', 'token');
 $domainname = get_config('block_blc_modules', 'domainname');
 $requesturi = $CFG->wwwroot;
