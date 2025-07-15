@@ -235,4 +235,109 @@ class blcservice extends external_api{
         );
     }
 
+ /**
+     * Returns description of method parameters for check blc modules scorm URLs.
+     *
+     * @return external_function_parameters
+     */
+    
+    public static function get_blc_modules_scormsubject_parameters(): external_function_parameters {
+        return new external_function_parameters(
+            [
+                'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
+                'requesturi' => new external_value(PARAM_URL, 'Request URI for validation' ),
+                'version' => new external_value(PARAM_INT, 'Version number' ),
+            ]
+        );
+    }
+
+    /**
+     * Get SCORM URLs based on API key and request URI.
+     *
+     * @param string $apikey API key for authentication
+     * @param string $requesturi Request URI for validation
+     * @param int $version Version number
+     * @return array List of SCORM data
+     * @throws moodle_exception
+     */
+    public static function get_blc_modules_scormsubject(string $apikey, string $requesturi, int $version): array {
+        global $DB;
+
+        // Parameter validation.
+        $params = self::validate_parameters(self::get_blc_modules_scormsubject_parameters(), [
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => $version,
+        ]);
+
+        $token = get_config('block_blc_modules', 'token');
+        $domainname = get_config('block_blc_modules', 'domainname');
+
+        $function_name = 'local_scormurl_get_scormurls';
+        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
+        . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5';
+        $curl = new blccurl;
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+
+        $responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
+        
+        $subjects = array();
+        $xml = (array)simplexml_load_string($responses);
+        if (!isset($xml['MULTIPLE'])) {
+            return [];
+        }
+        $multiplearray = $xml['MULTIPLE'];
+        $multiple = (array) $multiplearray;
+        if(!isset($multiple[0])){
+            // Add default "Select Subject" option
+            $defaultsubject = new \stdClass();
+            $defaultsubject->id = '0';
+            $defaultsubject->subject = 'Select Subject';
+            $subjects[] = $defaultsubject;
+            
+            $singlearray = $multiple['SINGLE'];
+            $uniquesubjects = array();
+            
+            foreach($singlearray as $single){
+                $single = (array) $single;
+                $keyarray = $single['KEY'];
+                $scormid = '';
+                $subject = '';
+                
+                foreach($keyarray as $key){
+                    $key = (array) $key;
+                    if($key['@attributes']['name'] == 'id')	
+                        $scormid = $key['VALUE'];
+                    if($key['@attributes']['name'] == 'subject')	
+                        $subject = $key['VALUE'];			
+                }
+                
+                // Only add unique subjects
+                if (!empty($subject) && !in_array($subject, $uniquesubjects)) {
+                    $subjectobj = new \stdClass();
+                    $subjectobj->id = $scormid;
+                    $subjectobj->subject = $subject;
+                    $subjects[] = $subjectobj;
+                    $uniquesubjects[] = $subject;
+                }
+            }
+        }
+        return $subjects;
+    }
+
+
+    /**
+     * Returns description of method result value for get_blc_modules_scormsubject.
+     *
+     * @return external_multiple_structure
+     */
+    public static function get_blc_modules_scormsubject_returns(): external_multiple_structure {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'id' => new external_value(PARAM_TEXT, 'Subject ID'),
+                'subject' => new external_value(PARAM_TEXT, 'Subject name'),
+            ])
+        );
+    }
+
 }
