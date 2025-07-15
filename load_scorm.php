@@ -163,7 +163,7 @@ function UR_exists($url)
 }
 
 if (is_array($scormurls))
-	$scormurls = implode(",", $scormurls);
+$scormurls = implode(",", $scormurls);
 $scormurls = explode(",", $scormurls);
 
 $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);

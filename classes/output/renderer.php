@@ -14,18 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace block_blc_modules\output;
+
+use plugin_renderer_base;
+
 /**
- * Version details
+ * Class render
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 YOUR NAME <your@email.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class renderer extends plugin_renderer_base {
 
-defined('MOODLE_INTERNAL') || die();
+    /**
+     * Render the SCORM Report page.
+     *
+     * @param scorm_report_page $page
+     * @return string
+     */
+    public function render_scorm_report_page(scorm_report_page $page){
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/scorm_report_page', $data);
+    }
 
-$plugin->version   = 2024071103;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2024041600;        // Requires this Moodle version
-$plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.1';
+
+}

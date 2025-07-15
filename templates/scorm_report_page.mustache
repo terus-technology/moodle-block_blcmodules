@@ -1,0 +1,99 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_blc_modules/scorm_report_page
+
+    TODO describe template scorm_report_page
+
+    Example context (json):
+    {
+        
+    }
+}}
+{{!
+    @template block_blc_modules/scorm_report_chart
+    Displays a SCORM report pie chart using Moodle's chart API output.
+}}
+
+<h3>{{#str}}blcresource, block_blc_modules{{/str}}<h3>
+<h5>{{#str}}blcresourceinfo, block_blc_modules{{/str}}<h5>
+
+{{{chart}}}
+</br></br>
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+            <th>{{#str}}resource, block_blc_modules{{/str}}</th>
+            <th>{{#str}}usage, block_blc_modules{{/str}}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#.}}
+                <tr>
+                    <td>{{#str}}blcmodules,block_blc_modules{{/str}}</td>
+                    <td>{{blcmodulescount}}</td>
+                </tr>
+            {{/.}}
+            {{#.}}
+                <tr>
+                    <td>{{#str}}accessdoc,block_blc_modules{{/str}}</td>
+                    <td>{{blcmodulesdocscount}}</td>
+                </tr>
+            {{/.}}
+        </tbody>
+    </table>
+
+
+</br></br>
+<h3>{{#str}}countbycourse, block_blc_modules{{/str}}<h3>
+<h5>{{#str}}topcourses, block_blc_modules{{/str}}<h5>
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+        <th>{{#str}}course, block_blc_modules{{/str}}</th>
+        <th>{{#str}}usage, block_blc_modules{{/str}}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#courses}}
+            <tr>
+                <td>{{fullname}}</td>
+                <td>{{count}}</td>
+            </tr>
+        {{/courses}}
+    </tbody>
+</table>
+
+</br></br>
+<h3>{{#str}}countbysubject, block_blc_modules{{/str}}<h3>
+<h5>{{#str}}topsubjects, block_blc_modules{{/str}}<h5>
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+        <th>{{#str}}subject, block_blc_modules{{/str}}</th>
+        <th>{{#str}}usage, block_blc_modules{{/str}}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#subjects}}
+            <tr>
+                <td>{{0}}</td>
+                <td>{{1}}</td>
+            </tr>
+        {{/subjects}}
+    </tbody>
+</table>
