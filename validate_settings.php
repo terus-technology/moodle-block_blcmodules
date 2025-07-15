@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace block_blc_modules\helper;
+
+use moodle_url;
+use context_system;
 /**
  * This file  will validate the settings.
  *
@@ -24,7 +28,7 @@
  
 
 require_once(dirname(__FILE__).'/../../config.php');
-require_once('curl.php');
+
 global $DB, $USER, $CFG;
 require_login(null, false);
 

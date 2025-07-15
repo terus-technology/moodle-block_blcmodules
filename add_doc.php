@@ -14,6 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace block_blc_modules\helper;
+
+use moodle_url;
+use context_module;
+use stdClass;	
 /**
  * This file contains the Activity modules block.
  *
@@ -22,6 +27,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
  
+
 require_once(dirname(__FILE__).'/../../config.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
@@ -29,7 +35,7 @@ require_once($CFG->dirroot . '/course/modlib.php');
 require_once("$CFG->libdir/resourcelib.php");
 require_once($CFG->dirroot.'/mod/resource/locallib.php');
 require_once($CFG->dirroot.'/mod/resource/lib.php');
-require_once('curl.php');
+
 
 global $DB,$USER,$CFG;
 
