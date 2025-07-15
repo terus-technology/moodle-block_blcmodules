@@ -50,7 +50,6 @@ class blcservice extends external_api{
     public static function get_blc_modules_version_parameters(): external_function_parameters {
         return new external_function_parameters(
             [
-                'courseid' => new external_value(PARAM_INT,'Course ID'),
                 'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
                 'requesturi' => new external_value(PARAM_URL, 'Request URI for validation' ),
                 'version' => new external_value(PARAM_INT, 'Version number' ),
@@ -66,17 +65,16 @@ class blcservice extends external_api{
      * @return string Validation result
      * @throws moodle_exception
      */
-    public static function get_blc_modules_version (int $courseid, string $apikey, string $requesturi, int $version): array {
+    public static function get_blc_modules_version (string $apikey, string $requesturi, int $version): array {
         global $CFG, $DB, $USERS;
         
+        $courseid = optional_param('id', '', PARAM_INT);
         $params = self::validate_parameters(self::get_blc_modules_version_parameters(), [
-            'courseid' => $courseid,
             'apikey' => $apikey,
             'requesturi' => $requesturi,
             'version' => $version,
         ]);
 
-        // $requesturi = $CFG->wwwroot;	
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
         $function_name = 'local_scormurl_get_scormurls';
@@ -137,6 +135,102 @@ class blcservice extends external_api{
                 'version' => new external_value(PARAM_INT, 'Version'),
                 'timecreated' => new external_value(PARAM_INT, 'Time created'),
                 'timemodified' => new external_value(PARAM_INT, 'Time modified'),
+            ])
+        );
+    }
+
+ /**
+     * Returns description of method parameters for check blc modules scorm URLs.
+     *
+     * @return external_function_parameters
+     */
+    
+    public static function get_blc_modules_scormurl_parameters(): external_function_parameters {
+        return new external_function_parameters(
+            [
+                'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
+                'requesturi' => new external_value(PARAM_URL, 'Request URI for validation' ),
+                'version' => new external_value(PARAM_INT, 'Version number' ),
+            ]
+        );
+    }
+
+    /**
+     * Get SCORM URLs based on API key and request URI.
+     *
+     * @param string $apikey API key for authentication
+     * @param string $requesturi Request URI for validation
+     * @param int $version Version number
+     * @return array List of SCORM data
+     * @throws moodle_exception
+     */
+    public static function get_blc_modules_scormurl(string $apikey, string $requesturi, int $version): array {
+        global $DB;
+        $selectsubject = optional_param('subject', '', PARAM_TEXT);
+        // Parameter validation.
+        $params = self::validate_parameters(self::get_blc_modules_scormurl_parameters(), [
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => $version,
+        ]);
+
+        $token = get_config('block_blc_modules', 'token');
+        $domainname = get_config('block_blc_modules', 'domainname');
+
+        $function_name = 'local_scormurl_get_scormurls';
+        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
+            . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5';
+        $curl = new blccurl;
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+        
+        $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
+        //print_r($responses);
+        $scorm = array();
+        $xml = (array)simplexml_load_string($responses);
+        if (!isset($xml['MULTIPLE'])) {
+            return [];
+        }
+        $multiplearray = $xml['MULTIPLE'];
+        $multiple = (array) $multiplearray;
+        if (!isset($multiple['SINGLE'])) {
+            return [];
+        }
+        $singlearray = $multiple['SINGLE'];
+        foreach($singlearray as $single){
+            $single = (array) $single;		
+            $keyarray = $single['KEY'];
+            $scormobject = new \stdClass();
+            foreach($keyarray as $key){
+                $key = (array) $key;
+                $field = $key['@attributes']['name'];
+                $fielddata = $key['VALUE'];
+                $scormobject->$field = $fielddata;
+            }
+            
+            // Filter by subject if specified
+            if (empty($selectsubject) || $scormobject->subject == $selectsubject) {
+                $scorm[] = $scormobject;
+            }
+        }
+        return $scorm;
+    }
+
+
+    /**
+     * Returns description of method result value for get_scormurls.
+     *
+     * @return external_multiple_structure
+     */
+    public static function get_blc_modules_scormurl_returns(): external_multiple_structure {
+        return new external_multiple_structure(
+            new external_single_structure([
+                'id' => new external_value(PARAM_TEXT, 'SCORM package ID', VALUE_OPTIONAL),
+                'scormname' => new external_value(PARAM_TEXT, 'SCORM package name', VALUE_OPTIONAL),
+                'scormurl' => new external_value(PARAM_URL, 'SCORM package URL', VALUE_OPTIONAL),
+                'scormid' => new external_value(PARAM_TEXT, 'SCORM identifier', VALUE_OPTIONAL),
+                'year' => new external_value(PARAM_TEXT, 'Year', VALUE_OPTIONAL),
+                'subject' => new external_value(PARAM_TEXT, 'Subject', VALUE_OPTIONAL),
+                'version' => new external_value(PARAM_TEXT, 'Version', VALUE_OPTIONAL),
             ])
         );
     }

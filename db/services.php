@@ -33,6 +33,14 @@ $functions = [
         'type'  => 'read',
         'ajax' => 'true',
     ],
+    'blocks_blc_modules_get_blc_modules_scormurl'=> [
+        'classname' => 'block_blc_modules\external\blcservice',
+        'methodname' => 'get_blc_modules_scormurl',
+        'returns' => 'block_blc_modules\external\blcservice::get_blc_modules_scormurl_returns',
+        'description' => 'Check plugin BLC modules version',
+        'type'  => 'read',
+        'ajax' => 'true',
+    ],
 ];
 
 
@@ -40,6 +48,7 @@ $services = [
     'BLC Modules Service' => [
         'functions' => [
             'blocks_blc_modules_get_blc_modules_version',
+            'blocks_blc_modules_get_blc_modules_scormurl',
         ],
         'restrictedusers' => 0,
         'enabled' => 1,
