@@ -34,6 +34,9 @@ require_once($CFG->dirroot . '/mod/resource/lib.php');
 require_login(null, false);
 
 use block_blc_modules\middleware\services as BLCService;
+use stdClass;
+use context_system;
+use context_module;
 
 /**
  * Create a file by copying from a pluginfile URL source.
@@ -82,7 +85,7 @@ function create_file_from_pluginfile_url($fs, $filerecord, $pluginfile_url) {
     try {
         $new_file = $fs->create_file_from_storedfile($filerecord, $source_file);
         return $new_file;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         return false;
     }
 }

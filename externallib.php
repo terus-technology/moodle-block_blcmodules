@@ -15,17 +15,28 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details
+ * TODO describe file externallib
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024071113;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2024041600;        // Requires this Moodle version
-$plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.1';
+defined('MOODLE_INTERNAL') || die;
+
+require_once($CFG->libdir . '/externallib.php');
+
+
+class block_blc_modules_external extends \block_blc_modules\external\blcservice {
+
+    /**
+     * Returns the list of external functions provided by this plugin.
+     *
+     * @return array
+     */
+}
+
+
+
+

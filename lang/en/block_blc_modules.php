@@ -80,3 +80,5 @@ $string['topcourses'] = 'Here are the top courses, making best use of BLC module
 $string['course'] = 'Course';
 $string['countbysubject'] = 'BLC Modules by subject';
 $string['topsubjects'] = 'Here are the top 5 subjects making best use of BLC resources.';
+$string['versioncheckerror'] = 'Something went wrong while checking for updates. Please try again later.';
+$string['versioncheckjsonerror'] = 'something wrong js while checking for update';
