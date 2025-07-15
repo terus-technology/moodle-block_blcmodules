@@ -30,6 +30,12 @@ use block_blc_modules\helper\blccurl;
 defined('VALUE_OPTIONAL') || define('VALUE_OPTIONAL', 2);
 
 require_once($CFG->libdir . '/externallib.php');
+require_once($CFG->dirroot.'/mod/scorm/locallib.php');
+require_once($CFG->dirroot.'/mod/scorm/lib.php');
+require_once($CFG->dirroot . '/course/modlib.php');
+require_once("$CFG->libdir/resourcelib.php");
+require_once($CFG->dirroot.'/mod/resource/locallib.php');
+require_once($CFG->dirroot.'/mod/resource/lib.php');
 // Removed unnecessary require_once for exceptionlib.php
 
 /**
@@ -338,6 +344,99 @@ class blcservice extends external_api{
                 'subject' => new external_value(PARAM_TEXT, 'Subject name'),
             ])
         );
+    }
+
+    /**
+     * Returns description of method parameters for delete scorm Module.
+     *
+     * @return external_function_parameters
+     */
+    public static function get_blc_modules_scormdelete_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
+            'courseid' => new external_value(PARAM_INT, 'Course ID'),
+            'scormurls' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'SCORM URL')
+            ),
+        ]);
+    }
+
+    /**
+     * Delete temporary SCORM URLs and update download tracking.
+     *
+     * @param string $apikey API key for authentication
+     * @param int $courseid Course ID
+     * @param array $scormurls Array of SCORM URLs to delete
+     * @return array Response with deletion results
+     * @throws moodle_exception
+     */
+    public static function get_blc_modules_scormdelete(string $apikey, int $courseid, array $scormurls): array {
+
+    $courseid = optional_param('id', '', PARAM_INT);
+    $section = optional_param('sectionNumber', '', PARAM_INT);
+    $apikey = optional_param('apikey', '', PARAM_TEXT);
+    $scormurls = optional_param_array('scormurls', '', PARAM_TEXT);
+    $visibility = optional_param('visibility', '', PARAM_INT);
+    $hidebrowse = optional_param('hidebrowse', '', PARAM_INT);
+    $completion = optional_param('completion', '', PARAM_INT);
+    $completion = intval($completion);
+
+    global $DB, $USER, $CFG;
+
+    if (!is_array($scormurls)) {
+        $scormurls = explode(",", $scormurls);
+    }
+
+    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
+
+    $scormmodule = $DB->get_record('modules', array('name' => 'scorm'));
+    $moduleid = $scormmodule->id;
+    $resourcemodule = $DB->get_record('modules', array('name' => 'resource'));
+    $resourceid = $resourcemodule->id;
+    $token = get_config('block_blc_modules', 'token');
+    $domainname = get_config('block_blc_modules', 'domainname');
+
+    foreach($scormurls as $url){
+
+        //$url = str_replace("qqq",",",$url);
+        $url = str_replace("’","'", $url);
+        $tempurl = urlencode($url);
+
+                sleep(20);
+
+            
+            $function_name = 'local_scormurl_get_deletetempscormurls';
+            $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
+                . '&wsfunction='.$function_name . '&apikey='.$apikey. '&scormurl='.$tempurl;
+            $curl = new blccurl;
+            $curl->setHeader('Content-Type: application/json; charset=utf-8');
+
+
+            $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
+        }	
+
+        return ['status' => 'completed', 'message' => 'SCORM deletion process completed'];
+    }
+
+    /**
+     * Returns description of method result value for get_blc_modules_scormdelete.
+     *
+     * @return external_single_structure
+     */
+    public static function get_blc_modules_scormdelete_returns(): external_single_structure {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Overall success status'),
+            'total' => new external_value(PARAM_INT, 'Total number of URLs processed'),
+            'successful' => new external_value(PARAM_INT, 'Number of successful deletions'),
+            'failed' => new external_value(PARAM_INT, 'Number of failed deletions'),
+            'results' => new external_multiple_structure(
+                new external_single_structure([
+                    'url' => new external_value(PARAM_TEXT, 'SCORM URL'),
+                    'status' => new external_value(PARAM_TEXT, 'Deletion status'),
+                    'message' => new external_value(PARAM_TEXT, 'Status message'),
+                ])
+            ),
+        ]);
     }
 
 }
