@@ -14,10 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace block_blc_modules\output;
-
-use plugin_renderer_base;
-
 /**
  * Class render
  *
@@ -25,6 +21,14 @@ use plugin_renderer_base;
  * @copyright  2025 YOUR NAME <your@email.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+
+namespace block_blc_modules\output;
+
+use plugin_renderer_base;
+
+
+
 class renderer extends plugin_renderer_base {
 
     /**
@@ -37,6 +41,15 @@ class renderer extends plugin_renderer_base {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/scorm_report_page', $data);
     }
-
+    /**
+     * Render the Validate Settings page.
+     *
+     * @param validate_settings_page $page
+     * @return string
+     */
+    public function render_validate_settings_page(validate_settings_page $page){
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/validate_settings_page', $data);
+    }
 
 }

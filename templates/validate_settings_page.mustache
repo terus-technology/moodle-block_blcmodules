@@ -1,0 +1,185 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_blc_modules/validate_settings_page
+
+    BLC Modules Settings Validation Page Template
+
+    Context variables:
+    * url_valid - Boolean, true if URL validation passed
+    * api_valid - Boolean, true if API validation passed  
+    * both_valid - Boolean, true if both validations passed
+    * both_invalid - Boolean, true if both validations failed
+    * partial_valid - Boolean, true if only one validation passed
+    * connection_error - Boolean, true if there was a connection error
+    * error_message - String, error message if connection failed
+    * apisuccess - String, API success message
+    * urlsuccess - String, URL success message
+    * apifail - String, API fail message
+    * urlfail - String, URL fail message
+    * successboth - String, both success message
+    * failboth - String, both fail message
+    * failone - String, one fail message
+    * refresh_url - String, URL for refresh button
+    * settings_url - String, URL for settings button
+    * refresh_text - String, text for refresh button
+    * return_text - String, text for return button
+}}
+
+<div class="blc-validation-container">
+    <div class="row">
+        <div class="col-12">
+            <h3>BLC Settings Validation</h3>
+            <p>This page checks that your BLC Module settings are configured correctly. We validate both your API key and Moodle URL.</p>
+        </div>
+    </div>
+
+    {{#connection_error}}
+    <div class="alert alert-danger alert-block fade in" role="alert">
+        <h4><i class="fa fa-exclamation-triangle"></i> Connection Error</h4>
+        <p>{{error_message}}</p>
+    </div>
+    {{/connection_error}}
+
+    {{^connection_error}}
+    <div class="validation-results">
+        {{#both_valid}}
+        <div class="alert alert-success alert-block fade in" role="alert">
+            <i class="fa fa-check-circle"></i> {{apisuccess}}
+        </div>
+        <div class="alert alert-success alert-block fade in" role="alert">
+            <i class="fa fa-check-circle"></i> {{urlsuccess}}
+        </div>
+        <div class="alert alert-info alert-block fade in" role="alert">
+            <div>{{{successboth}}}</div>
+        </div>
+        {{/both_valid}}
+
+        {{#both_invalid}}
+        <div class="alert alert-warning alert-block fade in" role="alert">
+            <i class="fa fa-exclamation-triangle"></i> {{{apifail}}}
+        </div>
+        <div class="alert alert-warning alert-block fade in" role="alert">
+            <i class="fa fa-exclamation-triangle"></i> {{{urlfail}}}
+        </div>
+        <div>
+            <div>{{{failboth}}}</div>
+        </div>
+        {{/both_invalid}}
+
+        {{#partial_valid}}
+        {{#url_valid}}
+        <div class="alert alert-success alert-block fade in" role="alert">
+            <i class="fa fa-check-circle"></i> {{urlsuccess}}
+        </div>
+        <div class="alert alert-warning alert-block fade in" role="alert">
+            <i class="fa fa-exclamation-triangle"></i> {{apifail}}
+        </div>
+        {{/url_valid}}
+        {{#api_valid}}
+        <div class="alert alert-success alert-block fade in" role="alert">
+            <i class="fa fa-check-circle"></i> {{apisuccess}}
+        </div>
+        <div class="alert alert-warning alert-block fade in" role="alert">
+            <i class="fa fa-exclamation-triangle"></i> {{urlfail}}
+        </div>
+        {{/api_valid}}
+        <div class="alert alert-warning alert-block fade in" role="alert">
+            <div>{{{failone}}}</div>
+        </div>
+        {{/partial_valid}}
+    </div>
+    {{/connection_error}}
+
+    <div class="validation-actions">
+        <div class="row mt-4">
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="{{refresh_url}}" class="btn btn-primary btn-block">
+                    <i class="fa fa-refresh"></i> {{refresh_text}}
+                </a>
+            </div>
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="{{settings_url}}" class="btn btn-secondary btn-block">
+                    <i class="fa fa-arrow-left"></i> {{return_text}}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{#debug_info}}
+    <div class="debug-section mt-4">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="collapse" data-target="#debugInfo" aria-expanded="false" aria-controls="debugInfo">
+            <i class="fa fa-bug"></i> Show Debug Information
+        </button>
+        
+        <div class="collapse mt-2" id="debugInfo">
+            <div class="card card-body bg-light">
+                <h6>Debug Information</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small>
+                            <strong>Request URI:</strong> {{requesturi}}<br>
+                            <strong>API Key:</strong> {{apikey}}<br>
+                            <strong>Token:</strong> {{token}}<br>
+                            <strong>Domain Name:</strong> {{domainname}}<br>
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small>
+                            <strong>Server URL:</strong><br>
+                            <code style="word-break: break-all;">{{serverurl}}</code><br>
+                            <strong>Response:</strong> {{responses}}<br>
+                            <strong>URL Check:</strong> {{urlokay}}<br>
+                            <strong>API Check:</strong> {{apiokay}}<br>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/debug_info}}
+</div>
+
+<style>
+.blc-validation-container {
+    margin: 20px 0;
+}
+
+.validation-results .alert {
+    margin-bottom: 15px;
+}
+
+.validation-actions .btn {
+    margin-bottom: 10px;
+}
+
+.debug-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 20px;
+}
+
+.fa {
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+    .validation-actions .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+</style>

@@ -29,7 +29,7 @@ use html_writer;
  * Class scorm_report_page
  *
  * @package    block_blc_modules
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -45,7 +45,7 @@ class scorm_report_page implements renderable, templatable {
     public $chart;
 
 
-        /**
+    /**
      * Constructor.
      *
      * @param array $block_blc_modules Number of BLC modules
@@ -65,12 +65,6 @@ class scorm_report_page implements renderable, templatable {
      * Render the SCORM Report page.
      *
      * @param renderer_base $output
-     * @return string
-     */
-
-    /**
-     * Render the SCORM Report page.
-     *
      * @param chart_pie $output
      * @return string
      */
