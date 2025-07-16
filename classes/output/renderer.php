@@ -52,4 +52,15 @@ class renderer extends plugin_renderer_base {
         return $this->render_from_template('block_blc_modules/validate_settings_page', $data);
     }
 
+    /**
+     * Render the update scorm page.
+     *
+     * @param update_scorm_page $page
+     * @return string
+     */
+    public function render_update_scorm_page(update_scorm_page $page){
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/update_scorm_page', $data);
+    }
+
 }

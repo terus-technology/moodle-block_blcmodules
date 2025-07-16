@@ -1,0 +1,252 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_blc_modules/update_scorm_page
+
+    SCORM Module Update Results Page Template
+
+    Context variables:
+    * success - Boolean, true if update was successful
+    * error - Boolean, true if there was an error
+    * message - String, main status message
+    * error_message - String, error message if failed
+    * coursemodule - Number, course module ID
+    * version - Number, new version number
+    * scorm_info - Object with SCORM details:
+      - name - String, SCORM package name
+      - old_version - Number, previous version
+      - new_version - Number, updated version
+      - course_id - Number, course ID
+      - cm_id - Number, course module ID
+      - updated_time - String, formatted update time
+    * debug_info - Object with debug information
+}}
+
+<div class="scorm-update-container">
+    <div class="row">
+        <div class="col-12">
+            <h3><i class="fa fa-refresh"></i> SCORM Module Update</h3>
+            <p>Update process for course module ID: {{coursemodule}}</p>
+        </div>
+    </div>
+
+    {{#success}}
+    <div class="update-success">
+        <div class="alert alert-success alert-block fade in" role="alert">
+            <h4><i class="fa fa-check-circle"></i> Update Successful</h4>
+            <p>{{message}}</p>
+        </div>
+        
+        {{#scorm_info}}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fa fa-info-circle"></i> SCORM Package Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-5">Package Name:</dt>
+                            <dd class="col-sm-7">{{name}}</dd>
+                            
+                            <dt class="col-sm-5">Course ID:</dt>
+                            <dd class="col-sm-7">{{course_id}}</dd>
+                            
+                            <dt class="col-sm-5">Module ID:</dt>
+                            <dd class="col-sm-7">{{cm_id}}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-5">Previous Version:</dt>
+                            <dd class="col-sm-7"><span class="badge badge-secondary">{{old_version}}</span></dd>
+                            
+                            <dt class="col-sm-5">New Version:</dt>
+                            <dd class="col-sm-7"><span class="badge badge-success">{{new_version}}</span></dd>
+                            
+                            <dt class="col-sm-5">Updated:</dt>
+                            <dd class="col-sm-7">{{updated_time}}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/scorm_info}}
+        
+        <div class="update-actions mt-4">
+            <div class="alert alert-info" role="alert">
+                <h6><i class="fa fa-lightbulb-o"></i> What's Next?</h6>
+                <ul class="mb-0">
+                    <li>The SCORM package has been successfully updated to version {{version}}</li>
+                    <li>Students will now see the latest version when they access the module</li>
+                    <li>Previous student progress may be affected - please inform your students</li>
+                    <li>Consider checking the module to ensure it displays correctly</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    {{/success}}
+
+    {{#error}}
+    <div class="update-error">
+        <div class="alert alert-danger alert-block fade in" role="alert">
+            <h4><i class="fa fa-times-circle"></i> Update Failed</h4>
+            <p>{{message}}</p>
+            {{#error_message}}
+            <div class="mt-2">
+                <strong>Error Details:</strong>
+                <code>{{error_message}}</code>
+            </div>
+            {{/error_message}}
+        </div>
+        
+        <div class="alert alert-warning" role="alert">
+            <h6><i class="fa fa-exclamation-triangle"></i> Troubleshooting</h6>
+            <p>The SCORM update process failed. Please try the following:</p>
+            <ul class="mb-0">
+                <li>Check that your BLC settings are properly configured</li>
+                <li>Verify that the SCORM package URL is accessible</li>
+                <li>Ensure you have sufficient permissions to update course modules</li>
+                <li>Contact your system administrator if the problem persists</li>
+            </ul>
+        </div>
+    </div>
+    {{/error}}
+
+    <div class="action-buttons mt-4">
+        <div class="row">
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="{{#success}}javascript:window.close();{{/success}}{{#error}}javascript:history.back();{{/error}}" 
+                   class="btn {{#success}}btn-primary{{/success}}{{#error}}btn-secondary{{/error}} btn-block">
+                    <i class="fa {{#success}}fa-check{{/success}}{{#error}}fa-arrow-left{{/error}}"></i> 
+                    {{#success}}Close{{/success}}{{#error}}Go Back{{/error}}
+                </a>
+            </div>
+            {{#success}}
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="/course/view.php?id={{scorm_info.course_id}}" class="btn btn-outline-primary btn-block">
+                    <i class="fa fa-external-link"></i> View Course
+                </a>
+            </div>
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="/mod/scorm/view.php?id={{coursemodule}}" class="btn btn-outline-secondary btn-block">
+                    <i class="fa fa-play"></i> View SCORM
+                </a>
+            </div>
+            {{/success}}
+            {{#error}}
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="/admin/settings.php?section=blocksettingblc_modules" class="btn btn-outline-primary btn-block">
+                    <i class="fa fa-cog"></i> Settings
+                </a>
+            </div>
+            <div class="col-sm-6 col-md-3 mb-2">
+                <a href="/blocks/blc_modules/validate_settings.php" class="btn btn-outline-warning btn-block">
+                    <i class="fa fa-check"></i> Validate
+                </a>
+            </div>
+            {{/error}}
+        </div>
+    </div>
+
+    {{#debug_info}}
+    <div class="debug-section mt-5">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="collapse" data-target="#debugInfo" aria-expanded="false" aria-controls="debugInfo">
+            <i class="fa fa-bug"></i> Show Debug Information
+        </button>
+        
+        <div class="collapse mt-2" id="debugInfo">
+            <div class="card card-body bg-light">
+                <h6>Debug Information</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small>
+                            <strong>Course Module ID:</strong> {{coursemodule}}<br>
+                            <strong>Target Version:</strong> {{version}}<br>
+                            <strong>User ID:</strong> {{user_id}}<br>
+                            <strong>Timestamp:</strong> {{timestamp}}<br>
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small>
+                            <strong>Process Status:</strong> 
+                            {{#success}}<span class="text-success">Success</span>{{/success}}
+                            {{#error}}<span class="text-danger">Failed</span>{{/error}}<br>
+                            <strong>Server Time:</strong> {{timestamp}}<br>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/debug_info}}
+</div>
+
+<style>
+.scorm-update-container {
+    margin: 20px 0;
+}
+
+.scorm-update-container .card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+
+.scorm-update-container .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 1.25rem;
+}
+
+.scorm-update-container .alert {
+    margin-bottom: 15px;
+}
+
+.scorm-update-container .badge {
+    font-size: 0.875em;
+}
+
+.action-buttons .btn {
+    margin-bottom: 10px;
+}
+
+.debug-section {
+    border-top: 1px solid #dee2e6;
+    padding-top: 20px;
+}
+
+.fa {
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+    .action-buttons .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .scorm-update-container .row dl.row {
+        margin-bottom: 1rem;
+    }
+    
+    .scorm-update-container .row dl.row dt,
+    .scorm-update-container .row dl.row dd {
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+</style>
