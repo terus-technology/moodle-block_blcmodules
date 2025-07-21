@@ -242,7 +242,7 @@ class services
 
         // Check if this is a pluginfile URL (internal Moodle file)
         if (strpos($scormurl, '/pluginfile.php/') !== false) {
-            //return self::check_pluginfile_exists($scormurl);
+            // return self::check_pluginfile_exists($scormurl);
         }
 
         // For external URLs, use HEAD request to get Content-Length

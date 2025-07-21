@@ -27,7 +27,7 @@
 var root = M.cfg.wwwroot;
 var x = '';
 
-define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], function ($, tippy, select2) {
+define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/ajax'], function ($, tippy, select2,Ajax) {
     return {
         getUrlParameter: getUrlParameter,
         fillSubject: fillSubject,
@@ -67,82 +67,89 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
     }
 
     function fillSubject() {
-
         var apikey = $('#apikey').val();
-
         $("#scormurls").html('');
 
-        $.getJSON(root + "/blocks/blc_modules/load_scormsubject.php?apikey=" + encodeURIComponent(apikey), function (data) {
-
-            var items = [];
-
-            if (data.length == 0) {
-
-                $('.submitForm').attr("disabled", "disabled");
-
-                $('.statusMsg').html('<span style="color:red;">An error has occured.</p>');
-
+        var request = {
+            methodname: 'blocks_blc_modules_get_blc_modules_scormsubject',
+            args: {
+                apikey: apikey,
+                requesturi: M.cfg.wwwroot,
+                version: 5
             }
+        };
 
-            items.push("<option disabled selected>Select a module</option>");
+        Ajax.call([request])[0]
+            .done((data) => {
+                const items = ["<option value='0' selected>Select Subject</option>"];
+                
+                if (data.length > 0) {
+                    items.push(...data.map(item => `<option value='${item}'>${item}</option>`));
+                }
 
-            $.each(data, function (key, val) {
-
-                items.push("<option value='" + key + "'>" + val + "</option>");
-
+                $("#scormsubject").html(items.join(""));
+            })
+            .fail((error) => {
+                console.error('Error loading subjects:', error);
+                $('.submitForm').prop("disabled", true);
+                $('.statusMsg').html('<span style="color:red;">An error has occurred.</span>');
             });
-
-            $("#scormsubject").html(items.join(""));
-
-        });
-
     }
 
     function checkVersion(id) {
-
         var apikey = $('#apikey').val();
 
-        $.getJSON(root + "/blocks/blc_modules/version_check.php?apikey=" + encodeURIComponent(apikey) + "&id=" + id, function (data) {
+        var request = {
+            methodname: 'blocks_blc_modules_get_blc_modules_version',
+            args: {
+                apikey: apikey,
+                requesturi: M.cfg.wwwroot,
+                version: 5
+            }
+        };
 
-
-            $.each(data, function (key, val) {
-
-                $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm"  style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
-
+        Ajax.call([request])[0]
+            .done(function(data) {
+                $.each(data, function(key, val) {
+                    $("#module-" + key + " .mod-indent-outer .activityinstance").append('<li class="cmid-version" id="' + key + '-' + val + '"><i id="updatescorm" style="cursor: pointer;" class="icon fa fa-refresh fa-fw " title="New version available" aria-label="Update"></i>');
+                });
+            })
+            .fail(function(error) {
+                console.error('Error checking version:', error);
             });
-
-        });
-
     }
 
     function fillscorm() {
-
         var scormsubject = $('#scormsubject option:selected').text();
-
         var apikey = $('#apikey').val();
 
         if (scormsubject != 0) {
+            var request = {
+                methodname: 'blocks_blc_modules_get_blc_modules_scormurl',
+                args: {
+                    apikey: apikey,
+                    requesturi: M.cfg.wwwroot,
+                    version: 5,
+                    scormsubject: scormsubject  // You may need to modify the webservice to accept this parameter
+                }
+            };
+           
 
-            $.getJSON(root + "/blocks/blc_modules/load_scormurls.php?apikey=" + encodeURIComponent(apikey) + "&subject=" + encodeURIComponent(scormsubject), function (data) {
+            Ajax.call([request])[0]
+                .done(function(data) {
+                    var items = [];
+                    $.each(data, function(index, item) {
+                        var sanVal = item.scormname.replace(".zip", "");
+                        var key = item.scormurl.replace("'", "'");
+                        items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
+                    });
 
-                var items = [];
-
-                $.each(data, function (key, val) {
-
-                    var sanVal = val.replace(".zip", "");
-
-                    key = key.replace("'", "’");
-
-                    items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
-
+                    $("#scormurls").html(items.join(""));
+                })
+                .fail(function(error) {
+                    console.error('Error loading SCORM URLs:', error);
                 });
-
-                $("#scormurls").html(items.join(""));
-
-            });
-
         }
-
     }
 
     function updateScorm(cmid, version) {
@@ -387,7 +394,6 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
             });
 
             $(".course-content").on("click", ".submitForm", function () {
-
                 var apikey = $('#apikey').val();
                 var scormurls = [];
                 var visibility = $("#id_visible").val();
@@ -395,54 +401,48 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2'], funct
                 var completion = $("#id_completion").val();
 
                 $.each($("#scormurls option:selected"), function () {
-
                     var urll = $(this).val();
-
                     urll = urll.replace(",", "qqq");
-
                     scormurls.push(urll);
-
                 });
 
                 $('.statusMsg').html('');
-
                 $('.submitForm').attr("disabled", "disabled");
-
                 $('.closeModal').attr("disabled", "disabled");
-
                 $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
-                $.get(root + "/blocks/blc_modules/load_scorm.php",
-                    {
-                        id: id,
-                        sectionNumber: x,
-                        scormurls: scormurls,
+                var request = {
+                    methodname: 'blocks_blc_modules_load_scorm_modules',
+                    args: {
+                        courseid: parseInt(id),
+                        sectionnumber: parseInt(x),
                         apikey: apikey,
-                        visibility: visibility,
-                        hidebrowse: hidebrowse,
-                        completion: completion
-                    },
+                        scormurls: scormurls,
+                        visibility: parseInt(visibility),
+                        hidebrowse: parseInt(hidebrowse),
+                        completion: parseInt(completion)
+                    }
+                };
 
-                    function (data, status) {
-
-                        if (data == '"completed"') {
-
+                Ajax.call([request])[0]
+                    .done(function(data) {
+                        if (data.success) {
                             location.reload(true);
-
                         } else {
-
-                            $('.statusMsg').html('<span style="color:red;">' + data + '</p>');
-
+                            var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
+                            $('.statusMsg').html('<span style="color:red;">' + errorMessage + '</span>');
                             $('.submitForm').removeAttr("disabled");
-
                             $('.closeModal').removeAttr("disabled");
-
                             $(".modal-header .fa.fa-spinner").remove();
-
                         }
-
+                    })
+                    .fail(function(error) {
+                        console.error('Error loading SCORM modules:', error);
+                        $('.statusMsg').html('<span style="color:red;">Error loading SCORM modules</span>');
+                        $('.submitForm').removeAttr("disabled");
+                        $('.closeModal').removeAttr("disabled");
+                        $(".modal-header .fa.fa-spinner").remove();
                     });
-
             });
 
             $('.select2').select2({

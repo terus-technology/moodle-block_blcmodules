@@ -41,7 +41,7 @@ global $DB, $USER, $CFG;
 	$curl->setHeader('Content-Type: application/json; charset=utf-8');
 	
 	$responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
-	//print_r($responses);
+
 	$scorm = array();
 	$xml = (array)simplexml_load_string($responses);
 	if (!isset($xml['MULTIPLE'])) {

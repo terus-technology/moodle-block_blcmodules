@@ -57,6 +57,14 @@ $functions = [
         'type'  => 'write',
         'ajax' => 'true',
     ],
+    'blocks_blc_modules_load_scorm_modules' => [
+        'classname' => 'block_blc_modules\external\blcservice',
+        'methodname' => 'load_scorm_modules',
+        'returns' => 'block_blc_modules\external\blcservice::load_scorm_modules_returns',
+        'description' => 'Load SCORM modules from external URLs into a course',
+        'type' => 'write',
+        'ajax' => 'true',
+    ],
 ];
 
 
@@ -67,6 +75,7 @@ $services = [
             'blocks_blc_modules_get_blc_modules_scormurl',
             'blocks_blc_modules_get_blc_modules_scormsubject',
             'blocks_blc_modules_get_blc_modules_scormdelete',
+            'blocks_blc_modules_load_scorm_modules',
         ],
         'restrictedusers' => 0,
         'enabled' => 1,
