@@ -181,7 +181,7 @@ class blcservice extends external_api{
             'version' => $version,
             'scormsubject' => $scormsubject,
         ]);
-        // var_dump($scormname);die();
+
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
 
@@ -199,7 +199,7 @@ class blcservice extends external_api{
         $scorm = array();
         if(count($responses) > 0){
             foreach($responses as $item => $scormdata) {
-                // var_dump($scormdata);die();
+                
                 if($scormdata['subject'] == $scormsubject) {
 
                     array_push($scorm,[
