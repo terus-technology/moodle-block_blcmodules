@@ -38,3 +38,7 @@ The guidance for updating is similar to the guidance for installation.
 *Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at site administration / Plugins / Install Plugins.
 
 *Option 2:* The plugin can also be installed manually by overwriting the existing plugin in the 'blocks' directory of your Moodle.
+
+# Using old version
+
+If you want to use the old version, please use the master branch.
