@@ -1,50 +1,58 @@
-# Summary of Changes in blocks/blc_modules (Git Diff)
+# Detailed Changes Compared to blocks/blc_modules
 
-Below is a detailed explanation of the changes detected in the `blocks/blc_modules` folder based on the `git diff` result:
-
----
-
-## 1. **amd/src/module.js**
-- **Addition**: The comment `/* eslint-disable */` at the top of the file to disable ESLint linting.
-- **Addition**: New function `createButtonAddBlc` is now exposed in the main return object.
-- **Fix**: In the `checkVersion` function, the unused `items` variable and comment lines have been removed.
-- **Refactor**: The `createButtonAddBlc` function changed from an arrow function to a function declaration.
-- **Fix**: In the submit form callback, the `.closeModal` button is now also re-enabled if an error occurs (previously only `.submitForm`).
-
-## 2. **amd/build/module.min.js & module.min.js.map**
-- **Update**: Minified/build files from the changes in `src/module.js` above. The main changes are the addition of the `createButtonAddBlc` property and improvements to the enable/disable modal button logic.
-
-## 3. **classes/middleware/services.php**
-- **Refactor**: The `blcscormurl_filesize` function was changed:
-  - Now uses an HTTP HEAD request (`get_headers`) to get the `Content-Length` from external URLs, instead of downloading the entire file.
-  - If `Content-Length` is not available, the function returns `false`.
-  - Improved efficiency and avoids downloading large files just to check their size.
-
-## 4. **load_scorm.php**
-- **Fix**: Update query on the `scorm` table:
-  - Previously: `UPDATE ... SET scormtype = 'local' WHERE id = ...` with unused parameters.
-  - Now: Uses a `?` placeholder and parameter array for SQL injection safety (`$DB->execute($sql, [$id]);`).
-
-## 5. **load_scormsubject.php**
-- **Fix**: Handling when the XML response does not have a `MULTIPLE` element:
-  - Now returns an empty array and exits early.
-
-## 6. **load_scormurls.php**
-- **Fix**: Handling of the XML response:
-  - If `MULTIPLE` or `SINGLE` is missing, returns an empty array.
-  - Added initialization of `$scormvalue` and `$scormkey` variables to avoid notices.
-  - Looping and assignment are now safer.
-
-## 7. **settings.php**
-- **Refactor**: Uses `get_string` instead of `new lang_string` for admin setting labels and descriptions, to be consistent with Moodle best practices.
+This document summarizes the detailed changes in the `blocks/blc_modules` directory.
 
 ---
 
-### **Conclusion**
-The changes focus on:
-- Improving security and efficiency (SQL, HTTP request, error handling)
-- Refactoring code for better maintainability
-- Adding minor UI features (enable modal button)
-- Adopting Moodle best practices (using `get_string`)
+## 1. **CHANGELOG.md**
+- **New file**: Added a changelog file summarizing all major changes and improvements in the codebase.
 
-If you need a more detailed explanation for a specific file, please mention the file name or section you want to know more about.
+## 2. **add_doc.php**
+- **Namespace & Use**: Added `namespace block_blc_modules\helper;` and relevant `use` statements for better code organization and autoloading.
+- **SQL Improvements**: Changed SQL queries to use parameterized queries for better security and maintainability.
+- **Class Name Fix**: Fixed typo from `stdclass` to `stdClass`.
+
+## 3. **amd/build/module.min.js**
+- **Update**: Minified JS updated to reflect changes in the source, including new dependencies and logic improvements.
+- **Dependency**: Now includes `core/ajax` as a dependency.
+
+## 4. **scorm_report.php**
+- **Refactor**: Major refactor to use a renderer and a new output class `scorm_report_page` for rendering the report page, replacing direct HTML output and table generation.
+- **Template**: Now uses a Mustache template for rendering the report.
+
+## 5. **settings.php**
+- **Best Practice**: Replaced `new lang_string` with `get_string` for all admin setting labels and descriptions, following Moodle best practices.
+
+## 6. **templates/scorm_report_page.mustache**
+- **New file**: Added a Mustache template for rendering the SCORM report page, improving separation of logic and presentation.
+
+## 7. **templates/update_scorm_page.mustache**
+- **New file**: Added a Mustache template for the SCORM update results page, providing a modern and user-friendly UI for update feedback.
+
+## 8. **templates/validate_settings_page.mustache**
+- **New file**: Added a Mustache template for the BLC settings validation page, improving clarity and maintainability.
+
+## 9. **update_scorm.php**
+- **Refactor**: Major refactor to use a renderer and a new output class `update_scorm_page` for rendering the update results, replacing procedural logic and direct file operations.
+- **Security**: Added permission checks and parameter validation.
+- **UI**: Now uses a Mustache template for output.
+
+## 10. **validate_settings.php**
+- **Refactor**: Major refactor to use a renderer and a new output class `validate_settings_page` for rendering the validation results, replacing procedural logic and direct HTML output.
+- **UI**: Now uses a Mustache template for output.
+
+## 11. **version.php**
+- **Update**: Bumped plugin version from `2024071100` to `2024071119`.
+
+## 12. **version_check.php**
+- **Namespace & Use**: Added `namespace block_blc_modules\helper;` and `use stdClass;` for better code organization and autoloading.
+
+---
+
+## **Summary of Key Improvements**
+- **Modernization**: Migration to Mustache templates and output classes for all major UI, improving maintainability and separation of concerns.
+- **Security**: Improved SQL handling and added permission checks.
+- **Code Quality**: Adoption of namespaces, autoloading, and best practices for Moodle plugin development.
+- **User Experience**: Enhanced UI for reports, updates, and validation pages.
+
+For further details on any specific file or change, please request a focused explanation.
