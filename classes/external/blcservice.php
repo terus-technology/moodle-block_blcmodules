@@ -85,28 +85,18 @@ class blcservice extends external_api{
         $domainname = get_config('block_blc_modules', 'domainname');
         $function_name = 'local_scormurl_get_scormurls';
         $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-        . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5';
+        . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
         $curl = new blccurl;
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
         //print_r($responses);
         $scorms = array();
-        $xml = (array)simplexml_load_string($responses);
-        $multiplearray = $xml['MULTIPLE'];
-        $multiple = (array)$multiplearray;
-        if(!isset($multiple[0])){
-            $singlearray = $multiple['SINGLE'];
-            foreach($singlearray as $single){
-                $single = (array)$single;		
-                $keyarray = $single['KEY'];
-                $scormobject = new \stdclass();
-                foreach($keyarray as $key){
-                    $key = (array)$key;
-                    $field = $key['@attributes']['name'];
-                    $fielddata = $key['VALUE'];	
-                    $scormobject->$field = $fielddata ;			
-                    }		
+        $jsondata = json_decode($responses, true);
+        
+        if(!empty($jsondata) && is_array($jsondata)){
+            foreach($jsondata as $scormdata){
+                $scormobject = (object) $scormdata;
                 $scorms[$scormobject->id] = $scormobject;
             }
         }
@@ -575,29 +565,20 @@ class blcservice extends external_api{
         $tempurl = urlencode($url);
 
         $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
+            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
+            . '&moodlewsrestformat=json';
 
         $curl = new \block_blc_modules\helper\blccurl();
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
-        $xml = (array)simplexml_load_string($responses);
+        $jsondata = json_decode($responses, true);
 
-        if (empty($xml['SINGLE'])) {
+        if (empty($jsondata) || !isset($jsondata['scormname'])) {
             return null;
         }
 
-        $single = $xml['SINGLE'];
-        $singlearray = (array) $single;
-        $keyarray = $singlearray['KEY'];
-        $scormobject = new \stdClass();
-
-        foreach ($keyarray as $key) {
-            $key = (array)$key;
-            $field = $key['@attributes']['name'];
-            $fielddata = $key['VALUE'];
-            $scormobject->$field = $fielddata;
-        }
+        $scormobject = (object) $jsondata;
 
         return [
             'scormname' => str_replace("'", "'", $scormobject->scormname ?? ''),
@@ -827,29 +808,20 @@ class blcservice extends external_api{
         $function_name = 'local_scormurl_get_tempdocurls';
 
         $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
+            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
+            . '&moodlewsrestformat=json';
 
         $curl = new \block_blc_modules\helper\blccurl();
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
-        $xml = (array)simplexml_load_string($responses);
+        $jsondata = json_decode($responses, true);
 
-        if (!isset($xml['SINGLE'])) {
+        if (empty($jsondata) || !isset($jsondata['docname'])) {
             return null;
         }
 
-        $single = $xml['SINGLE'];
-        $singlearray = (array) $single;
-        $keyarray = $singlearray['KEY'];
-        $docobject = new \stdClass();
-
-        foreach ($keyarray as $key) {
-            $key = (array)$key;
-            $field = $key['@attributes']['name'];
-            $fielddata = $key['VALUE'];
-            $docobject->$field = $fielddata;
-        }
+        $docobject = (object) $jsondata;
 
         return [
             'docname' => rtrim($docobject->docname ?? '', '.docx'),
