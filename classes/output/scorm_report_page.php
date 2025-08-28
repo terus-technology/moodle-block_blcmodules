@@ -114,9 +114,9 @@ class scorm_report_page implements renderable, templatable {
     private function get_data(){
         global $DB;
 
-        $sql = "SELECT courseid,c.fullname, COUNT(*) AS count FROM {block_blc_modules} as blc 
+        $sql = "SELECT courseid, c.fullname, COUNT(*) AS count FROM {block_blc_modules} as blc 
                         JOIN {course} as c on c.id=blc.courseid 
-                        GROUP BY courseid ORDER BY count DESC";
+                        GROUP BY courseid, c.fullname ORDER BY count DESC";
         $blc_modules_bycourses = $DB->get_records_sql($sql);
         return array_values($blc_modules_bycourses);
         

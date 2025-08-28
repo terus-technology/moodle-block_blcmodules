@@ -353,8 +353,8 @@ foreach ($scormurls as $url) {
 		$scormtoupdate->id = $id;
 		BLCService::blc_scorm_update_instance($scormtoupdate);
 
-		$sql = "UPDATE {scorm} SET scormtype = 'local' WHERE id = ?";
-		$DB->execute($sql, [$id]);
+		$sql = "UPDATE {scorm} SET scormtype = 'local' WHERE id = :id";
+		$DB->execute($sql, ['id' => $id]);
 		$scormtoview = $DB->get_record('scorm', array('id' => $id));
 
 		$function_name = 'local_scormurl_get_deletetempscormurls';

@@ -163,8 +163,7 @@ class blcservice extends external_api{
      */
     public static function get_blc_modules_scormurl(string $apikey, string $requesturi, int $version, string $scormsubject): array {
         global $DB;
-        // $selectsubject = optional_param('subject', '', PARAM_TEXT);
-        // Parameter validation.
+
         $params = self::validate_parameters(self::get_blc_modules_scormurl_parameters(), [
             'apikey' => $apikey,
             'requesturi' => $requesturi,
@@ -183,8 +182,18 @@ class blcservice extends external_api{
         
         $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
 
-        $responses = json_decode($responses);
-        $responses = array_map(fn($item) => (array)$item, $responses);
+        // FIX: Decode as array and add error checking
+        $responses = json_decode($responses, true); // Force array instead of stdClass
+        
+        // Add error checking for JSON decode
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new moodle_exception('jsondecodeerror', 'block_blc_modules', '', json_last_error_msg());
+        }
+        
+        // Ensure $responses is an array
+        if (!is_array($responses)) {
+            $responses = [];
+        }
 
         $scorm = array();
         if(count($responses) > 0){
@@ -265,9 +274,21 @@ class blcservice extends external_api{
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-        $responses = json_decode($responses);
-        $responses = array_map(fn($item) => (array)$item, $responses);
+        
+        // FIX: Decode as array and add error checking
+        $responses = json_decode($responses, true); // Force array instead of stdClass
+        
+        // Add error checking for JSON decode
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new moodle_exception('jsondecodeerror', 'block_blc_modules', '', json_last_error_msg());
+        }
+        
+        // Ensure $responses is an array
+        if (!is_array($responses)) {
+            $responses = [];
+        }
 
+        $scorms = [];
         if(count($responses) > 0){
            foreach($responses as $index => $scorm) {
                 $scorms[$index + 1] = $scorm['subject'];
@@ -677,7 +698,7 @@ class blcservice extends external_api{
         $DB->update_record('course_sections', $record);
 
         // Update SCORM to local type
-        $DB->execute("UPDATE {scorm} SET scormtype = 'local' WHERE id = ?", [$id]);
+        $DB->execute("UPDATE {scorm} SET scormtype = 'local' WHERE id = :id", ['id' => $id]);
 
         return $coursemodule;
     }
