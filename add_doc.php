@@ -36,8 +36,7 @@ require_once("$CFG->libdir/resourcelib.php");
 require_once($CFG->dirroot.'/mod/resource/locallib.php');
 require_once($CFG->dirroot.'/mod/resource/lib.php');
 
-
-global $DB,$USER,$CFG;
+global $DB, $USER, $CFG;
 
 $token = get_config('block_blc_modules', 'token');
 $domainname = get_config('block_blc_modules', 'domainname');
@@ -112,6 +111,13 @@ if ($blcdoc && !empty($blcdoc->blcmoduleid)) {
 					
 					$docs[$docobject->id] =$docobject;
 
+					// Initialize variables with default values
+					$docname = '';
+					$docversion = '';
+					$docid = '';
+					$docurl = '';
+					$docfound = false;
+					
 					foreach($docs as $key=>$doc){
 							if($doc->docurl){
 								$docname = chop($doc->docname,".docx");
@@ -119,9 +125,15 @@ if ($blcdoc && !empty($blcdoc->blcmoduleid)) {
 								$docid = $doc->id;
 								$docurl = $doc->tempdocurl;
 								$docurl = str_replace("ppp",",",$docurl); 
+								$docfound = true;
 								break;
 							}
 						}
+						
+					// Skip processing if no valid document found
+					if(!$docfound || empty($docname)) {
+						continue; // Skip to next BLC module
+					}
 						
 					$scormsection = $DB->get_record('course_sections',array('course'=>$courseid,'section'=>$section));
 					$sectionid=$scormsection->id;
@@ -153,6 +165,11 @@ if ($blcdoc && !empty($blcdoc->blcmoduleid)) {
 					$resourceinstance = new stdClass();
 					$resourceinstance->course = $courseid;
 					$resourceinstance->coursemodule = $resourcecoursemodule;
+					
+					// Ensure docname is not empty, provide fallback name
+					if (empty($docname)) {
+						$docname = 'Accessibility Document'; // Default fallback name
+					}
 					$resourceinstance->name = $docname;
 					$resourceinstance->intro = '';
 					$resourceinstance->introformat = 1;

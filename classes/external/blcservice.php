@@ -90,7 +90,7 @@ class blcservice extends external_api{
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
-        //print_r($responses);
+
         $scorms = array();
         $jsondata = json_decode($responses, true);
         
@@ -177,14 +177,16 @@ class blcservice extends external_api{
         $function_name = 'local_scormurl_get_scormurls';
         $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
             . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
+
         $curl = new blccurl;
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
         
         $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
-
+        
+ 
         // FIX: Decode as array and add error checking
         $responses = json_decode($responses, true); // Force array instead of stdClass
-        
+
         // Add error checking for JSON decode
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new moodle_exception('jsondecodeerror', 'block_blc_modules', '', json_last_error_msg());
