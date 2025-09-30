@@ -31,6 +31,7 @@ defined('MOODLE_INTERNAL') || die();
 function xmldb_block_blc_modules_upgrade($oldversion) {
     global $CFG, $DB;
     $dbman = $DB->get_manager();
+    
     if ($oldversion < 2020062704) {
         $table = new xmldb_table('block_blc_modules_doc');
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
@@ -52,6 +53,30 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         
         // Tuition savepoint reached.
         upgrade_block_savepoint(true, 2020062704, 'blc_modules');
+    }
+
+    // Upgrade for Moodle 4.5.6 compatibility - increase URL field length for MSSQL compatibility.
+    if ($oldversion < 2024123000) {
+        // Increase scormurl field length in block_blc_modules table.
+        $table = new xmldb_table('block_blc_modules');
+        $field = new xmldb_field('scormurl', XMLDB_TYPE_CHAR, '500', null, XMLDB_NOTNULL, null, null);
+        
+        // Launch change of precision for field scormurl.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+
+        // Increase scormurl field length in block_blc_modules_doc table.
+        $table = new xmldb_table('block_blc_modules_doc');
+        $field = new xmldb_field('scormurl', XMLDB_TYPE_CHAR, '500', null, null, null, null);
+        
+        // Launch change of precision for field scormurl.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+
+        // Block savepoint reached.
+        upgrade_block_savepoint(true, 2024123000, 'blc_modules');
     }
 
     return true;

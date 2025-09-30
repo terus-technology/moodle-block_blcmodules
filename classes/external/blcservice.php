@@ -27,9 +27,11 @@ use block_blc_modules\helper\blccurl;
 /**
  * Class blcservice
 **/
-defined('VALUE_OPTIONAL') || define('VALUE_OPTIONAL', 2);
+// Remove deprecated VALUE_OPTIONAL definition - use core constants
+// defined('VALUE_OPTIONAL') || define('VALUE_OPTIONAL', 2);
 
-require_once($CFG->libdir . '/externallib.php');
+// External API libraries are now autoloaded in Moodle 4.5.6
+// require_once($CFG->libdir . '/externallib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
@@ -54,25 +56,24 @@ class blcservice extends external_api{
      */
     
     public static function get_blc_modules_version_parameters(): external_function_parameters {
-        return new external_function_parameters(
-            [
-                'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
-                'requesturi' => new external_value(PARAM_URL, 'Request URI for validation' ),
-                'version' => new external_value(PARAM_INT, 'Version number' ),
-            ]
-        );
+        return new external_function_parameters([
+            'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
+            'requesturi' => new external_value(PARAM_URL, 'Request URI for validation'),
+            'version' => new external_value(PARAM_INT, 'Version number'),
+        ]);
     }
 
-        /**
+    /**
      * Check if API key and request URI are valid.
      *
      * @param string $apikey API key for authentication
      * @param string $requesturi Request URI for validation
-     * @return string Validation result
+     * @param int $version Version number
+     * @return array Validation result
      * @throws moodle_exception
      */
-    public static function get_blc_modules_version (string $apikey, string $requesturi, int $version): array {
-        global $CFG, $DB, $USERS;
+    public static function get_blc_modules_version(string $apikey, string $requesturi, int $version): array {
+        global $CFG, $DB;
         
         $courseid = optional_param('id', '', PARAM_INT);
         $params = self::validate_parameters(self::get_blc_modules_version_parameters(), [
@@ -91,22 +92,25 @@ class blcservice extends external_api{
 
         $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
 
-        $scorms = array();
+        // Improved error handling and validation
+        $scorms = [];
         $jsondata = json_decode($responses, true);
         
-        if(!empty($jsondata) && is_array($jsondata)){
-            foreach($jsondata as $scormdata){
-                $scormobject = (object) $scormdata;
-                $scorms[$scormobject->id] = $scormobject;
+        if (!empty($jsondata) && is_array($jsondata)) {
+            foreach ($jsondata as $scormdata) {
+                if (is_array($scormdata) && isset($scormdata['id'])) {
+                    $scormobject = (object) $scormdata;
+                    $scorms[$scormobject->id] = $scormobject;
+                }
             }
         }
-        $updatescorm = array();
-        $coursescorms = $DB->get_records('block_blc_modules',array('courseid'=>$courseid));
-        foreach($coursescorms as $coursescorm){
-            foreach($scorms as $scorm){
-                if($coursescorm->scormid == $scorm->id && $coursescorm->version < $scorm->version){
-                    $updatescorm[$coursescorm->cmid]=$scorm->version;
-                    
+        
+        $updatescorm = [];
+        $coursescorms = $DB->get_records('block_blc_modules', ['courseid' => $courseid]);
+        foreach ($coursescorms as $coursescorm) {
+            foreach ($scorms as $scorm) {
+                if ($coursescorm->scormid == $scorm->id && $coursescorm->version < $scorm->version) {
+                    $updatescorm[$coursescorm->cmid] = $scorm->version;
                 }
             }	
         }

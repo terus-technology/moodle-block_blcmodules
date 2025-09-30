@@ -54,7 +54,7 @@ if(!isset($multiple[0])){
 	foreach($singlearray as $single){
 		$single = (array)$single;		
 		$keyarray = $single['KEY'];
-		$scormobject = new stdclass();
+		$scormobject = new stdClass();
 		foreach($keyarray as $key){
 			$key = (array)$key;
 			$field = $key['@attributes']['name'];

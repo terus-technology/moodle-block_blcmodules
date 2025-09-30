@@ -18,6 +18,8 @@ namespace block_blc_modules\helper;
 
 use moodle_url;
 use context_system;
+use block_blc_modules\helper\blccurl;
+
 /**
  * This file contains the Activity modules block.
  *
@@ -69,16 +71,33 @@ if($action == 'continue' ){
 
 	$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
 	$scorms =array();
-	$xml=(array)simplexml_load_string($responses);
+	
+	// Add error checking for XML parsing
+	if (empty($responses)) {
+		echo $OUTPUT->notification(get_string('failupdatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_ERROR);
+		echo $OUTPUT->footer();
+		exit;
+	}
+	
+	$xml = simplexml_load_string($responses);
+	if ($xml === false) {
+		echo $OUTPUT->notification('Failed to parse XML response from server', \core\output\notification::NOTIFY_ERROR);
+		echo $OUTPUT->footer();
+		exit;
+	}
+	
+	$xml = (array)$xml;
 	if(isset($xml['MULTIPLE'])){
 	$multiplearray = $xml['MULTIPLE'];
 	$multiple =  (array) $multiplearray;
 	if(!isset($multiple[0])){
-		$singlearray = $multiple['SINGLE'];
-		foreach($singlearray as $single){
+		if(isset($multiple['SINGLE'])) {
+			$singlearray = $multiple['SINGLE'];
+			if(is_array($singlearray) || is_object($singlearray)) {
+				foreach($singlearray as $single){
 			$single =  (array) $single;		
 			$keyarray = $single['KEY'];
-			$scormobject = new stdclass();
+			$scormobject = new stdClass();
 			foreach($keyarray as $key){
 				$key =  (array) $key;
 				$field = $key['@attributes']['name'];
@@ -88,6 +107,8 @@ if($action == 'continue' ){
 				}
 			
 				$scorms[$scormobject->id] =$scormobject;
+			}
+		}
 		}
 	}
 	
@@ -122,22 +143,35 @@ if($action == 'continue' ){
 		$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
 		
 		$scorms =array();
-		$xml=(array)simplexml_load_string($responses);
+		
+		// Add error checking for XML parsing
+		if (empty($responses)) {
+			continue; // Skip this module and continue with next
+		}
+		
+		$xml = simplexml_load_string($responses);
+		if ($xml === false) {
+			continue; // Skip this module and continue with next
+		}
+		
+		$xml = (array)$xml;
 		
 		if(isset($xml['SINGLE'])){
 			$single = $xml['SINGLE'];
 			$singlearray =  (array) $single;
-			$keyarray = $singlearray['KEY'];
-			$scormobject = new stdclass();
-			foreach($keyarray as $key){
-				$key =  (array) $key;
-				$field = $key['@attributes']['name'];
-				$fielddata = $key['VALUE'];	
-				$scormobject->$field =$fielddata ;
+			if(isset($singlearray['KEY']) && (is_array($singlearray['KEY']) || is_object($singlearray['KEY']))) {
+				$keyarray = $singlearray['KEY'];
+				$scormobject = new stdClass();
+				foreach($keyarray as $key){
+					$key =  (array) $key;
+					$field = $key['@attributes']['name'];
+					$fielddata = $key['VALUE'];	
+					$scormobject->$field =$fielddata ;
+					
+				}
 				
+				$scorms[$scormobject->id] =$scormobject;
 			}
-			
-			$scorms[$scormobject->id] =$scormobject;
 			foreach($scorms as $key=>$scorm){
 				if($scorm->scormurl){
 					$scormname = chop($scorm->scormname,".zip");

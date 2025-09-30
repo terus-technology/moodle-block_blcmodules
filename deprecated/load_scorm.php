@@ -215,7 +215,7 @@ foreach ($scormurls as $url) {
 	$single = $xml['SINGLE'];
 	$singlearray = (array) $single;
 	$keyarray = $singlearray['KEY'];
-	$scormobject = new stdclass();
+	$scormobject = new stdClass();
 
 	foreach ($keyarray as $key) {
 		$key = (array)$key;
@@ -383,7 +383,7 @@ foreach ($scormurls as $url) {
 			$single = $xml['SINGLE'];
 			$singlearray = (array) $single;
 			$keyarray = $singlearray['KEY'];
-			$docobject = new stdclass();
+			$docobject = new stdClass();
 			foreach ($keyarray as $key) {
 				$key = (array) $key;
 				$field = $key['@attributes']['name'];

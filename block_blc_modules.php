@@ -73,7 +73,9 @@ class block_blc_modules extends block_list
                 $allowstealthval = 0;
             }
 
-            $completion = new completion_info($COURSE);
+            // Use proper completion API
+        require_once($CFG->libdir . '/completionlib.php');
+        $completion = new \completion_info($COURSE);
             if ($completion->is_enabled()) {
                 $completionon = 1;
             } else {
@@ -85,10 +87,10 @@ class block_blc_modules extends block_list
             }
 
             $this->content->items[] = ' <div id="addscorm" class="block_blc_modules"></div>
-            <input style="display:none;" type="hidden" id="userediting" value="' . $USER->editing . '">
-            <input style="display:none;" type="hidden" id="apikey" value="' . $apikey . '">
-            <input style="display:none;" type="hidden" id="allowstealthvalue" value="' . $allowstealthval . '">
-            <input style="display:none;" type="hidden" id="completionon" value="' . $completionon . '">';
+            <input style="display:none;" type="hidden" id="userediting" value="' . s($USER->editing) . '">
+            <input style="display:none;" type="hidden" id="apikey" value="' . s($apikey) . '">
+            <input style="display:none;" type="hidden" id="allowstealthvalue" value="' . s($allowstealthval) . '">
+            <input style="display:none;" type="hidden" id="completionon" value="' . s($completionon) . '">';
 
             return $this->content;
         }

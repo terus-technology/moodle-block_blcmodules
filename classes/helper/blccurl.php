@@ -200,8 +200,14 @@ class blccurl {
      * @param string $header
      * @return int The strlen of the header
      */
-    private function formatHeader($ch, $header)
-    {
+    /**
+     * Format HTTP headers for cURL request
+     * 
+     * @param resource $ch cURL handle
+     * @param string $header Header string
+     * @return int Header length
+     */
+    private function formatHeader($ch, $header): int {
        // $this->count++;
         if (strlen($header) > 2) {
             list($key, $value) = explode(" ", rtrim($header, "\r\n"), 2);

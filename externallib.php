@@ -25,8 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once($CFG->libdir . '/externallib.php');
-
+// External API libraries are now autoloaded in Moodle 4.5.6
+// require_once($CFG->libdir . '/externallib.php');
 
 class block_blc_modules_external extends \block_blc_modules\external\blcservice {
 
