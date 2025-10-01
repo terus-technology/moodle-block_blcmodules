@@ -204,9 +204,17 @@ class blcservice extends external_api{
         $scorm = array();
         if(count($responses) > 0){
             foreach($responses as $item => $scormdata) {
+                // FIX: Ensure $scormdata is an array before accessing its elements
+                if (!is_array($scormdata)) {
+                    continue; // Skip non-array items
+                }
+                
+                // Check if required keys exist
+                if (!isset($scormdata['subject']) || !isset($scormdata['scormname']) || !isset($scormdata['scormurl'])) {
+                    continue; // Skip items without required fields
+                }
                 
                 if($scormdata['subject'] == $scormsubject) {
-
                     array_push($scorm,[
                         'scormname' => $scormdata['scormname'],
                         'scormurl' => $scormdata['scormurl']
@@ -296,8 +304,13 @@ class blcservice extends external_api{
 
         $scorms = [];
         if(count($responses) > 0){
+           $counter = 1;
            foreach($responses as $index => $scorm) {
-                $scorms[$index + 1] = $scorm['subject'];
+                // Fix: Use counter instead of $index + 1 to avoid string + int error in PHP 8.1
+                if (is_array($scorm) && isset($scorm['subject'])) {
+                    $scorms[$counter] = $scorm['subject'];
+                    $counter++;
+                }
            }
         }
         $scorms = array_unique($scorms);
@@ -513,9 +526,17 @@ class blcservice extends external_api{
                 // Call the helper functions (extracted from original load_scorm.php logic)
                 $scormdata = self::fetch_scorm_data($apikey, $url, $token, $domainname);
                 
-                if (!$scormdata) {
+                // Validate scormdata is array with required fields
+                if (!$scormdata || !is_array($scormdata)) {
                     $results['failed']++;
                     $results['messages'][] = "Failed to fetch SCORM data for URL: " . $url;
+                    continue;
+                }
+                
+                // Ensure required keys exist
+                if (!isset($scormdata['scormurl']) || !isset($scormdata['scormname'])) {
+                    $results['failed']++;
+                    $results['messages'][] = "Invalid SCORM data structure for URL: " . $url;
                     continue;
                 }
 
