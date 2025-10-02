@@ -131,7 +131,7 @@ class blcservice extends external_api{
                 'sectionid' => new external_value(PARAM_INT,'Section ID'),
                 'cmid' => new external_value(PARAM_INT,'Course Module ID'),
                 'scormid' => new external_value(PARAM_INT,'SCORM identifier'),
-                'scormurl' => new external_value(PARAM_URL, 'SCORM package URL'),
+                'scormurl' => new external_value(PARAM_TEXT, 'SCORM package URL'),
                 'version' => new external_value(PARAM_INT, 'Version'),
                 'timecreated' => new external_value(PARAM_INT, 'Time created'),
                 'timemodified' => new external_value(PARAM_INT, 'Time modified'),
@@ -237,7 +237,7 @@ class blcservice extends external_api{
         return new external_multiple_structure(
             new external_single_structure([
                 'scormname' => new external_value(PARAM_TEXT, 'SCORM package name', VALUE_OPTIONAL),
-                'scormurl' => new external_value(PARAM_URL, 'SCORM package URL', VALUE_OPTIONAL),
+                'scormurl' => new external_value(PARAM_TEXT, 'SCORM package URL', VALUE_OPTIONAL),
                 'subject' => new external_value(PARAM_TEXT, 'Subject', VALUE_OPTIONAL),
             ])
         );
