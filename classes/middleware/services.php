@@ -124,6 +124,14 @@ class services
         // Clear existing files in the package area.
         $fs->delete_area_files($context->id, 'mod_scorm', 'package');
         
+        // Debug: Check if reference URL is set EARLY
+        if (empty($scorm->reference)) {
+            debugging('SCORM reference URL is empty in blcscorm_parse. Cannot proceed.', DEBUG_DEVELOPER);
+            return;
+        }
+        
+        debugging('Attempting to download SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
+        
         // Prepare file record for the SCORM package.
         $filerecord = [
             'contextid' => $context->id,
@@ -135,9 +143,28 @@ class services
 
         // Extract filename from URL if not provided.
         if (!isset($filerecord['filename'])) {
-            $parts = explode('/', $scorm->reference);
+            // Trim trailing slashes and extract filename
+            $parts = explode('/', trim($scorm->reference, '/'));
             $filename = array_pop($parts);
-            $filerecord['filename'] = clean_param($filename, PARAM_FILE);
+            
+            // Clean the filename
+            $cleanfilename = clean_param($filename, PARAM_FILE);
+            
+            // CRITICAL: Validate filename is not empty after cleaning
+            if (empty($cleanfilename)) {
+                debugging('Extracted filename is empty after cleaning. URL: ' . $scorm->reference, DEBUG_DEVELOPER);
+                debugging('This usually means the URL has no filename or ends with a slash.', DEBUG_DEVELOPER);
+                return;
+            }
+            
+            $filerecord['filename'] = $cleanfilename;
+            debugging('Extracted filename: ' . $cleanfilename, DEBUG_DEVELOPER);
+        }
+        
+        // Additional safety check: Ensure filename is set and not empty
+        if (empty($filerecord['filename'])) {
+            debugging('File record filename is empty. Cannot create file.', DEBUG_DEVELOPER);
+            return;
         }
         
         // Set source URL.
@@ -150,14 +177,6 @@ class services
             'skipcertverify' => true,
             'timeout' => 300,
         ];
-
-        // Debug: Check if reference URL is set
-        if (empty($scorm->reference)) {
-            debugging('SCORM reference URL is empty in blcscorm_parse. Scorm object: ' . print_r($scorm, true), DEBUG_DEVELOPER);
-            return;
-        }
-        
-        debugging('Attempting to download SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
         
         // Download the file content using the same method as blcscormurl_filesize (which works)
         $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
@@ -395,11 +414,28 @@ class services
                 'filepath' => '/',
             ];
 
-            // Extract filename from URL.
-            $parts = explode('/', $scorm->reference);
+            // Extract filename from URL - with validation
+            $parts = explode('/', trim($scorm->reference, '/'));
             $filename = array_pop($parts);
-            $filerecord['filename'] = clean_param($filename, PARAM_FILE);
+            $cleanfilename = clean_param($filename, PARAM_FILE);
+            
+            // CRITICAL: Validate filename is not empty after cleaning
+            if (empty($cleanfilename)) {
+                debugging('Extracted filename is empty after cleaning in scorm_parse. URL: ' . $scorm->reference, DEBUG_DEVELOPER);
+                debugging('This usually means the URL has no filename or ends with a slash.', DEBUG_DEVELOPER);
+                return;
+            }
+            
+            $filerecord['filename'] = $cleanfilename;
+            
+            // Additional safety check
+            if (empty($filerecord['filename'])) {
+                debugging('File record filename is empty in scorm_parse. Cannot create file.', DEBUG_DEVELOPER);
+                return;
+            }
+            
             $filerecord['source'] = clean_param($scorm->reference, PARAM_URL);
+            debugging('Extracted filename for scorm_parse: ' . $cleanfilename, DEBUG_DEVELOPER);
 
             $options = [
                 'calctimeout' => true,

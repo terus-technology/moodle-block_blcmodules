@@ -525,7 +525,7 @@ class blcservice extends external_api{
             try {
                 // Call the helper functions (extracted from original load_scorm.php logic)
                 $scormdata = self::fetch_scorm_data($apikey, $url, $token, $domainname);
-                
+
                 // Validate scormdata is array with required fields
                 if (!$scormdata || !is_array($scormdata)) {
                     $results['failed']++;
@@ -573,6 +573,11 @@ class blcservice extends external_api{
                 // Record the creation in block_blc_modules table
                 self::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
+                // Ensure this SCORM ID is mapped to the API key for future access
+                if (!empty($scormdata['scormid'])) {
+                    self::ensure_api_key_mapping($params['apikey'], (int)$scormdata['scormid']);
+                }
+
                 // Clean up temporary files
                 self::cleanup_temp_files($apikey, $url, $token, $domainname);
 
@@ -616,24 +621,81 @@ class blcservice extends external_api{
             . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
             . '&moodlewsrestformat=json';
 
+        // Debug: Log the API request
+        error_log('BLC Modules: Calling API: ' . $function_name);
+        error_log('BLC Modules: Original URL: ' . $url);
+        error_log('BLC Modules: Encoded URL: ' . $tempurl);
+
         $curl = new \block_blc_modules\helper\blccurl();
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        
+        // Debug: Log raw response
+        error_log('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
+        
         $jsondata = json_decode($responses, true);
 
-        if (empty($jsondata) || !isset($jsondata['scormname'])) {
+        if (empty($jsondata)) {
+            error_log('BLC Modules: ERROR - Empty or invalid JSON response from API');
+            error_log('BLC Modules: Response was: ' . $responses);
+            return null;
+        }
+        
+        if (!isset($jsondata['scormname'])) {
+            error_log('BLC Modules: ERROR - Response missing scormname field');
+            error_log('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
+            error_log('BLC Modules: Full response: ' . json_encode($jsondata));
             return null;
         }
 
         $scormobject = (object) $jsondata;
+        
+        // Debug: Log what we got
+        error_log('BLC Modules: SCORM Name: ' . ($scormobject->scormname ?? 'N/A'));
+        error_log('BLC Modules: Temp SCORM URL (raw): ' . ($scormobject->tempscormurl ?? 'N/A'));
+        
+        // Process and validate tempscormurl
+        $tempscormurl = str_replace("ppp", ",", $scormobject->tempscormurl ?? '');
+        
+        error_log('BLC Modules: Temp SCORM URL (processed): ' . $tempscormurl);
+        
+        // CRITICAL: Validate URL is not empty
+        if (empty($tempscormurl)) {
+            error_log('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . 
+                     ($scormobject->scormname ?? 'unknown'));
+            error_log('BLC Modules: Original URL requested: ' . $url);
+            error_log('BLC Modules: Check if local_scormurl plugin is working correctly');
+            return null;
+        }
+        
+        // CRITICAL: Validate URL has a valid filename
+        $urlparts = explode('/', trim($tempscormurl, '/'));
+        $urlfilename = end($urlparts);
+        
+        error_log('BLC Modules: Extracted filename: ' . $urlfilename);
+        
+        if (empty($urlfilename)) {
+            error_log('BLC Modules: ERROR - No filename in URL: ' . $tempscormurl);
+            return null;
+        }
+        
+        // Check if filename has extension (basic validation)
+        if (strpos($urlfilename, '.') === false) {
+            error_log('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $tempscormurl . ')');
+            // Continue anyway as some valid files might not have extensions in URL
+        }
 
-        return [
+        $result = [
             'scormname' => str_replace("'", "'", $scormobject->scormname ?? ''),
             'scormversion' => $scormobject->version ?? '1',
             'scormid' => $scormobject->id ?? '',
-            'scormurl' => str_replace("ppp", ",", $scormobject->tempscormurl ?? ''),
+            'scormurl' => $tempscormurl,
         ];
+        
+        error_log('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
+        
+        return $result;
     }
 
     /**
@@ -704,6 +766,25 @@ class blcservice extends external_api{
         $scorminstance->packageurl = $scormdata['scormurl'];
         $scorminstance->scormtype = 'localsync';
         $scorminstance->cmidnumber = '';
+        
+        // CRITICAL: Validate packageurl before proceeding
+        if (empty($scorminstance->packageurl)) {
+            throw new \moodle_exception('invalidpackageurl', 'block_blc_modules', '', 
+                'Package URL is empty for SCORM: ' . $scormdata['scormname']);
+        }
+        
+        // CRITICAL: Validate URL has a valid filename
+        $urlparts = parse_url($scorminstance->packageurl);
+        if (!isset($urlparts['path']) || empty(basename($urlparts['path']))) {
+            throw new \moodle_exception('invalidpackageurl', 'block_blc_modules', '', 
+                'Package URL has no filename: ' . $scorminstance->packageurl . ' for SCORM: ' . $scormdata['scormname']);
+        }
+        
+        // Validate filename has extension (basic sanity check)
+        $filename = basename($urlparts['path']);
+        if (strpos($filename, '.') === false) {
+            debugging('Package URL filename has no extension: ' . $filename . ' - this may cause issues', DEBUG_DEVELOPER);
+        }
 
         if ($completion == 2) {
             $scorminstance->completionstatusrequired = 6;
@@ -754,6 +835,62 @@ class blcservice extends external_api{
         $record->timemodified = time();
 
         $DB->insert_record('block_blc_modules', $record);
+    }
+
+    /**
+     * Ensure SCORM ID is mapped to API key in block_scorm_apikey table.
+     * This allows the SCORM package to be accessible via the API key.
+     * 
+     * @param string $apikey API key
+     * @param int $scormid SCORM package ID
+     */
+    private static function ensure_api_key_mapping(string $apikey, int $scormid): void {
+        global $DB;
+        
+        if (empty($scormid) || empty($apikey)) {
+            return;
+        }
+        
+        try {
+            // Check if mapping record exists for this API key
+            $mapping = $DB->get_record('block_scorm_apikey', ['api_key' => $apikey]);
+            
+            if ($mapping) {
+                // Parse existing SCORM IDs
+                $existing_ids = !empty($mapping->scormids) 
+                    ? array_map('intval', explode(',', $mapping->scormids))
+                    : [];
+                
+                // Add new ID if not already present
+                if (!in_array($scormid, $existing_ids)) {
+                    $existing_ids[] = $scormid;
+                    $mapping->scormids = implode(',', array_unique($existing_ids));
+                    $mapping->timemodified = time();
+                    $DB->update_record('block_scorm_apikey', $mapping);
+                    
+                    error_log('BLC Modules: Added SCORM ID ' . $scormid . ' to API key mapping');
+                    
+                    // Invalidate cache for this API key
+                    if (class_exists('\local_scormurl\helpers\cache_manager')) {
+                        \local_scormurl\helpers\cache_manager::invalidate_api_key_mapping($apikey);
+                    }
+                }
+            } else {
+                // Create new mapping record
+                $new_mapping = new \stdClass();
+                $new_mapping->api_key = $apikey;
+                $new_mapping->scormids = (string)$scormid;
+                $new_mapping->timecreated = time();
+                $new_mapping->timemodified = time();
+                $DB->insert_record('block_scorm_apikey', $new_mapping);
+                
+                error_log('BLC Modules: Created new API key mapping for SCORM ID ' . $scormid);
+            }
+            
+        } catch (\Exception $e) {
+            error_log('BLC Modules: Failed to update API key mapping: ' . $e->getMessage());
+            // Don't throw exception - this is not critical for module creation
+        }
     }
 
     /**
