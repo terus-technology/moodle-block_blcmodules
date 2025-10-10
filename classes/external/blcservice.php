@@ -541,7 +541,9 @@ class blcservice extends external_api{
                 }
 
                 // Check file availability
-                if (!self::validate_scorm_url($scormdata['scormurl'])) {
+                // Pass Drive ID if available for proper validation
+                $driveid = !empty($scormdata['driveid']) ? $scormdata['driveid'] : null;
+                if (!self::validate_scorm_url($scormdata['scormurl'], $driveid)) {
                     $results['failed']++;
                     $results['messages'][] = "SCORM file not accessible: " . $scormdata['scormname'];
                     continue;
@@ -614,6 +616,8 @@ class blcservice extends external_api{
      * Helper method to fetch SCORM data from external service
      */
     private static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
+        global $DB; // Declare global at function start
+        
         $function_name = 'local_scormurl_get_tempscormurls';
         $tempurl = urlencode($url);
 
@@ -622,6 +626,8 @@ class blcservice extends external_api{
             . '&moodlewsrestformat=json';
 
         // Debug: Log the API request
+        debugging('BLC Modules: Calling API: ' . $function_name, DEBUG_DEVELOPER);
+        debugging('BLC Modules: Original URL: ' . $url, DEBUG_DEVELOPER);
         error_log('BLC Modules: Calling API: ' . $function_name);
         error_log('BLC Modules: Original URL: ' . $url);
         error_log('BLC Modules: Encoded URL: ' . $tempurl);
@@ -686,22 +692,150 @@ class blcservice extends external_api{
             // Continue anyway as some valid files might not have extensions in URL
         }
 
+        // Check if response includes Google Drive ID in scormid field.
+        // The scormid from API response contains the actual package ID (int) that references block_scorm_package.id
+        // The Google Drive ID is stored in block_scorm_package.scormid field (varchar)
         $result = [
             'scormname' => str_replace("'", "'", $scormobject->scormname ?? ''),
             'scormversion' => $scormobject->version ?? '1',
-            'scormid' => $scormobject->id ?? '',
+            'scormid' => $scormobject->id ?? '', // This is block_scorm_package.id (int)
             'scormurl' => $tempscormurl,
         ];
         
         error_log('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
+        error_log('BLC Modules: SCORM package ID: ' . $result['scormid']);
+        error_log('BLC Modules: Temp SCORM URL: ' . $tempscormurl);
+        debugging('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname'], DEBUG_DEVELOPER);
+        debugging('BLC Modules: SCORM package ID: ' . $result['scormid'], DEBUG_DEVELOPER);
+        debugging('BLC Modules: Temp SCORM URL: ' . $tempscormurl, DEBUG_DEVELOPER);
+        
+        // LAYER 1A: First, try to get Drive ID from database using package ID
+        // This is the most reliable method as pluginfile.php URLs don't expose Drive ID
+        if (!empty($scormobject->id)) {
+            try {
+                $packagerecord = $DB->get_record('block_scorm_package', 
+                    ['id' => $scormobject->id], 
+                    'scormid, scormurl, drive_id'
+                );
+                
+                if ($packagerecord) {
+                    debugging('BLC Modules: Found package record - scormid: ' . ($packagerecord->scormid ?? 'null'), DEBUG_DEVELOPER);
+                    error_log('BLC Modules: Found package record - scormid: ' . ($packagerecord->scormid ?? 'null'));
+                    
+                    // Check if scormid field contains Google Drive ID
+                    if (!empty($packagerecord->scormid)) {
+                        $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($packagerecord->scormid);
+                        if ($driveid) {
+                            $result['driveid'] = $driveid;
+                            error_log('BLC Modules: Extracted Google Drive ID from database scormid field: ' . $driveid);
+                            error_log('BLC Modules: This will bypass 25MB download limitation');
+                        }
+                    }
+                    
+                    // Check if there's a drive_id field (if exists in schema)
+                    if (empty($result['driveid']) && isset($packagerecord->drive_id) && !empty($packagerecord->drive_id)) {
+                        $result['driveid'] = $packagerecord->drive_id;
+                        error_log('BLC Modules: Using Drive ID from drive_id field: ' . $packagerecord->drive_id);
+                    }
+                    
+                    // Check if scormurl in database is a Google Drive URL
+                    if (empty($result['driveid']) && !empty($packagerecord->scormurl)) {
+                        if (\block_blc_modules\helper\gdrive_helper::is_gdrive_url($packagerecord->scormurl)) {
+                            $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($packagerecord->scormurl);
+                            if ($driveid) {
+                                $result['driveid'] = $driveid;
+                                error_log('BLC Modules: Extracted Google Drive ID from database scormurl field: ' . $driveid);
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Error querying block_scorm_package: ' . $e->getMessage());
+            }
+        }
+        
+        // LAYER 1B: Fallback - Extract from tempscormurl if it's a direct Google Drive URL
+        if (empty($result['driveid']) && \block_blc_modules\helper\gdrive_helper::is_gdrive_url($tempscormurl)) {
+            $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($tempscormurl);
+            if ($driveid) {
+                $result['driveid'] = $driveid;
+                error_log('BLC Modules: Extracted Google Drive ID from temp URL: ' . $driveid);
+                error_log('BLC Modules: This will bypass 25MB download limitation');
+            } else {
+                error_log('BLC Modules: WARNING - Google Drive URL detected but could not extract Drive ID: ' . $tempscormurl);
+            }
+        }
+        
+        // Log result
+        if (empty($result['driveid'])) {
+            error_log('BLC Modules: WARNING - No Google Drive ID found, will use traditional download method');
+            error_log('BLC Modules: This may fail for files >25MB');
+        }
         
         return $result;
     }
 
     /**
-     * Helper method to validate SCORM URL availability
+     * Helper method to validate SCORM URL availability.
+     * 
+     * @param string $scormurl The SCORM URL to validate
+     * @param string|null $driveid Optional Google Drive ID for direct validation
+     * @return bool True if file is accessible, false otherwise
      */
-    private static function validate_scorm_url(string $scormurl): bool {
+    private static function validate_scorm_url(string $scormurl, ?string $driveid = null): bool {
+        // PRIORITY 1: If Drive ID is provided, validate it directly via Google Drive API
+        if (!empty($driveid)) {
+            debugging('Validating Google Drive file with ID: ' . $driveid, DEBUG_DEVELOPER);
+            error_log('BLC Modules: Validating Google Drive file: ' . $driveid);
+            
+            $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($driveid);
+            
+            if (!$isValid) {
+                error_log('BLC Modules: VALIDATION FAILED - Google Drive file not accessible: ' . $driveid);
+            }
+            
+            return $isValid;
+        }
+        
+        // PRIORITY 2: Check if URL is a Google Drive URL and extract ID for validation
+        if (\block_blc_modules\helper\gdrive_helper::is_gdrive_url($scormurl)) {
+            $extractedDriveId = \block_blc_modules\helper\gdrive_helper::extract_drive_id($scormurl);
+            
+            if ($extractedDriveId) {
+                debugging('Extracted Drive ID from URL for validation: ' . $extractedDriveId, DEBUG_DEVELOPER);
+                error_log('BLC Modules: Extracted Drive ID from URL: ' . $extractedDriveId);
+                
+                $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($extractedDriveId);
+                
+                if (!$isValid) {
+                    error_log('BLC Modules: VALIDATION FAILED - Google Drive URL not accessible: ' . $scormurl);
+                }
+                
+                return $isValid;
+            } else {
+                debugging('Could not extract Drive ID from Google Drive URL: ' . $scormurl, DEBUG_DEVELOPER);
+                error_log('BLC Modules: WARNING - Could not extract Drive ID from URL: ' . $scormurl);
+                // Fall through to traditional validation
+            }
+        }
+        
+        // PRIORITY 3: For pluginfile.php URLs from temp_scorm, try to validate
+        // These URLs may redirect to Google Drive, but we should still check
+        if (strpos($scormurl, 'pluginfile.php') !== false && strpos($scormurl, 'temp_scorm') !== false) {
+            debugging('Attempting validation for pluginfile.php temp_scorm URL', DEBUG_DEVELOPER);
+            error_log('BLC Modules: Validating pluginfile.php URL (may redirect to Google Drive)');
+            
+            // Try traditional validation, but don't fail hard if it doesn't work
+            $isValid = \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
+            
+            if (!$isValid) {
+                error_log('BLC Modules: WARNING - Pluginfile validation failed, but may still work: ' . $scormurl);
+            }
+            
+            return $isValid;
+        }
+        
+        // PRIORITY 4: Traditional HTTP HEAD request validation for other URLs
         return \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
     }
 
@@ -766,6 +900,21 @@ class blcservice extends external_api{
         $scorminstance->packageurl = $scormdata['scormurl'];
         $scorminstance->scormtype = 'localsync';
         $scorminstance->cmidnumber = '';
+        
+        // Store the package ID for Google Drive streaming lookup.
+        $scorminstance->blc_package_id = (int)$scormdata['scormid'];
+        
+        // LAYER 2: If Drive ID is available from extraction, store it in reference field
+        // This ensures blcscorm_parse() can find it even if database lookup fails
+        if (!empty($scormdata['driveid'])) {
+            // Store Drive ID in reference field using special format that can be easily extracted
+            // Format: gdrive:{driveid}
+            $scorminstance->reference = 'gdrive:' . $scormdata['driveid'];
+            error_log('BLC Modules: Stored Google Drive ID in reference field: ' . $scormdata['driveid']);
+            debugging('Stored Google Drive ID for direct access: ' . $scormdata['driveid'], DEBUG_DEVELOPER);
+        } else {
+            $scorminstance->reference = '';
+        }
         
         // CRITICAL: Validate packageurl before proceeding
         if (empty($scorminstance->packageurl)) {

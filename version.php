@@ -24,11 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2024123000;        // The current plugin version (Date: YYYYMMDDXX)
+$plugin->version   = 2025011500;        // The current plugin version (Date: YYYYMMDDXX)
 $plugin->requires  = 2024100700;        // Requires Moodle 4.5.6 (2024100700)
 $plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.6';
+$plugin->release = '4.5.7';
 $plugin->dependencies = [
     'mod_scorm' => 2024100700,  // Requires SCORM module
+    'block_scorm_package' => ANY_VERSION, // Requires scorm_package for Google Drive credentials
 ];
