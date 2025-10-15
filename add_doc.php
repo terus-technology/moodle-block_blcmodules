@@ -175,7 +175,6 @@ if ($blcmodules) {
             // The accessibility documents are stored locally in block_scorm_access_doc table
             // Using same strategy as fetch_accessibility_document method
             
-            // Strategy 1: Try to extract Google Drive ID and lookup by scormid
             $doc = null;
             $scorm_package = null;
             
@@ -202,7 +201,6 @@ if ($blcmodules) {
                 }
             }
             
-            // Strategy 2: Query by exact SCORM URL (for local paths or if Strategy 1 failed)
             if (!$doc) {
                 try {
                     // Use get_records_sql with parameter binding (Moodle DML handles TEXT columns)
@@ -291,7 +289,6 @@ if ($blcmodules) {
             $newcm->availability = null;
             $newcm->showdescription = 0;
 
-            // PRIORITY 3 FIX: Add error handling for module creation
             $resourcecoursemodule = add_course_module($newcm);
             if (!$resourcecoursemodule) {
                 error_log("BLC add_doc: Failed to create course module for blcmodule $blcmoduleid");
@@ -334,7 +331,6 @@ if ($blcmodules) {
             $completiontimeexpected = !empty($resourceinstance->completionexpected) ? $resourceinstance->completionexpected : null;
             \core_completion\api::update_completion_date_event($resourcecoursemodule, 'resource', $id, $completiontimeexpected);
 
-            // PRIORITY 3 FIX: Download file with proper error handling
             $filepath = $docurl;
             $file_name = $docname.'.docx';
             $fs = get_file_storage(); 
@@ -402,13 +398,11 @@ if ($blcmodules) {
             $DB->insert_record('block_blc_modules_doc', $resourcerecord);
 
             // Note: No cleanup needed as we're querying local database, not using web service temporary files
-            
-            // PRIORITY 3 FIX: Increment success counter
             $success_count++;
             error_log("BLC add_doc: Successfully processed module $blcmoduleid");
             
         } catch (\Exception $e) {
-            // PRIORITY 3 FIX: Catch any unexpected errors in the loop
+
             $fail_count++;
             $error_messages[] = "Module " . $blcmodule->id . ": " . $e->getMessage();
             error_log("BLC add_doc: Unexpected error processing module " . $blcmodule->id . ": " . $e->getMessage());
@@ -420,7 +414,6 @@ if ($blcmodules) {
 // Count how many were skipped because no doc available
 $skipped_nodoc = $total_count - $success_count - $fail_count;
 
-// PRIORITY 3 FIX: Better redirect message with success/failure counts
 $redirect = new moodle_url('/admin/settings.php', array('section' => 'blocksettingblc_modules'));
 
 if ($total_count == 0) {
