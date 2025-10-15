@@ -59,10 +59,10 @@
     <div class="validation-results">
         {{#both_valid}}
         <div class="alert alert-success alert-block fade in" role="alert">
-            <i class="fa fa-check-circle"></i> {{apisuccess}}
+            <i class="fa fa-check-circle"></i> {{{apisuccess}}}
         </div>
         <div class="alert alert-success alert-block fade in" role="alert">
-            <i class="fa fa-check-circle"></i> {{urlsuccess}}
+            <i class="fa fa-check-circle"></i> {{{urlsuccess}}}
         </div>
         <div class="alert alert-info alert-block fade in" role="alert">
             <div>{{{successboth}}}</div>
@@ -84,18 +84,18 @@
         {{#partial_valid}}
         {{#url_valid}}
         <div class="alert alert-success alert-block fade in" role="alert">
-            <i class="fa fa-check-circle"></i> {{urlsuccess}}
+            <i class="fa fa-check-circle"></i> {{{urlsuccess}}}
         </div>
         <div class="alert alert-warning alert-block fade in" role="alert">
-            <i class="fa fa-exclamation-triangle"></i> {{apifail}}
+            <i class="fa fa-exclamation-triangle"></i> {{{apifail}}}
         </div>
         {{/url_valid}}
         {{#api_valid}}
         <div class="alert alert-success alert-block fade in" role="alert">
-            <i class="fa fa-check-circle"></i> {{apisuccess}}
+            <i class="fa fa-check-circle"></i> {{{apisuccess}}}
         </div>
         <div class="alert alert-warning alert-block fade in" role="alert">
-            <i class="fa fa-exclamation-triangle"></i> {{urlfail}}
+            <i class="fa fa-exclamation-triangle"></i> {{{urlfail}}}
         </div>
         {{/api_valid}}
         <div class="alert alert-warning alert-block fade in" role="alert">
@@ -120,38 +120,6 @@
         </div>
     </div>
 
-    {{#debug_info}}
-    <div class="debug-section mt-4">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="collapse" data-target="#debugInfo" aria-expanded="false" aria-controls="debugInfo">
-            <i class="fa fa-bug"></i> Show Debug Information
-        </button>
-        
-        <div class="collapse mt-2" id="debugInfo">
-            <div class="card card-body bg-light">
-                <h6>Debug Information</h6>
-                <div class="row">
-                    <div class="col-md-6">
-                        <small>
-                            <strong>Request URI:</strong> {{requesturi}}<br>
-                            <strong>API Key:</strong> {{apikey}}<br>
-                            <strong>Token:</strong> {{token}}<br>
-                            <strong>Domain Name:</strong> {{domainname}}<br>
-                        </small>
-                    </div>
-                    <div class="col-md-6">
-                        <small>
-                            <strong>Server URL:</strong><br>
-                            <code style="word-break: break-all;">{{serverurl}}</code><br>
-                            <strong>Response:</strong> {{responses}}<br>
-                            <strong>URL Check:</strong> {{urlokay}}<br>
-                            <strong>API Check:</strong> {{apiokay}}<br>
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {{/debug_info}}
 </div>
 
 <style>

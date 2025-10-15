@@ -569,7 +569,8 @@ class blcservice extends external_api{
                     $visibility,
                     $apikey,
                     $token,
-                    $domainname
+                    $domainname,
+                    $url  // Pass the original URL for lookup
                 );
 
                 // Record the creation in block_blc_modules table
@@ -1053,16 +1054,23 @@ class blcservice extends external_api{
         int $visibility,
         string $apikey,
         string $token,
-        string $domainname
+        string $domainname,
+        string $originalurl  // Original URL from user input
     ): ?int {
         global $DB, $USER;
 
-        // Try to fetch accessibility document data
-        $docdata = self::fetch_accessibility_document($apikey, $scormdata['scormurl'], $token, $domainname);
+        error_log('BLC Modules: Attempting to create accessibility document');
+        error_log('BLC Modules: Original URL for doc lookup: ' . $originalurl);
+        
+        // Try to fetch accessibility document data - use original URL like in deprecated/load_scorm.php
+        $docdata = self::fetch_accessibility_document($apikey, $originalurl, $token, $domainname);
         
         if (!$docdata) {
+            error_log('BLC Modules: No accessibility document data returned from API');
             return null; // No accessibility document available
         }
+        
+        error_log('BLC Modules: Accessibility document data received: ' . json_encode($docdata));
 
         $scormsection = $DB->get_record('course_sections', [
             'course' => $course->id,
@@ -1126,42 +1134,192 @@ class blcservice extends external_api{
         // Try to create the file from the document URL
         try {
             self::create_resource_file($resourcecoursemodule, $docdata);
+            error_log('BLC Modules: Accessibility document file created successfully');
         } catch (\Exception $e) {
             // Continue even if file creation fails
+            error_log('BLC Modules: Failed to create accessibility document file: ' . $e->getMessage());
             debugging("Failed to create accessibility document file: " . $e->getMessage());
         }
+        
+        // Record the resource in block_blc_modules_doc table (like in deprecated/load_scorm.php line 509-521)
+        // We need to get the blcmoduleid from the SCORM module that was just created
+        // Get the most recent blc_modules record for this course
+        $blcmodule = $DB->get_record_sql(
+            "SELECT * FROM {block_blc_modules} WHERE courseid = :courseid ORDER BY id DESC",
+            ['courseid' => $course->id],
+            IGNORE_MULTIPLE
+        );
+        
+        if ($blcmodule) {
+            $resourcerecord = new \stdClass();
+            $resourcerecord->userid = $USER->id;
+            $resourcerecord->courseid = $course->id;
+            $resourcerecord->blcmoduleid = $blcmodule->id;
+            $resourcerecord->sectionid = $sectionnumber;
+            $resourcerecord->cmid = $resourcecoursemodule;
+            $resourcerecord->scormid = $docdata['docid'];
+            $resourcerecord->scormurl = $docdata['docurl'];
+            $resourcerecord->version = $docdata['docversion'];
+            $resourcerecord->timecreated = time();
+            $resourcerecord->timemodified = time();
+            
+            $DB->insert_record('block_blc_modules_doc', $resourcerecord);
+            error_log('BLC Modules: Resource record saved to block_blc_modules_doc');
+        }
+        
+        // Cleanup temporary document files on BLC server - use original URL
+        self::cleanup_temp_doc_files($apikey, $originalurl, $token, $domainname);
 
         return $resourcecoursemodule;
     }
 
     /**
      * Helper method to fetch accessibility document data
+     * OPSI 3: Query database directly instead of using API
      */
     private static function fetch_accessibility_document(string $apikey, string $scormurl, string $token, string $domainname): ?array {
-        $tempurl = urlencode($scormurl);
-        $function_name = 'local_scormurl_get_tempdocurls';
-
-        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
-            . '&moodlewsrestformat=json';
-
-        $curl = new \block_blc_modules\helper\blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
-        $jsondata = json_decode($responses, true);
-
-        if (empty($jsondata) || !isset($jsondata['docname'])) {
+        global $DB;
+        
+        error_log('BLC Modules: fetch_accessibility_document called (OPSI 3 - Direct DB Query)');
+        error_log('BLC Modules: Original SCORM URL: ' . $scormurl);
+        
+        // OPSI 3: Query database directly
+        // Try to get document from database using multiple lookup strategies
+        $doc = null;
+        
+        // Strategy 1: Get SCORM package by Google Drive ID from URL, then find matching document by name
+        if (preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
+            $driveid = $matches[1];
+            error_log('BLC Modules: Extracted Drive ID from SCORM URL: ' . $driveid);
+            
+            try {
+                // Find SCORM package with matching scormid (which is the Drive ID)
+                $scormpackage = $DB->get_record('block_scorm_package', ['scormid' => $driveid]);
+                
+                if ($scormpackage) {
+                    error_log('BLC Modules: Found SCORM package by scormid: ' . $scormpackage->scormname);
+                    
+                    // Construct the expected document name
+                    $scormname = rtrim($scormpackage->scormname, '.zip');
+                    $docname = $scormname . ' (Accessibility Version).docx';
+                    error_log('BLC Modules: Looking for docname: ' . $docname);
+                    
+                    $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $docname]);
+                    if ($doc) {
+                        error_log('BLC Modules: Found document by docname match (Strategy 1)');
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Strategy 1 failed: ' . $e->getMessage());
+            }
+        }
+        
+        // Strategy 2: Search in docurlplus field for Google Drive ID
+        if (!$doc && preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
+            $driveid = $matches[1];
+            error_log('BLC Modules: Trying Strategy 2: Search in docurlplus field');
+            
+            try {
+                // Try to find document by docurlplus containing the Drive ID of a related SCORM
+                // Since we're looking for accessibility doc, we need to find it by pattern
+                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
+                $docs = $DB->get_records_sql(
+                    "SELECT * FROM {block_scorm_access_doc} 
+                     WHERE docurlplus LIKE :driveid 
+                     ORDER BY id DESC",
+                    ['driveid' => '%' . $driveid . '%'],
+                    0,
+                    1
+                );
+                if (!empty($docs)) {
+                    $doc = reset($docs);
+                    error_log('BLC Modules: Found document by docurlplus Drive ID match (Strategy 2)');
+                }
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Strategy 2 failed: ' . $e->getMessage());
+            }
+        }
+        
+        // Strategy 3: Query by exact SCORM URL pattern (for local paths)
+        if (!$doc) {
+            error_log('BLC Modules: Trying Strategy 3: Query by SCORM URL');
+            try {
+                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
+                $packages = $DB->get_records_sql(
+                    "SELECT id, scormname, scormurl FROM {block_scorm_package} 
+                     WHERE scormurl = :scormurl 
+                     ORDER BY id DESC",
+                    ['scormurl' => $scormurl],
+                    0,
+                    1
+                );
+                
+                if (!empty($packages)) {
+                    $scormpackage = reset($packages);
+                    $scormname = rtrim($scormpackage->scormname, '.zip');
+                    $docname = $scormname . ' (Accessibility Version).docx';
+                    error_log('BLC Modules: Trying docname pattern: ' . $docname);
+                    
+                    $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $docname]);
+                    if ($doc) {
+                        error_log('BLC Modules: Found document by docname match (Strategy 3)');
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Strategy 3 failed: ' . $e->getMessage());
+            }
+        }
+        
+        // Strategy 4: Try searching docurl field for Google Drive ID
+        if (!$doc && preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
+            $driveid = $matches[1];
+            error_log('BLC Modules: Trying Strategy 4: Search in docurl field');
+            
+            try {
+                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
+                $docs = $DB->get_records_sql(
+                    "SELECT * FROM {block_scorm_access_doc} 
+                     WHERE docurl LIKE :driveid 
+                     ORDER BY id DESC",
+                    ['driveid' => '%' . $driveid . '%'],
+                    0,
+                    1
+                );
+                if (!empty($docs)) {
+                    $doc = reset($docs);
+                    error_log('BLC Modules: Found document by docurl Drive ID match (Strategy 4)');
+                }
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Strategy 4 failed: ' . $e->getMessage());
+            }
+        }
+        
+        if (!$doc) {
+            error_log('BLC Modules: No accessibility document found in database after all strategies');
             return null;
         }
-
-        $docobject = (object) $jsondata;
-
+        
+        error_log('BLC Modules: Found document in database: ' . $doc->docname);
+        error_log('BLC Modules: Document docurl: ' . ($doc->docurl ?? '(empty)'));
+        error_log('BLC Modules: Document docurlplus: ' . ($doc->docurlplus ?? '(empty)'));
+        error_log('BLC Modules: Document ID: ' . $doc->id);
+        
+        // Prefer docurlplus if it contains a Google Drive URL
+        $url_to_use = $doc->docurl;
+        if (!empty($doc->docurlplus) && strpos($doc->docurlplus, 'drive.google.com') !== false) {
+            $url_to_use = $doc->docurlplus;
+            error_log('BLC Modules: Using docurlplus (Google Drive URL): ' . $url_to_use);
+        } else if (!empty($doc->docurl) && strpos($doc->docurl, 'drive.google.com') !== false) {
+            error_log('BLC Modules: Using docurl (Google Drive URL): ' . $url_to_use);
+        } else {
+            error_log('BLC Modules: Using docurl (local/other path): ' . $url_to_use);
+        }
+        
         return [
-            'docname' => rtrim($docobject->docname ?? '', '.docx'),
-            'docversion' => $docobject->version ?? '5',
-            'docid' => $docobject->id ?? '',
-            'docurl' => str_replace("ppp", ",", $docobject->tempdocurl ?? ''),
+            'docname' => rtrim($doc->docname ?? '', '.docx'),
+            'docversion' => $doc->version ?? '5',
+            'docid' => $doc->id ?? '',
+            'docurl' => $url_to_use,
         ];
     }
 
@@ -1186,23 +1344,35 @@ class blcservice extends external_api{
         ];
 
         $filepath = $docdata['docurl'];
+        
+        error_log('BLC Modules: Creating accessibility document file: ' . $filename);
+        error_log('BLC Modules: Document URL: ' . $filepath);
 
         // Check if this is a pluginfile URL and handle it differently
         if (strpos($filepath, '/pluginfile.php/') !== false) {
-            // Use the function from load_scorm.php if available
-            if (function_exists('create_file_from_pluginfile_url')) {
-                create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+            // Use the file helper to create from pluginfile URL
+            error_log('BLC Modules: Using pluginfile URL method');
+            $file = \block_blc_modules\helper\file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+            if (!$file) {
+                error_log('BLC Modules: ERROR - Failed to create file from pluginfile URL');
+                throw new \moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         } else {
             // For external URLs, use the enhanced download method
-            if (function_exists('create_file_from_external_url')) {
-                create_file_from_external_url($fs, $filerecord, $filepath);
+            error_log('BLC Modules: Using external URL method');
+            $file = \block_blc_modules\helper\file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
+            if (!$file) {
+                error_log('BLC Modules: ERROR - Failed to create file from external URL');
+                throw new \moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         }
+        
+        error_log('BLC Modules: Accessibility document file created successfully: ' . $filename);
+        debugging('BLC Modules: Created accessibility document: ' . $filename, DEBUG_DEVELOPER);
     }
 
     /**
-     * Helper method to clean up temporary files
+     * Helper method to clean up temporary SCORM files
      */
     private static function cleanup_temp_files(
         string $apikey,
@@ -1218,6 +1388,27 @@ class blcservice extends external_api{
         $curl = new \block_blc_modules\helper\blccurl();
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+    }
+    
+    /**
+     * Helper method to clean up temporary document files (like in deprecated/load_scorm.php line 523-529)
+     */
+    private static function cleanup_temp_doc_files(
+        string $apikey,
+        string $url,
+        string $token,
+        string $domainname
+    ): void {
+        $tempurl = urlencode($url);
+        $function_name = 'local_scormurl_get_deletetempdocurls';
+        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
+            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
+
+        $curl = new \block_blc_modules\helper\blccurl();
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+        $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        
+        error_log('BLC Modules: Temporary document files cleaned up on BLC server');
     }
 
     /**

@@ -37,6 +37,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         init: init,
         tippyInit: tippyInit,
         bulkUpdateInit: bulkUpdateInit,
+        bulkUpdateProgressInit: bulkUpdateProgressInit,
         createButtonAddBlc: createButtonAddBlc
     };
 
@@ -512,6 +513,246 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
         });
 
+    }
+
+    /**
+     * Initialize bulk update progress page with real-time updates
+     */
+    function bulkUpdateProgressInit(config) {
+        $(document).ready(function() {
+            var progressConfig = {
+                endpoint: config.endpoint || M.cfg.wwwroot + '/blocks/blc_modules/bulk_update_processor.php',
+                sesskey: config.sesskey,
+                pollInterval: 1000,
+                timeoutSeconds: 1800
+            };
+            
+            var stats = { total: 0, processed: 0, success: 0, failed: 0 };
+            var startTime = Date.now();
+            var isComplete = false;
+            var consecutiveErrors = 0;  // Track consecutive errors
+            var maxConsecutiveErrors = 20;  // Max errors before giving up
+            
+            function updateUI(data) {
+                if (data.total !== undefined) stats.total = data.total;
+                if (data.success !== undefined) stats.success = data.success;
+                if (data.failed !== undefined) stats.failed = data.failed;
+                stats.processed = stats.success + stats.failed;
+                
+                $('#statTotal').text(stats.total);
+                $('#statProcessed').text(stats.processed);
+                $('#statSuccess').text(stats.success);
+                $('#statFailed').text(stats.failed);
+                
+                if (stats.total > 0) {
+                    var percentage = Math.round((stats.processed / stats.total) * 100);
+                    $('#progressBar').css('width', percentage + '%');
+                    $('#progressBar .progress-percentage').text(percentage + '%');
+                    $('#progressBar').attr('aria-valuenow', percentage);
+                }
+                
+                if (data.status) $('#progressStatus').text(data.status);
+                
+                if (data.current_module) {
+                    $('#currentModule').show();
+                    $('#currentModuleName').text(data.current_module.name || '-');
+                    $('#currentModuleCM').text('CM ID: ' + (data.current_module.cmid || '-'));
+                }
+            }
+            
+            function addLog(message, type) {
+                type = type || 'info';
+                var time = new Date().toLocaleTimeString();
+                var logEntry = $('<div class="log-entry log-' + type + '">' +
+                    '<span class="log-time">[' + time + ']</span>' +
+                    '<span class="log-message">' + $('<div>').text(message).html() + '</span>' +
+                    '</div>');
+                $('#progressLog').append(logEntry);
+                var logEl = $('#progressLog')[0];
+                if (logEl) logEl.scrollTop = logEl.scrollHeight;
+            }
+            
+            function pollProgress() {
+                if (isComplete) return;
+                
+                $.ajax({
+                    url: progressConfig.endpoint,
+                    type: 'POST',
+                    data: { sesskey: progressConfig.sesskey, action: 'get_progress' },
+                    dataType: 'json',
+                    timeout: 20000,  // Increased to 20 seconds
+                    success: function(response) {
+                        consecutiveErrors = 0;  // Reset error counter on success
+                        
+                        if (response.success) {
+                            updateUI(response.data);
+                            if (response.data.complete) {
+                                handleCompletion(response.data);
+                            } else {
+                                setTimeout(pollProgress, progressConfig.pollInterval);
+                            }
+                        } else {
+                            addLog('Error: ' + response.message, 'error');
+                            setTimeout(pollProgress, progressConfig.pollInterval * 2);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        consecutiveErrors++;
+                        
+                        // Only log every 5th error to avoid spam
+                        if (consecutiveErrors % 5 === 1) {
+                            console.warn('Polling timeout/error (attempt ' + consecutiveErrors + '):', status);
+                        }
+                        
+                        // Check if we should give up
+                        if (consecutiveErrors >= maxConsecutiveErrors) {
+                            addLog('Too many connection errors - process may have failed', 'error');
+                            isComplete = true;
+                            $('#completionSection').show();
+                            $('#warningAlert').show();
+                            $('#warningMessage').text('Lost connection to server. Process may still be running.');
+                            return;
+                        }
+                        
+                        // Retry with exponential backoff (but max 5 seconds)
+                        var retryDelay = Math.min(5000, progressConfig.pollInterval * (1 + consecutiveErrors * 0.5));
+                        setTimeout(pollProgress, retryDelay);
+                    }
+                });
+            }
+            
+            function handleCompletion(data) {
+                isComplete = true;
+                
+                // Stop all spinning icons
+                $('.spinner-icon').hide();
+                $('.stat-processing .fa-spin').removeClass('fa-spin');
+                
+                // Update title and UI
+                $('#progress-title').text('Bulk Update Complete');
+                $('#currentModule').hide();
+                $('#completionSection').show();
+                
+                // Check if there are remaining modules
+                var remainingCount = data.remaining || 0;
+                
+                // Check if there were any modules to update
+                if (stats.total === 0) {
+                    // No modules needed updating
+                    $('#successAlert').show();
+                    $('#successMessage').text('All modules are up to date. No updates were needed.');
+                } else if (stats.failed === 0) {
+                    // All updates successful
+                    $('#successAlert').show();
+                    var successMsg = '';
+                    if (stats.success === 1) {
+                        successMsg = '1 module was updated successfully!';
+                    } else {
+                        successMsg = 'All ' + stats.success + ' modules were updated successfully!';
+                    }
+                    
+                    // Add remaining count if applicable
+                    if (remainingCount > 0) {
+                        successMsg += '\n\n📦 ' + remainingCount + ' more modules still need updating.';
+                    }
+                    
+                    $('#successMessage').text(successMsg);
+                    
+                    // Show "Check for More Updates" button if there are remaining modules
+                    if (remainingCount > 0) {
+                        var checkMoreBtn = $('<button class="btn btn-primary mt-3" id="checkMoreUpdates">' +
+                            '<i class="fa fa-refresh"></i> Check for More Updates (' + remainingCount + ' remaining)' +
+                            '</button>');
+                        $('#successAlert').append(checkMoreBtn);
+                        
+                        // Handle click
+                        $('#checkMoreUpdates').on('click', function() {
+                            location.reload();  // Reload to start new batch
+                        });
+                    }
+                } else {
+                    // Some updates failed
+                    $('#warningAlert').show();
+                    var warningMsg = stats.success + ' modules updated successfully, ' + stats.failed + ' failed.';
+                    
+                    if (remainingCount > 0) {
+                        warningMsg += ' ' + remainingCount + ' more modules still need updating.';
+                    }
+                    
+                    $('#warningMessage').text(warningMsg);
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        var errorHtml = '<ul>';
+                        data.errors.forEach(function(error) {
+                            errorHtml += '<li>' + $('<div>').text(error).html() + '</li>';
+                        });
+                        errorHtml += '</ul>';
+                        $('#errorDetails').html(errorHtml);
+                    }
+                    
+                    // Show "Check for More Updates" button even if some failed
+                    if (remainingCount > 0) {
+                        var checkMoreBtn = $('<button class="btn btn-primary mt-3" id="checkMoreUpdates">' +
+                            '<i class="fa fa-refresh"></i> Check for More Updates (' + remainingCount + ' remaining)' +
+                            '</button>');
+                        $('#warningAlert').append(checkMoreBtn);
+                        
+                        $('#checkMoreUpdates').on('click', function() {
+                            location.reload();
+                        });
+                    }
+                }
+                
+                var elapsed = Math.round((Date.now() - startTime) / 1000);
+                addLog('Process completed in ' + elapsed + ' seconds', 'success');
+            }
+            
+            function startBulkUpdate() {
+                addLog('Initializing bulk update process...', 'info');
+                
+                $.ajax({
+                    url: progressConfig.endpoint,
+                    type: 'POST',
+                    data: { sesskey: progressConfig.sesskey, action: 'start' },
+                    dataType: 'json',
+                    timeout: 60000,  // Increased to 60 seconds
+                    success: function(response) {
+                        if (response.success) {
+                            addLog('Bulk update started successfully', 'success');
+                            // Start polling immediately
+                            setTimeout(pollProgress, 500);
+                        } else {
+                            addLog('Failed to start: ' + response.message, 'error');
+                            isComplete = true;
+                            $('#completionSection').show();
+                            $('#warningAlert').show();
+                            $('#warningMessage').text('Failed to start: ' + response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Start Error:', status, error);
+                        if (status === 'timeout') {
+                            // Process might still be running, start polling anyway
+                            addLog('Request timeout - checking progress...', 'warning');
+                            setTimeout(pollProgress, 1000);
+                        } else {
+                            addLog('Failed to start: ' + error, 'error');
+                            isComplete = true;
+                            $('#completionSection').show();
+                            $('#warningAlert').show();
+                            $('#warningMessage').text('Failed to connect to processor.');
+                        }
+                    }
+                });
+            }
+            
+            $('#clearLog').on('click', function() {
+                $('#progressLog').empty();
+                addLog('Log cleared', 'info');
+            });
+            
+            startBulkUpdate();
+        });
     }
 }
 );

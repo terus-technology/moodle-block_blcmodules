@@ -31,5 +31,4 @@ $plugin->maturity = MATURITY_STABLE;
 $plugin->release = '4.5.7';
 $plugin->dependencies = [
     'mod_scorm' => 2024100700,  // Requires SCORM module
-    'block_scorm_package' => ANY_VERSION, // Requires scorm_package for Google Drive credentials
 ];

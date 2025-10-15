@@ -14,32 +14,38 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace block_blc_modules\helper;
-
-use moodle_url;
-use context_system;
-use block_blc_modules\helper\blccurl;
-
 /**
- * This file contains the Activity modules block.
+ * Bulk Update - Main entry point for bulk SCORM module updates
  *
  * @package    block_blc_modules
  * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
- 
+
 require_once(dirname(__FILE__).'/../../config.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
+use moodle_url;
+use context_system;
+use block_blc_modules\helper\blccurl;
+
 require_login(null, false);
 
-global $DB,$USER,$CFG;
+global $DB, $USER, $CFG, $PAGE, $OUTPUT, $SITE;
+
+// Security: Require system config capability (admin only).
+require_capability('moodle/site:config', context_system::instance());
 
 $sesskey = optional_param('sesskey', '', PARAM_RAW);
 $confirm = optional_param('confirm', 0, PARAM_BOOL);
 $action = optional_param('action', '', PARAM_RAW);
+
+// Security: Validate sesskey for CSRF protection when action is continue.
+if ($action == 'continue') {
+    require_sesskey();
+}
 
 $title = get_string('pluginname', 'block_blc_modules');
 $heading = $SITE->fullname;
@@ -56,218 +62,93 @@ $PAGE->set_cacheable(false);
 $PAGE->requires->jquery();
 $PAGE->requires->js_call_amd('block_blc_modules/module','bulkUpdateInit');
 
-if($action == 'continue' ){
-	echo $OUTPUT->header();
-	$requesturi = $CFG->wwwroot;	
-	$token = get_config('block_blc_modules', 'token');
-	$domainname = get_config('block_blc_modules', 'domainname');
-	$apikey = get_config('block_blc_modules', 'api_key');
+if ($action == 'continue') {
+    // Initialize session for progress tracking
+    if (!isset($_SESSION['bulk_update_progress'])) {
+        $_SESSION['bulk_update_progress'] = [
+            'status' => 'idle',
+            'total' => 0,
+            'processed' => 0,
+            'success' => 0,
+            'failed' => 0,
+            'errors' => [],
+            'log' => [],
+            'complete' => false
+        ];
+    }
 
-	$function_name = 'local_scormurl_get_bulkupscormurls';
-	 $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-	 . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5';
-	$curl = new blccurl;
-	$curl->setHeader('Content-Type: application/json; charset=utf-8');
+    // Call AMD module to initialize progress tracking
+    $PAGE->requires->js_call_amd('block_blc_modules/module', 'bulkUpdateProgressInit', [[
+        'endpoint' => $CFG->wwwroot . '/blocks/blc_modules/bulk_update_processor.php',
+        'sesskey' => sesskey()
+    ]]);
 
-	$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-	$scorms =array();
-	
-	// Add error checking for XML parsing
-	if (empty($responses)) {
-		echo $OUTPUT->notification(get_string('failupdatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_ERROR);
-		echo $OUTPUT->footer();
-		exit;
-	}
-	
-	$xml = simplexml_load_string($responses);
-	if ($xml === false) {
-		echo $OUTPUT->notification('Failed to parse XML response from server', \core\output\notification::NOTIFY_ERROR);
-		echo $OUTPUT->footer();
-		exit;
-	}
-	
-	$xml = (array)$xml;
-	if(isset($xml['MULTIPLE'])){
-	$multiplearray = $xml['MULTIPLE'];
-	$multiple =  (array) $multiplearray;
-	if(!isset($multiple[0])){
-		if(isset($multiple['SINGLE'])) {
-			$singlearray = $multiple['SINGLE'];
-			if(is_array($singlearray) || is_object($singlearray)) {
-				foreach($singlearray as $single){
-			$single =  (array) $single;		
-			$keyarray = $single['KEY'];
-			$scormobject = new stdClass();
-			foreach($keyarray as $key){
-				$key =  (array) $key;
-				$field = $key['@attributes']['name'];
-				$fielddata = $key['VALUE'];	
-					$scormobject->$field =$fielddata ;
-				
-				}
-			
-				$scorms[$scormobject->id] =$scormobject;
-			}
-		}
-		}
-	}
-	
-	$courses = $DB->get_records('course');
-	$updatescorm=array();
-	foreach($courses as $course){
-		$courseid=$course->id;
-		$coursescorms = $DB->get_records('block_blc_modules',array('courseid'=>$courseid));
-		foreach($coursescorms as $coursescorm){
-			foreach($scorms as $scorm){
-				if($coursescorm->scormid == $scorm->id && $coursescorm->version < $scorm->version){
-					$updatescorm[$coursescorm->cmid]=$scorm->version;
-					
-				}
-			}
-			
-		}
-	}
-	
-	foreach($updatescorm as $coursemodule=>$version){
-		$coursescorm = $DB->get_record('block_blc_modules',array('cmid'=>$coursemodule));
-		$url =$coursescorm->scormurl;
-		
-		$function_name = 'local_scormurl_get_bulkuptempscormurls';
-		$tempurl = urlencode($url);
-
-		$serverurl = $domainname.'/webservice/rest/server.php'.'?wstoken='.$token
-			 .'&wsfunction='.$function_name.'&apikey='.$apikey.'&scormurl='.$tempurl;
-		$curl = new blccurl;
-		$curl->setHeader('Content-Type: application/json; charset=utf-8');
-
-		$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-		
-		$scorms =array();
-		
-		// Add error checking for XML parsing
-		if (empty($responses)) {
-			continue; // Skip this module and continue with next
-		}
-		
-		$xml = simplexml_load_string($responses);
-		if ($xml === false) {
-			continue; // Skip this module and continue with next
-		}
-		
-		$xml = (array)$xml;
-		
-		if(isset($xml['SINGLE'])){
-			$single = $xml['SINGLE'];
-			$singlearray =  (array) $single;
-			if(isset($singlearray['KEY']) && (is_array($singlearray['KEY']) || is_object($singlearray['KEY']))) {
-				$keyarray = $singlearray['KEY'];
-				$scormobject = new stdClass();
-				foreach($keyarray as $key){
-					$key =  (array) $key;
-					$field = $key['@attributes']['name'];
-					$fielddata = $key['VALUE'];	
-					$scormobject->$field =$fielddata ;
-					
-				}
-				
-				$scorms[$scormobject->id] =$scormobject;
-			}
-			foreach($scorms as $key=>$scorm){
-				if($scorm->scormurl){
-					$scormname = chop($scorm->scormname,".zip");
-					$scormversion = $scorm->version;
-					$scormid = $scorm->id;
-					$scormurl = $scorm->tempscormurl;
-					$scormurl = str_replace("ppp",",",$scormurl); 
-					break;
-				}
-			}
-				
-			$scormcm = $DB->get_record('course_modules',array('id'=>$coursemodule));
-
-			$scorm = new stdClass();
-			$scorm->course = $coursescorm->courseid;
-			$scorm->coursemodule = $coursemodule;
-			$scorm->cmidnumber = null;
-			$scorm->instance = $scormcm->instance;
-			$scorm->scormtype = 'localsync';
-			$scorm->packageurl = $scormurl;
-			$scorm->width = 100;
-			$scorm->height = 500;
-		
-			if(scorm_update_instance($scorm)){
-				$scormrecord = new stdClass();
-				$scormrecord->id = $coursescorm->id;
-				$scormrecord->version = $version;
-				$scormrecord->timemodified = time();
-				$DB->update_record('block_blc_modules', $scormrecord);
-
-				$function_name = 'local_scormurl_get_deletetempscormurls';
-				$serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-					 . '&wsfunction='.$function_name . '&apikey='.$apikey. '&scormurl='.$tempurl;
-				$curl = new blccurl;
-				$curl->setHeader('Content-Type: application/json; charset=utf-8');
-
-
-				$responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-				$sql = "UPDATE {scorm} SET scormtype = 'local' WHERE id = :id";
-				$DB->execute($sql, ['id' => $scormcm->instance]);
-			
-			}
-		}
-		
-		
-	}
-	$redirect = new moodle_url('/admin/settings.php', array('section' => 'blocksettingblc_modules'));
-
-	echo $OUTPUT->notification(get_string('updatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_SUCCESS);
-
-	}
-	else{
-		
-		echo $OUTPUT->notification(get_string('failupdatescormmesage', 'block_blc_modules'), \core\output\notification::NOTIFY_WARNING);
-		
-	}
-
-	echo  '<div class="row">
-                <div class="col-sm-3" >
-				<button onclick="window.location.href = \''.$CFG->wwwroot.'/blocks/blc_modules/bulk_update.php?action=continue\';" class="btn btn-primary" >'.get_string('refresh', 'block_blc_modules').'</button>
-				</div>
-                <div class="col-sm-3" >    
-                    <button onclick="window.location.href = \''.$CFG->wwwroot.'/admin/settings.php?section=blocksettingblc_modules\';" class="btn btn-secondary" >'.get_string('return', 'block_blc_modules').'</button>
-                </div>
-            </div>';
-            		echo $OUTPUT->footer();
-
-}else{	
-		echo $OUTPUT->header();
-		echo '<script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
-
-    <div class="modal fade" id="modalForm" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">      <!-- Modal Header -->
+    // Render progress page using Mustache template with error handling
+    $PAGE->set_pagelayout('standard');
+    
+    try {
+        echo $OUTPUT->header();
+        
+        $renderer = $PAGE->get_renderer('block_blc_modules');
+        $progresspage = new \block_blc_modules\output\bulk_update_progress_page();
+        echo $renderer->render($progresspage);
+        
+        echo $OUTPUT->footer();
+    } catch (Exception $e) {
+        // Fallback error handling if template rendering fails
+        echo $OUTPUT->header();
+        echo $OUTPUT->notification(
+            'Error rendering bulk update page: ' . $e->getMessage(),
+            \core\output\notification::NOTIFY_ERROR
+        );
+        echo '<div class="alert alert-danger">';
+        echo '<h4>Debug Information:</h4>';
+        echo '<pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+        echo '</div>';
+        echo '<div class="mt-3">';
+        echo '<a href="' . $CFG->wwwroot . '/admin/settings.php?section=blocksettingblc_modules" class="btn btn-secondary">';
+        echo get_string('return', 'block_blc_modules') . '</a>';
+        echo '</div>';
+        echo $OUTPUT->footer();
+        
+        // Log the error for administrators
+        debugging('Bulk update page rendering error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
+    exit;
+} else {
+    // Show confirmation modal when first accessing the page
+    echo $OUTPUT->header();
+    
+    // Use Moodle's native Bootstrap (version depends on theme) instead of loading old Bootstrap 3.0.3 from CDN.
+    // Modal structure compatible with both Bootstrap 4 and 5 used in Moodle 4.x themes.
+    echo '
+    <div class="modal fade" id="modalForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <!-- Modal Header -->
                 <div class="modal-header">
-                    <h4 class="modal-title" id="myModalLabel">Confirm</h4>
-                    <button type="button" class="close" data-dismiss="modal">
+                    <h4 class="modal-title" id="myModalLabel">' . get_string('updatescormconfirm', 'block_blc_modules') . '</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
-                        <span class="sr-only">Close</span>
                     </button>
                 </div>
                 <!-- Modal Body -->
                 <div class="modal-body">
-                    <p class="statusMsg">'.get_string('updateconfirmmessage', 'block_blc_modules').'</p>
-                    <form role="form" action="'.$CFG->wwwroot.'/blocks/blc_modules/bulk_update.php" id="bulkupdatesubmit">
-                    <input type="hidden" name="action" value="continue"/>
-                     </form>
+                    <p class="statusMsg">' . get_string('updateconfirmmessage', 'block_blc_modules') . '</p>
+                    <form role="form" action="' . $CFG->wwwroot . '/blocks/blc_modules/bulk_update.php" id="bulkupdatesubmit" method="post">
+                        <input type="hidden" name="action" value="continue"/>
+                        <input type="hidden" name="sesskey" value="' . sesskey() . '"/>
+                    </form>
                 </div>
 
                 <!-- Modal Footer -->
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-action="cancel" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" data-action="save" id="bulkupdatecont" >Continue</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="bulkupdatecont">Continue</button>
                 </div>
             </div>
         </div>
     </div>';
-	echo $OUTPUT->footer();
+    
+    echo $OUTPUT->footer();
 }

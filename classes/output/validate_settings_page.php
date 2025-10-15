@@ -78,11 +78,13 @@ class validate_settings_page implements renderable, templatable {
         $apikey = get_config('block_blc_modules', 'api_key');
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
-        $requesturi = $CFG->wwwroot; // Define the missing variable
+        $requesturi = $CFG->wwwroot;
         
-        $function_name = 'validate_blc_settings';
+        // FIXED: Use correct web service function name
+        $function_name = 'local_scormurl_check_scormurls';
         $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-            . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi;
+            . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi
+            . '&moodlewsrestformat=json';
         
         // Initialize validation results
         $validationresults = [];
@@ -95,13 +97,54 @@ class validate_settings_page implements renderable, templatable {
             $curl->setHeader('Content-Type: application/json; charset=utf-8');
             $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
             
-            $bothresponses = explode(",", $responses);
-            $urlokay = isset($bothresponses[0]) ? $bothresponses[0] : 'false';
-            $apiokay = isset($bothresponses[1]) ? $bothresponses[1] : 'false';
+            // FIXED: Parse JSON response correctly instead of CSV
+            // Expected response: {"Status":"OK","ModuleCount":123} or {"Status":"Authentication failed"}
+            // Note: Response might be double-encoded, so we need to handle that
+            $jsonresponse = json_decode($responses, true);
+            
+            // Check if response is a string (double-encoded JSON)
+            if (is_string($jsonresponse)) {
+                error_log('BLC validate_settings: Response is double-encoded, decoding again');
+                $jsonresponse = json_decode($jsonresponse, true);
+            }
+            
+            if ($jsonresponse && isset($jsonresponse['Status'])) {
+                if ($jsonresponse['Status'] === 'OK') {
+                    // Both API key and URL are valid
+                    $urlokay = 'true';
+                    $apiokay = 'true';
+                    
+                    // Store module count if available
+                    if (isset($jsonresponse['ModuleCount'])) {
+                        $validationresults['module_count'] = $jsonresponse['ModuleCount'];
+                    }
+                    
+                    error_log('BLC validate_settings: Validation SUCCESS - ModuleCount: ' . ($jsonresponse['ModuleCount'] ?? 'N/A'));
+                } else {
+                    // Authentication failed - both invalid
+                    // Note: Current check_scormurls function validates both together,
+                    // so we can't determine which specific part failed
+                    $urlokay = 'false';
+                    $apiokay = 'false';
+                    
+                    // Store error message if available
+                    if (isset($jsonresponse['error'])) {
+                        $validationresults['api_error'] = $jsonresponse['error'];
+                    }
+                    
+                    error_log('BLC validate_settings: Validation FAILED - Status: ' . ($jsonresponse['Status'] ?? 'Unknown'));
+                }
+            } else {
+                // Invalid response format
+                $urlokay = 'false';
+                $apiokay = 'false';
+                error_log('BLC validate_settings: Invalid JSON response: ' . $responses);
+            }
         } catch (\Exception $e) {
             // Handle connection errors
             $validationresults['connection_error'] = true;
             $validationresults['error_message'] = $e->getMessage();
+            error_log('BLC validate_settings: Connection error: ' . $e->getMessage());
         }
 
         // Prepare alert messages

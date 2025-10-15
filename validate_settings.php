@@ -27,8 +27,8 @@ require_once(dirname(__FILE__).'/../../config.php');
 global $DB, $USER, $CFG;
 require_login(null, false);
 
-// PERMISSION.
-require_capability('moodle/user:viewdetails', context_system::instance(), $USER->id);
+// PERMISSION - Require site configuration capability for better security.
+require_capability('moodle/site:config', context_system::instance());
 
 $title = get_string('pluginname', 'block_blc_modules');
 $heading = $SITE->fullname;
@@ -39,7 +39,7 @@ $baseurl = new moodle_url($url);
 $PAGE->set_url($url);
 $PAGE->set_pagelayout('admin');
 $PAGE->set_context(context_system::instance());
-$PAGE->set_title("Validate BLC Settings");
+$PAGE->set_title(get_string('validatesettings', 'block_blc_modules'));
 $PAGE->set_heading($heading);
 $PAGE->set_cacheable(false);
 

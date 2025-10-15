@@ -38,12 +38,24 @@ $string['updatescorm'] = '<h4>Updates</h4>To update BLC Modules in bulk, please 
 $string['updatescormmesage'] =  'Successfully updated';
 $string['updatedoc'] = 'To automatically add an accessibility document under each BLC Module, please click <a href="{$a->wwwroot}/blocks/blc_modules/add_doc.php">Here</a>.';
 $string['updatedocmesage'] =  'Successfully added accessibility documents';
+$string['adddocs'] = 'Add Accessibility Documents';
+$string['confirmbatchadddocs'] = 'This will create accessibility documents for {$a} SCORM modules that do not have them yet. Do you want to continue?';
+$string['batchprocesswarning'] = '<strong>Warning:</strong> This process may take several minutes depending on the number of modules. Please do not close this window until the process is complete.';
+$string['nomoduleswithourdocs'] = 'All SCORM modules already have accessibility documents.';
+$string['batchaddsuccess'] = 'Successfully added {$a} accessibility documents.';
+$string['batchaddpartial'] = 'Added {$a->success} accessibility documents successfully. {$a->failed} modules failed.';
+$string['batchaddfailed'] = 'Failed to add accessibility documents. {$a} modules had errors.';
+$string['skippednodoc'] = '{$a} modules were skipped because no accessibility documents are available on the BLC server.';
+$string['nodocsfound'] = 'No accessibility documents were added. {$a} modules do not have accessibility documents available on the BLC server.';
+$string['missingconfig'] = 'Plugin configuration is incomplete. Please configure the API key, token, and domain name.';
+$string['resourcemodulenotfound'] = 'Resource module not found. Please ensure the Resource activity module is installed and enabled.';
 $string['apisuccess'] =  'Success: Your <b>API Key</b> is configured correctly.';
 $string['apifail'] =  'Failure: Your <b>API Key</b> is not configured correctly.';
 $string['urlsuccess'] =  'Success: Your <b>Moodle URL</b> is configured correctly.';
 $string['urlfail'] =  'Failure: Your <b>Moodle URL</b> is not configured correctly.';
 $string['refresh'] =  'Refresh';
 $string['return'] =  'Return to Settings';
+$string['validatesettings'] = 'Validate BLC Settings';
 $string['failone'] =  '
 
 <h2>Configuration problem</h2>
@@ -73,6 +85,7 @@ $string['subject'] = 'Subject';
 $string['blcmodules'] = 'BLC Modules';
 $string['accessdoc'] = 'Accessibility Documents';
 $string['blcresource'] = 'BLC Resources';
+$string['failedtocreatefile'] = 'Failed to create accessibility document file: {$a}';
 $string['scormreportchart'] = 'Scrom Report Chart';
 $string['blcresourceinfo'] = 'Below you will find some basic statistics on BLC Resource used across your Moodle.<br/><br/>';
 $string['countbycourse'] = 'BLC Modules by course';

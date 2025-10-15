@@ -63,4 +63,15 @@ class renderer extends plugin_renderer_base {
         return $this->render_from_template('block_blc_modules/update_scorm_page', $data);
     }
 
+    /**
+     * Render the bulk update progress page.
+     *
+     * @param bulk_update_progress_page $page
+     * @return string
+     */
+    public function render_bulk_update_progress_page(bulk_update_progress_page $page){
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/bulk_update_progress', $data);
+    }
+
 }
