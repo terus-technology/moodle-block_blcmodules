@@ -25,9 +25,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// FIXED: Removed incorrect namespace declaration for standalone script
-require_once(dirname(__FILE__).'/../../config.php');
-// FIXED: Removed incorrect namespace declaration for standalone script
 require_once(dirname(__FILE__).'/../../config.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
@@ -38,11 +35,11 @@ require_once($CFG->dirroot.'/mod/resource/lib.php');
 
 global $DB, $USER, $CFG, $OUTPUT, $PAGE;
 
-// PRIORITY 1 FIX: Add security checks
+// Add security checks
 require_login();
 require_capability('moodle/site:config', context_system::instance());
 
-// PRIORITY 1 FIX: Add confirmation step
+// Add confirmation step
 $confirm = optional_param('confirm', 0, PARAM_INT);
 $sesskey = optional_param('sesskey', '', PARAM_RAW);
 
@@ -88,7 +85,7 @@ if (!$confirm || !confirm_sesskey($sesskey)) {
     exit;
 }
 
-// PRIORITY 1 FIX: Raise time limit for batch processing
+// Raise time limit for batch processing
 \core_php_time_limit::raise(3600); // 1 hour
 
 // Validate configuration
@@ -96,12 +93,7 @@ $token = get_config('block_blc_modules', 'token');
 $domainname = get_config('block_blc_modules', 'domainname');
 $apikey = get_config('block_blc_modules', 'api_key');
 
-// Validate configuration
-$token = get_config('block_blc_modules', 'token');
-$domainname = get_config('block_blc_modules', 'domainname');
-$apikey = get_config('block_blc_modules', 'api_key');
-
-// PRIORITY 1 FIX: Validate configuration exists
+// Validate configuration exists
 if (empty($token) || empty($domainname) || empty($apikey)) {
     print_error('missingconfig', 'block_blc_modules', 
         new moodle_url('/admin/settings.php', array('section' => 'blocksettingblc_modules')));
@@ -113,16 +105,20 @@ if (!$resourcemodule) {
 }
 $resourceid = $resourcemodule->id;
 
-// PRIORITY 2 FIX: Use correct query logic with NOT EXISTS
+// IMPROVED QUERY: Check for modules without docs AND ensure SCORM module still exists
 $sql = "SELECT bm.* FROM {block_blc_modules} bm 
         WHERE NOT EXISTS (
             SELECT 1 FROM {block_blc_modules_doc} bd 
             WHERE bd.blcmoduleid = bm.id
         )
+        AND EXISTS (
+            SELECT 1 FROM {course_modules} cm 
+            WHERE cm.id = bm.cmid AND cm.deletioninprogress = 0
+        )
         ORDER BY bm.id ASC";
 $blcmodules = $DB->get_records_sql($sql);
 
-// PRIORITY 3 FIX: Initialize counters for error handling
+// Initialize counters for error handling
 $success_count = 0;
 $fail_count = 0;
 $error_messages = array();
@@ -131,15 +127,11 @@ $total_count = count($blcmodules);
 if ($blcmodules) {
     // Loop through each SCORM module
     foreach($blcmodules as $blcmodule){
-        // PRIORITY 3 FIX: Wrap entire processing in try-catch
+        // Wrap entire processing in try-catch
         try {
             $cmid=$blcmodule->cmid;
             $course_modules = $DB->get_record('course_modules',array('id'=>$cmid,'deletioninprogress'=>0));
             
-            if(!$course_modules){
-                error_log("BLC add_doc: Course module $cmid not found or being deleted. Skipping.");
-                continue;
-            }
             if(!$course_modules){
                 error_log("BLC add_doc: Course module $cmid not found or being deleted. Skipping.");
                 continue;
@@ -346,19 +338,29 @@ if ($blcmodules) {
                 'filename' => $file_name
             );
 
+            // Use file_helper for proper Google Drive URL handling
             try {
-                $file = $fs->create_file_from_url($filerecord, $filepath);
-                if (!$file) {
-                    throw new \Exception('File download failed - create_file_from_url returned false');
+                if (strpos($filepath, '/pluginfile.php/') !== false) {
+                    // Use the file helper to create from pluginfile URL
+                    error_log('BLC add_doc: Using pluginfile URL method for module ' . $blcmoduleid);
+                    $file = \block_blc_modules\helper\file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+                } else {
+                    // For external URLs (including Google Drive), use the enhanced download method
+                    error_log('BLC add_doc: Using external URL method for module ' . $blcmoduleid);
+                    $file = \block_blc_modules\helper\file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
                 }
-                error_log("BLC add_doc: Successfully downloaded file for module $blcmoduleid");
+                
+                if (!$file) {
+                    throw new \Exception('File download failed - file_helper returned false');
+                }
+                error_log("BLC add_doc: Successfully downloaded file for module $blcmoduleid using file_helper");
             } catch (\Exception $e) {
                 error_log("BLC add_doc: Failed to download file for module $blcmoduleid: " . $e->getMessage());
                 // Continue - module created but file missing
                 // Admin can manually upload file later
             }
 
-            // Update section sequence
+            //  Update section sequence 
             $record = new stdClass();
             $record->id = $sectionid;
             
@@ -366,6 +368,68 @@ if ($blcmodules) {
                 $modules = explode(',', $scormsection->sequence);
                 $newmodules = array();
                 
+                // Check if a document resource already exists for this SCORM in the sequence
+                $existing_doc_cmids = array();
+                $existing_docs = $DB->get_records('block_blc_modules_doc', 
+                    ['blcmoduleid' => $blcmoduleid], 
+                    '', 
+                    'cmid'
+                );
+                
+                foreach ($existing_docs as $doc) {
+                    if (in_array($doc->cmid, $modules)) {
+                        $existing_doc_cmids[] = $doc->cmid;
+                        error_log("BLC add_doc: Found existing document module (cmid: {$doc->cmid}) in section for blcmodule $blcmoduleid");
+                    }
+                }
+                
+                // If document already exists in sequence, skip adding new one
+                if (!empty($existing_doc_cmids)) {
+                    error_log("BLC add_doc: Document already exists in section for blcmodule $blcmoduleid. Skipping sequence update to prevent duplication.");
+                    
+                    // Clean up the newly created module since we don't need it
+                    // Delete the course module
+                    $DB->delete_records('course_modules', array('id' => $resourcecoursemodule));
+                    // Delete the resource instance
+                    $DB->delete_records('resource', array('id' => $id));
+                    // Delete the file we just created
+                    if (isset($file) && $file) {
+                        $file->delete();
+                    }
+                    
+                    error_log("BLC add_doc: Cleaned up duplicate module for blcmoduleid $blcmoduleid");
+                    
+                    // Update the tracking record to use existing cmid
+                    $first_existing_cmid = reset($existing_doc_cmids);
+                    $resourcerecord = new stdClass();
+                    $resourcerecord->userid = $USER->id;
+                    $resourcerecord->courseid = $courseid;
+                    $resourcerecord->blcmoduleid = $blcmoduleid;
+                    $resourcerecord->sectionid = $section;
+                    $resourcerecord->cmid = $first_existing_cmid;
+                    $resourcerecord->scormid = $docid;
+                    $resourcerecord->scormurl = $docurl;
+                    $resourcerecord->version = $docversion;
+                    $resourcerecord->timecreated = time();
+                    $resourcerecord->timemodified = time();
+                    
+                    // Check if record already exists
+                    $existing_record = $DB->get_record('block_blc_modules_doc', 
+                        ['blcmoduleid' => $blcmoduleid, 'cmid' => $first_existing_cmid]
+                    );
+                    
+                    if (!$existing_record) {
+                        $DB->insert_record('block_blc_modules_doc', $resourcerecord);
+                        error_log("BLC add_doc: Created tracking record for existing module (blcmoduleid: $blcmoduleid, cmid: $first_existing_cmid)");
+                    } else {
+                        error_log("BLC add_doc: Tracking record already exists for blcmoduleid $blcmoduleid");
+                    }
+                    
+                    $success_count++;
+                    continue; // Skip to next module
+                }
+                
+                // No existing document found, proceed with adding new one to sequence
                 foreach($modules as $key=>$value){
                     if($value == $cmid){
                         $newmodules[] = $value;
@@ -409,7 +473,7 @@ if ($blcmodules) {
             continue;
         }
     } // End foreach loop
-} // End if $blcmodules} // End if $blcmodules
+} // End if $blcmodules
 
 // Count how many were skipped because no doc available
 $skipped_nodoc = $total_count - $success_count - $fail_count;
