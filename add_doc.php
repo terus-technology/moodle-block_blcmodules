@@ -163,98 +163,76 @@ if ($blcmodules) {
                 }
             }
             
-            // FIXED: Query local database instead of calling external web service
-            // The accessibility documents are stored locally in block_scorm_access_doc table
-            // Using same strategy as fetch_accessibility_document method
+            // Use API to fetch accessibility document data (consistent with blcservice.php)
+            // This calls local_scormurl_get_tempdocurls on the API server
             
-            $doc = null;
-            $scorm_package = null;
+            error_log("BLC add_doc: Calling API to fetch document for module $blcmoduleid");
             
-            if (preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $blcmodule->scormurl, $matches)) {
-                $driveid = $matches[1];
-                error_log("BLC add_doc: Extracted Drive ID: $driveid for module $blcmoduleid");
+            $doc_data = null;
+            
+            try {
+                $function_name = 'local_scormurl_get_tempdocurls';
+                $tempurl = urlencode($blcmodule->scormurl);
+
+                $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
+                    . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
+                    . '&moodlewsrestformat=json';
+
+                error_log("BLC add_doc: API URL: $serverurl");
+
+                $curl = new \block_blc_modules\helper\blccurl();
+                $curl->setHeader('Content-Type: application/json; charset=utf-8');
+
+                $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
                 
-                try {
-                    // Find SCORM package with matching scormid
-                    $scorm_package = $DB->get_record('block_scorm_package', ['scormid' => $driveid]);
+                error_log("BLC add_doc: API Response: " . substr($responses, 0, 200));
+                
+                $jsondata = json_decode($responses, true);
+
+                if (empty($jsondata)) {
+                    error_log("BLC add_doc: Empty or invalid JSON response from API for module $blcmoduleid");
+                } else if (isset($jsondata['exception'])) {
+                    error_log("BLC add_doc: API returned exception for module $blcmoduleid: " . $jsondata['message']);
+                } else if (!isset($jsondata['docname']) || empty($jsondata['docname'])) {
+                    error_log("BLC add_doc: API response missing docname or docname is empty for module $blcmoduleid");
+                } else {
+                    // Success - we have valid document data
+                    $docobject = (object) $jsondata;
                     
-                    if ($scorm_package) {
-                        $scormname = rtrim($scorm_package->scormname, '.zip');
-                        $expected_docname = $scormname . ' (Accessibility Version).docx';
-                        error_log("BLC add_doc: Looking for doc: $expected_docname");
-                        
-                        $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $expected_docname]);
-                        if ($doc) {
-                            error_log("BLC add_doc: Found document by Drive ID strategy for module $blcmoduleid");
-                        }
-                    }
-                } catch (\Exception $e) {
-                    error_log("BLC add_doc: Strategy 1 failed for module $blcmoduleid: " . $e->getMessage());
-                }
-            }
-            
-            if (!$doc) {
-                try {
-                    // Use get_records_sql with parameter binding (Moodle DML handles TEXT columns)
-                    $packages = $DB->get_records_sql(
-                        "SELECT id, scormname, scormurl FROM {block_scorm_package} 
-                         WHERE scormurl = :scormurl 
-                         ORDER BY id DESC",
-                        ['scormurl' => $blcmodule->scormurl],
-                        0,
-                        1
-                    );
+                    // Prefer docurlplus (permanent Google Drive URL) over tempdocurl
+                    $download_url = !empty($docobject->docurlplus) ? $docobject->docurlplus : 
+                                    (!empty($docobject->tempdocurl) ? $docobject->tempdocurl : 
+                                    (!empty($docobject->docurl) ? $docobject->docurl : ''));
                     
-                    if (!empty($packages)) {
-                        $scorm_package = reset($packages);
-                        $scormname = rtrim($scorm_package->scormname, '.zip');
-                        $expected_docname = $scormname . ' (Accessibility Version).docx';
-                        error_log("BLC add_doc: Looking for doc: $expected_docname");
+                    if (!empty($download_url)) {
+                        $doc_data = [
+                            'docname' => rtrim($docobject->docname ?? '', '.docx'),
+                            'docversion' => $docobject->version ?? '1',
+                            'docid' => $docobject->id ?? 0,
+                            'docurl' => $download_url,
+                        ];
                         
-                        $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $expected_docname]);
-                        if ($doc) {
-                            error_log("BLC add_doc: Found document by URL strategy for module $blcmoduleid");
-                        }
+                        error_log("BLC add_doc: Successfully fetched document data from API for module $blcmoduleid: " . $doc_data['docname']);
+                    } else {
+                        error_log("BLC add_doc: No valid URL in API response for module $blcmoduleid");
                     }
-                } catch (\Exception $e) {
-                    error_log("BLC add_doc: Strategy 2 failed for module $blcmoduleid: " . $e->getMessage());
                 }
+            } catch (\Exception $e) {
+                error_log("BLC add_doc: API call failed for module $blcmoduleid: " . $e->getMessage());
             }
             
-            if (!$scorm_package) {
-                error_log("BLC add_doc: SCORM package not found in database for module $blcmoduleid. Skipping.");
+            if (!$doc_data) {
+                error_log("BLC add_doc: No accessibility document data available for module $blcmoduleid. Skipping.");
                 continue;
             }
             
-            if (!$doc) {
-                error_log("BLC add_doc: No accessibility document found in local database for module $blcmoduleid. Skipping.");
-                continue;
-            }
+            // Extract document information from API response
+            $docname = $doc_data['docname'];
+            $docversion = $doc_data['docversion'];
+            $docid = $doc_data['docid'];
+            $docurl = $doc_data['docurl'];
             
-            error_log("BLC add_doc: Found accessibility document in local database for module $blcmoduleid");
-            
-            // Extract document information from database
-            $docname = rtrim($doc->docname, ".docx");
-            $docversion = isset($doc->version) ? $doc->version : '1';
-            $docid = $doc->id;
-            
-            // Use docurlplus if available (Google Drive URL), otherwise use docurl
-            if (!empty($doc->docurlplus)) {
-                $docurl = $doc->docurlplus;
-                error_log("BLC add_doc: Using docurlplus for module $blcmoduleid");
-            } else if (!empty($doc->docurl)) {
-                $docurl = $doc->docurl;
-                error_log("BLC add_doc: Using docurl for module $blcmoduleid");
-            } else {
-                error_log("BLC add_doc: No valid URL found for document in module $blcmoduleid. Skipping.");
-                continue;
-            }
-            
-            // Validate we have all required data
-            if (empty($docname) || empty($docurl) || $docid == 0) {
-                error_log("BLC add_doc: Invalid document data for module $blcmoduleid. Skipping.");
-                continue;
-            }
+            error_log("BLC add_doc: Using document - Name: $docname, Version: $docversion, ID: $docid");
             
             // Get section info
             $scormsection = $DB->get_record('course_sections',array('course'=>$courseid,'section'=>$section));
@@ -461,7 +439,23 @@ if ($blcmodules) {
         
             $DB->insert_record('block_blc_modules_doc', $resourcerecord);
 
-            // Note: No cleanup needed as we're querying local database, not using web service temporary files
+            // Cleanup temporary document files on API server
+            try {
+                $cleanup_tempurl = urlencode($blcmodule->scormurl);
+                $cleanup_function = 'local_scormurl_get_deletetempdocurls';
+                $cleanup_url = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
+                    . '&wsfunction=' . $cleanup_function . '&apikey=' . $apikey . '&scormurl=' . $cleanup_tempurl;
+
+                $cleanup_curl = new \block_blc_modules\helper\blccurl();
+                $cleanup_curl->setHeader('Content-Type: application/json; charset=utf-8');
+                $cleanup_curl->post($cleanup_url, '', ['CURLOPT_FAILONERROR' => true]);
+                
+                error_log("BLC add_doc: Cleaned up temporary files for module $blcmoduleid");
+            } catch (\Exception $e) {
+                error_log("BLC add_doc: Failed to cleanup temporary files for module $blcmoduleid: " . $e->getMessage());
+                // Continue - cleanup failure is not critical
+            }
+
             $success_count++;
             error_log("BLC add_doc: Successfully processed module $blcmoduleid");
             

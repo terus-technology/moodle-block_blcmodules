@@ -1175,152 +1175,107 @@ class blcservice extends external_api{
 
     /**
      * Helper method to fetch accessibility document data
-     * OPSI 3: Query database directly instead of using API
+     * Uses API local_scormurl_get_tempdocurls for consistency with SCORM module creation
      */
     private static function fetch_accessibility_document(string $apikey, string $scormurl, string $token, string $domainname): ?array {
-        global $DB;
-        
-        error_log('BLC Modules: fetch_accessibility_document called (OPSI 3 - Direct DB Query)');
+        error_log('BLC Modules: fetch_accessibility_document called (Using API - Consistent with SCORM)');
         error_log('BLC Modules: Original SCORM URL: ' . $scormurl);
         
-        // Query database directly
-        // Try to get document from database using multiple lookup strategies
-        $doc = null;
+        $function_name = 'local_scormurl_get_tempdocurls';
+        $tempurl = urlencode($scormurl);
+
+        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
+            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
+            . '&moodlewsrestformat=json';
+
+        // Debug: Log the API request
+        debugging('BLC Modules: Calling API: ' . $function_name, DEBUG_DEVELOPER);
+        debugging('BLC Modules: Original URL: ' . $scormurl, DEBUG_DEVELOPER);
+        error_log('BLC Modules: Calling API: ' . $function_name);
+        error_log('BLC Modules: Original URL: ' . $scormurl);
+        error_log('BLC Modules: Encoded URL: ' . $tempurl);
+
+        $curl = new \block_blc_modules\helper\blccurl();
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+
+        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
         
-        // Get SCORM package by Google Drive ID from URL, then find matching document by name
-        if (preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
-            $driveid = $matches[1];
-            error_log('BLC Modules: Extracted Drive ID from SCORM URL: ' . $driveid);
-            
-            try {
-                // Find SCORM package with matching scormid (which is the Drive ID)
-                $scormpackage = $DB->get_record('block_scorm_package', ['scormid' => $driveid]);
-                
-                if ($scormpackage) {
-                    error_log('BLC Modules: Found SCORM package by scormid: ' . $scormpackage->scormname);
-                    
-                    // Construct the expected document name
-                    $scormname = rtrim($scormpackage->scormname, '.zip');
-                    $docname = $scormname . ' (Accessibility Version).docx';
-                    error_log('BLC Modules: Looking for docname: ' . $docname);
-                    
-                    $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $docname]);
-                    if ($doc) {
-                        error_log('BLC Modules: Found document by docname match (Strategy 1)');
-                    }
-                }
-            } catch (\Exception $e) {
-                error_log('BLC Modules: Strategy 1 failed: ' . $e->getMessage());
-            }
-        }
+        // Debug: Log raw response
+        error_log('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
         
-        // Search in docurlplus field for Google Drive ID
-        if (!$doc && preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
-            $driveid = $matches[1];
-            error_log('BLC Modules: Trying Strategy 2: Search in docurlplus field');
-            
-            try {
-                // Try to find document by docurlplus containing the Drive ID of a related SCORM
-                // Since we're looking for accessibility doc, we need to find it by pattern
-                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
-                $docs = $DB->get_records_sql(
-                    "SELECT * FROM {block_scorm_access_doc} 
-                     WHERE docurlplus LIKE :driveid 
-                     ORDER BY id DESC",
-                    ['driveid' => '%' . $driveid . '%'],
-                    0,
-                    1
-                );
-                if (!empty($docs)) {
-                    $doc = reset($docs);
-                    error_log('BLC Modules: Found document by docurlplus Drive ID match (Strategy 2)');
-                }
-            } catch (\Exception $e) {
-                error_log('BLC Modules: Strategy 2 failed: ' . $e->getMessage());
-            }
-        }
-        
-        // Query by exact SCORM URL pattern (for local paths)
-        if (!$doc) {
-            error_log('BLC Modules: Trying Strategy 3: Query by SCORM URL');
-            try {
-                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
-                $packages = $DB->get_records_sql(
-                    "SELECT id, scormname, scormurl FROM {block_scorm_package} 
-                     WHERE scormurl = :scormurl 
-                     ORDER BY id DESC",
-                    ['scormurl' => $scormurl],
-                    0,
-                    1
-                );
-                
-                if (!empty($packages)) {
-                    $scormpackage = reset($packages);
-                    $scormname = rtrim($scormpackage->scormname, '.zip');
-                    $docname = $scormname . ' (Accessibility Version).docx';
-                    error_log('BLC Modules: Trying docname pattern: ' . $docname);
-                    
-                    $doc = $DB->get_record('block_scorm_access_doc', ['docname' => $docname]);
-                    if ($doc) {
-                        error_log('BLC Modules: Found document by docname match (Strategy 3)');
-                    }
-                }
-            } catch (\Exception $e) {
-                error_log('BLC Modules: Strategy 3 failed: ' . $e->getMessage());
-            }
-        }
-        
-        // Try searching docurl field for Google Drive ID
-        if (!$doc && preg_match('/\/d\/([a-zA-Z0-9_-]+)\//', $scormurl, $matches)) {
-            $driveid = $matches[1];
-            error_log('BLC Modules: Trying Strategy 4: Search in docurl field');
-            
-            try {
-                // Don't use TOP with IGNORE_MULTIPLE for SQL Server compatibility
-                $docs = $DB->get_records_sql(
-                    "SELECT * FROM {block_scorm_access_doc} 
-                     WHERE docurl LIKE :driveid 
-                     ORDER BY id DESC",
-                    ['driveid' => '%' . $driveid . '%'],
-                    0,
-                    1
-                );
-                if (!empty($docs)) {
-                    $doc = reset($docs);
-                    error_log('BLC Modules: Found document by docurl Drive ID match (Strategy 4)');
-                }
-            } catch (\Exception $e) {
-                error_log('BLC Modules: Strategy 4 failed: ' . $e->getMessage());
-            }
-        }
-        
-        if (!$doc) {
-            error_log('BLC Modules: No accessibility document found in database after all strategies');
+        $jsondata = json_decode($responses, true);
+
+        if (empty($jsondata)) {
+            error_log('BLC Modules: ERROR - Empty or invalid JSON response from API');
+            error_log('BLC Modules: Response was: ' . $responses);
             return null;
         }
         
-        error_log('BLC Modules: Found document in database: ' . $doc->docname);
-        error_log('BLC Modules: Document docurl: ' . ($doc->docurl ?? '(empty)'));
-        error_log('BLC Modules: Document docurlplus: ' . ($doc->docurlplus ?? '(empty)'));
-        error_log('BLC Modules: Document ID: ' . $doc->id);
+        if (!isset($jsondata['docname'])) {
+            error_log('BLC Modules: ERROR - Response missing docname field');
+            error_log('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
+            error_log('BLC Modules: Full response: ' . json_encode($jsondata));
+            return null;
+        }
+
+        $docobject = (object) $jsondata;
         
-        // Prefer docurlplus if it contains a Google Drive URL
-        $url_to_use = $doc->docurl;
-        if (!empty($doc->docurlplus) && strpos($doc->docurlplus, 'drive.google.com') !== false) {
-            $url_to_use = $doc->docurlplus;
-            error_log('BLC Modules: Using docurlplus (Google Drive URL): ' . $url_to_use);
-        } else if (!empty($doc->docurl) && strpos($doc->docurl, 'drive.google.com') !== false) {
-            error_log('BLC Modules: Using docurl (Google Drive URL): ' . $url_to_use);
-        } else {
-            error_log('BLC Modules: Using docurl (local/other path): ' . $url_to_use);
+        // Debug: Log what we got
+        error_log('BLC Modules: Document Name: ' . ($docobject->docname ?? 'N/A'));
+        error_log('BLC Modules: Temp Doc URL (raw): ' . ($docobject->tempdocurl ?? 'N/A'));
+        error_log('BLC Modules: Doc URL Plus (raw): ' . ($docobject->docurlplus ?? 'N/A'));
+        
+        // Process and validate tempdocurl
+        $tempdocurl = str_replace("ppp", ",", $docobject->tempdocurl ?? '');
+        
+        // Prefer docurlplus (permanent Google Drive URL) for downloading
+        // tempdocurl is from temp_doc which may be cross-site and not accessible
+        $download_url = !empty($docobject->docurlplus) ? $docobject->docurlplus : $tempdocurl;
+        
+        error_log('BLC Modules: Temp Doc URL (processed): ' . $tempdocurl);
+        error_log('BLC Modules: Download URL (selected): ' . $download_url);
+        
+        // CRITICAL: Validate URL is not empty
+        if (empty($download_url)) {
+            error_log('BLC Modules: ERROR - download URL is empty for Document: ' . 
+                     ($docobject->docname ?? 'unknown'));
+            error_log('BLC Modules: Original URL requested: ' . $scormurl);
+            error_log('BLC Modules: Check if local_scormurl plugin is working correctly');
+            return null;
         }
         
-        return [
-            'docname' => rtrim($doc->docname ?? '', '.docx'),
-            'docversion' => $doc->version ?? '5',
-            'docid' => $doc->id ?? '',
-            'docurl' => $url_to_use,
+        // CRITICAL: Validate URL has a valid filename
+        $urlparts = explode('/', trim($download_url, '/'));
+        $urlfilename = end($urlparts);
+        
+        error_log('BLC Modules: Extracted filename: ' . $urlfilename);
+        
+        if (empty($urlfilename)) {
+            error_log('BLC Modules: ERROR - No filename in URL: ' . $download_url);
+            return null;
+        }
+        
+        // Check if filename has extension (basic validation)
+        if (strpos($urlfilename, '.') === false) {
+            error_log('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $download_url . ')');
+            // Continue anyway as some valid files might not have extensions in URL
+        }
+
+        $result = [
+            'docname' => rtrim($docobject->docname ?? '', '.docx'),
+            'docversion' => $docobject->version ?? '5',
+            'docid' => $docobject->id ?? '',
+            'docurl' => $download_url, // Use docurlplus if available, fallback to tempdocurl
         ];
+        
+        error_log('BLC Modules: Successfully prepared accessibility document data for: ' . $result['docname']);
+        error_log('BLC Modules: Document ID: ' . $result['docid']);
+        error_log('BLC Modules: Download URL: ' . $download_url);
+        debugging('BLC Modules: Successfully prepared document data for: ' . $result['docname'], DEBUG_DEVELOPER);
+        debugging('BLC Modules: Document ID: ' . $result['docid'], DEBUG_DEVELOPER);
+        debugging('BLC Modules: Download URL: ' . $download_url, DEBUG_DEVELOPER);
+        
+        return $result;
     }
 
     /**
