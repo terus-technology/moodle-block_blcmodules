@@ -412,6 +412,13 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 $('.closeModal').attr("disabled", "disabled");
                 $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
+                // Show processing message with file count
+                var fileCount = scormurls.length;
+                var processingMsg = fileCount > 1 
+                    ? 'Processing ' + fileCount + ' files. This may take several minutes...'
+                    : 'Processing file. This may take a moment...';
+                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + processingMsg + '</span>');
+
                 var request = {
                     methodname: 'blocks_blc_modules_load_scorm_modules',
                     args: {
@@ -428,18 +435,47 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 Ajax.call([request])[0]
                     .done(function(data) {
                         if (data.success) {
-                            location.reload(true);
+                            // Show success message briefly before reload
+                            var successMsg = data.successful > 1 
+                                ? data.successful + ' modules loaded successfully!' 
+                                : 'Module loaded successfully!';
+                            $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
+                            
+                            // Reload after short delay to show success message
+                            setTimeout(function() {
+                                location.reload(true);
+                            }, 1000);
                         } else {
                             var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                            $('.statusMsg').html('<span style="color:red;">' + errorMessage + '</span>');
+                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + '</span>');
                             $('.submitForm').removeAttr("disabled");
                             $('.closeModal').removeAttr("disabled");
                             $(".modal-header .fa.fa-spinner").remove();
                         }
                     })
                     .fail(function(error) {
-                        console.error('Error loading SCORM modules:', error);
-                        $('.statusMsg').html('<span style="color:red;">Error loading SCORM modules</span>');
+                        console.error('AJAX request failed:', error);
+                        
+                        // Check if error is timeout - the process may still be running in background
+                        var isTimeout = error && (error.error === 'timeout' || error.exception === 'moodle_exception');
+                        
+                        if (isTimeout) {
+                            // Timeout - show message that process is still running
+                            $('.statusMsg').html(
+                                '<span style="color:#ff9800;"><i class="fa fa-clock-o"></i> ' +
+                                'Request timed out, but the process is still running in the background. ' +
+                                'Please refresh the page in a few moments to see the loaded modules.</span>' +
+                                '<br><button class="btn btn-primary mt-2" onclick="location.reload(true)">Refresh Now</button>'
+                            );
+                        } else {
+                            // Real error - show error message
+                            var errorMsg = 'An error occurred while loading SCORM modules';
+                            if (error && error.message) {
+                                errorMsg += ': ' + error.message;
+                            }
+                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '</span>');
+                        }
+                        
                         $('.submitForm').removeAttr("disabled");
                         $('.closeModal').removeAttr("disabled");
                         $(".modal-header .fa.fa-spinner").remove();
