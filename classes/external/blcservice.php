@@ -470,35 +470,41 @@ class blcservice extends external_api{
     ): array {
         global $DB, $USER, $CFG;
 
-        // Parameter validation
-        $params = self::validate_parameters(self::load_scorm_modules_parameters(), [
-            'courseid' => $courseid,
-            'sectionnumber' => $sectionnumber,
-            'apikey' => $apikey,
-            'scormurls' => $scormurls,
-            'visibility' => $visibility,
-            'hidebrowse' => $hidebrowse,
-            'completion' => $completion,
-        ]);
+        try {
+            // Parameter validation
+            $params = self::validate_parameters(self::load_scorm_modules_parameters(), [
+                'courseid' => $courseid,
+                'sectionnumber' => $sectionnumber,
+                'apikey' => $apikey,
+                'scormurls' => $scormurls,
+                'visibility' => $visibility,
+                'hidebrowse' => $hidebrowse,
+                'completion' => $completion,
+            ]);
 
-        // Handle empty scormurls array
-        if (empty($scormurls)) {
-            return [
-                'success' => true,
-                'total' => 0,
-                'successful' => 0,
-                'failed' => 0,
-                'messages' => ['No SCORM URLs provided'],
-                'created_modules' => []
-            ];
-        }
+            // Handle empty scormurls array
+            if (empty($scormurls)) {
+                return [
+                    'success' => true,
+                    'total' => 0,
+                    'successful' => 0,
+                    'failed' => 0,
+                    'messages' => ['No SCORM URLs provided'],
+                    'created_modules' => []
+                ];
+            }
 
-        // Capability checks
-        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $coursecontext = \context_course::instance($courseid);
-        
-        require_capability('moodle/course:manageactivities', $coursecontext);
-        require_capability('mod/scorm:addinstance', $coursecontext);
+            // Capability checks
+            try {
+                $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+                $coursecontext = \context_course::instance($courseid);
+
+                require_capability('moodle/course:manageactivities', $coursecontext);
+                require_capability('mod/scorm:addinstance', $coursecontext);
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Capability check failed: ' . $e->getMessage());
+                throw $e; // Re-throw to be caught by outer try-catch
+            }
 
         // Initialize result array
         $results = [
@@ -543,9 +549,16 @@ class blcservice extends external_api{
                 // Check file availability
                 // Pass Drive ID if available for proper validation
                 $driveid = !empty($scormdata['driveid']) ? $scormdata['driveid'] : null;
-                if (!self::validate_scorm_url($scormdata['scormurl'], $driveid)) {
+                try {
+                    if (!self::validate_scorm_url($scormdata['scormurl'], $driveid)) {
+                        $results['failed']++;
+                        $results['messages'][] = "SCORM file not accessible: " . $scormdata['scormname'];
+                        continue;
+                    }
+                } catch (\Exception $e) {
+                    error_log('BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage());
                     $results['failed']++;
-                    $results['messages'][] = "SCORM file not accessible: " . $scormdata['scormname'];
+                    $results['messages'][] = "SCORM file validation failed: " . $scormdata['scormname'] . ' - ' . $e->getMessage();
                     continue;
                 }
 
@@ -607,10 +620,27 @@ class blcservice extends external_api{
             $count++;
         }
 
-        // Update overall success status
-        $results['success'] = ($results['failed'] == 0);
+            // Update overall success status - allow partial success
+            $results['success'] = ($results['successful'] > 0);
 
-        return $results;
+            return $results;
+
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            error_log('BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage());
+            error_log('BLC Modules: Stack trace: ' . $e->getTraceAsString());
+            error_log('BLC Modules: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+
+            // Return error response that JavaScript can handle
+            return [
+                'success' => false,
+                'total' => count($scormurls),
+                'successful' => 0,
+                'failed' => count($scormurls),
+                'messages' => ['Critical error occurred: ' . $e->getMessage()],
+                'created_modules' => []
+            ];
+        }
     }
 
     /**
@@ -623,7 +653,7 @@ class blcservice extends external_api{
         $tempurl = urlencode($url);
 
         $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl 
+            . '&wsfunction=' . $function_name . '&apikey=' . $apikey . '&scormurl=' . $tempurl
             . '&moodlewsrestformat=json';
 
         // Debug: Log the API request
@@ -636,7 +666,17 @@ class blcservice extends external_api{
         $curl = new \block_blc_modules\helper\blccurl();
         $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        // Increase timeout for large file operations
+        $responses = $curl->post($serverurl, '', [
+            'CURLOPT_FAILONERROR' => true,
+            'CURLOPT_TIMEOUT' => 300, // 5 minutes timeout
+            'CURLOPT_CONNECTTIMEOUT' => 30
+        ]);
+
+        if ($responses === false) {
+            error_log('BLC Modules: ERROR - cURL request failed completely for URL: ' . $url);
+            return null;
+        }
         
         // Debug: Log raw response
         error_log('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
@@ -669,91 +709,44 @@ class blcservice extends external_api{
         
         // CRITICAL: Validate URL is not empty
         if (empty($tempscormurl)) {
-            error_log('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . 
-                     ($scormobject->scormname ?? 'unknown'));
+            error_log('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' .
+                      ($scormobject->scormname ?? 'unknown'));
             error_log('BLC Modules: Original URL requested: ' . $url);
             error_log('BLC Modules: Check if local_scormurl plugin is working correctly');
             return null;
         }
-        
+
         // CRITICAL: Validate URL has a valid filename
         $urlparts = explode('/', trim($tempscormurl, '/'));
         $urlfilename = end($urlparts);
-        
+
         error_log('BLC Modules: Extracted filename: ' . $urlfilename);
-        
+
         if (empty($urlfilename)) {
             error_log('BLC Modules: ERROR - No filename in URL: ' . $tempscormurl);
             return null;
         }
-        
+
         // Check if filename has extension (basic validation)
         if (strpos($urlfilename, '.') === false) {
             error_log('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $tempscormurl . ')');
             // Continue anyway as some valid files might not have extensions in URL
         }
 
-        // Check if response includes Google Drive ID in scormid field.
-        // The scormid from API response contains the actual package ID (int) that references block_scorm_package.id
-        // The Google Drive ID is stored in block_scorm_package.scormid field (varchar)
+        // Prepare SCORM data from API response
         $result = [
             'scormname' => str_replace("'", "'", $scormobject->scormname ?? ''),
             'scormversion' => $scormobject->version ?? '1',
-            'scormid' => $scormobject->id ?? '', // This is block_scorm_package.id (int)
+            'scormid' => $scormobject->id ?? '', // Package ID from API
             'scormurl' => $tempscormurl,
         ];
-        
+
         error_log('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
         error_log('BLC Modules: SCORM package ID: ' . $result['scormid']);
         error_log('BLC Modules: Temp SCORM URL: ' . $tempscormurl);
         debugging('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname'], DEBUG_DEVELOPER);
         debugging('BLC Modules: SCORM package ID: ' . $result['scormid'], DEBUG_DEVELOPER);
         debugging('BLC Modules: Temp SCORM URL: ' . $tempscormurl, DEBUG_DEVELOPER);
-        
-        // LAYER 1A: First, try to get Drive ID from database using package ID
-        // This is the most reliable method as pluginfile.php URLs don't expose Drive ID
-        if (!empty($scormobject->id)) {
-            try {
-                $packagerecord = $DB->get_record('block_scorm_package', 
-                    ['id' => $scormobject->id], 
-                    'scormid, scormurl, drive_id'
-                );
-                
-                if ($packagerecord) {
-                    debugging('BLC Modules: Found package record - scormid: ' . ($packagerecord->scormid ?? 'null'), DEBUG_DEVELOPER);
-                    error_log('BLC Modules: Found package record - scormid: ' . ($packagerecord->scormid ?? 'null'));
-                    
-                    // Check if scormid field contains Google Drive ID
-                    if (!empty($packagerecord->scormid)) {
-                        $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($packagerecord->scormid);
-                        if ($driveid) {
-                            $result['driveid'] = $driveid;
-                            error_log('BLC Modules: Extracted Google Drive ID from database scormid field: ' . $driveid);
-                            error_log('BLC Modules: This will bypass 25MB download limitation');
-                        }
-                    }
-                    
-                    // Check if there's a drive_id field (if exists in schema)
-                    if (empty($result['driveid']) && isset($packagerecord->drive_id) && !empty($packagerecord->drive_id)) {
-                        $result['driveid'] = $packagerecord->drive_id;
-                        error_log('BLC Modules: Using Drive ID from drive_id field: ' . $packagerecord->drive_id);
-                    }
-                    
-                    // Check if scormurl in database is a Google Drive URL
-                    if (empty($result['driveid']) && !empty($packagerecord->scormurl)) {
-                        if (\block_blc_modules\helper\gdrive_helper::is_gdrive_url($packagerecord->scormurl)) {
-                            $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($packagerecord->scormurl);
-                            if ($driveid) {
-                                $result['driveid'] = $driveid;
-                                error_log('BLC Modules: Extracted Google Drive ID from database scormurl field: ' . $driveid);
-                            }
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                error_log('BLC Modules: Error querying block_scorm_package: ' . $e->getMessage());
-            }
-        }
         
         // LAYER 1B: Fallback - Extract from tempscormurl if it's a direct Google Drive URL
         if (empty($result['driveid']) && \block_blc_modules\helper\gdrive_helper::is_gdrive_url($tempscormurl)) {
@@ -788,14 +781,20 @@ class blcservice extends external_api{
         if (!empty($driveid)) {
             debugging('Validating Google Drive file with ID: ' . $driveid, DEBUG_DEVELOPER);
             error_log('BLC Modules: Validating Google Drive file: ' . $driveid);
-            
-            $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($driveid);
-            
-            if (!$isValid) {
-                error_log('BLC Modules: VALIDATION FAILED - Google Drive file not accessible: ' . $driveid);
+
+            try {
+                $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($driveid);
+
+                if (!$isValid) {
+                    error_log('BLC Modules: VALIDATION FAILED - Google Drive file not accessible: ' . $driveid);
+                }
+
+                return $isValid;
+            } catch (\Exception $e) {
+                error_log('BLC Modules: Google Drive validation exception: ' . $e->getMessage());
+                // If Google Drive validation fails, fall back to basic URL validation
+                return self::basic_url_validation($scormurl);
             }
-            
-            return $isValid;
         }
         
         // Check if URL is a Google Drive URL and extract ID for validation
@@ -805,14 +804,20 @@ class blcservice extends external_api{
             if ($extractedDriveId) {
                 debugging('Extracted Drive ID from URL for validation: ' . $extractedDriveId, DEBUG_DEVELOPER);
                 error_log('BLC Modules: Extracted Drive ID from URL: ' . $extractedDriveId);
-                
-                $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($extractedDriveId);
-                
-                if (!$isValid) {
-                    error_log('BLC Modules: VALIDATION FAILED - Google Drive URL not accessible: ' . $scormurl);
+
+                try {
+                    $isValid = \block_blc_modules\helper\gdrive_helper::validate_drive_file($extractedDriveId);
+
+                    if (!$isValid) {
+                        error_log('BLC Modules: VALIDATION FAILED - Google Drive URL not accessible: ' . $scormurl);
+                    }
+
+                    return $isValid;
+                } catch (\Exception $e) {
+                    error_log('BLC Modules: Google Drive validation exception: ' . $e->getMessage());
+                    // If Google Drive validation fails, fall back to basic URL validation
+                    return self::basic_url_validation($scormurl);
                 }
-                
-                return $isValid;
             } else {
                 debugging('Could not extract Drive ID from Google Drive URL: ' . $scormurl, DEBUG_DEVELOPER);
                 error_log('BLC Modules: WARNING - Could not extract Drive ID from URL: ' . $scormurl);
@@ -827,17 +832,29 @@ class blcservice extends external_api{
             error_log('BLC Modules: Validating pluginfile.php URL (may redirect to Google Drive)');
             
             // Try traditional validation, but don't fail hard if it doesn't work
-            $isValid = \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
-            
-            if (!$isValid) {
-                error_log('BLC Modules: WARNING - Pluginfile validation failed, but may still work: ' . $scormurl);
+            try {
+                $isValid = \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
+
+                if (!$isValid) {
+                    error_log('BLC Modules: WARNING - Pluginfile validation failed, but may still work: ' . $scormurl);
+                }
+
+                return $isValid;
+            } catch (\Exception $e) {
+                error_log('BLC Modules: File size check failed: ' . $e->getMessage());
+                // For pluginfile URLs, assume they're valid even if size check fails
+                return true;
             }
-            
-            return $isValid;
         }
         
         // Traditional HTTP HEAD request validation for other URLs
-        return \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
+        try {
+            return \block_blc_modules\middleware\services::blcscormurl_filesize($scormurl);
+        } catch (\Exception $e) {
+            error_log('BLC Modules: Traditional URL validation failed: ' . $e->getMessage());
+            // Fall back to basic URL validation
+            return self::basic_url_validation($scormurl);
+        }
     }
 
     /**
@@ -1364,6 +1381,45 @@ class blcservice extends external_api{
         $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
         
         error_log('BLC Modules: Temporary document files cleaned up on BLC server');
+    }
+
+    /**
+     * Basic URL validation when Google Drive validation fails.
+     *
+     * @param string $url URL to validate
+     * @return bool True if URL appears valid
+     */
+    private static function basic_url_validation(string $url): bool {
+        // Basic validation - check if URL is not empty and has proper format
+        if (empty($url)) {
+            return false;
+        }
+
+        // Check if it's a valid URL format
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            error_log('BLC Modules: URL validation failed - invalid URL format: ' . $url);
+            return false;
+        }
+
+        // For pluginfile URLs, we assume they're valid since they come from our API
+        if (strpos($url, 'pluginfile.php') !== false) {
+            return true;
+        }
+
+        // For other URLs, do basic checks
+        $parsed = parse_url($url);
+        if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
+            error_log('BLC Modules: URL validation failed - missing scheme or host: ' . $url);
+            return false;
+        }
+
+        // Allow http and https
+        if (!in_array($parsed['scheme'], ['http', 'https'])) {
+            error_log('BLC Modules: URL validation failed - unsupported scheme: ' . $parsed['scheme']);
+            return false;
+        }
+
+        return true;
     }
 
     /**

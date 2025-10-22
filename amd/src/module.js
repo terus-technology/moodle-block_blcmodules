@@ -432,8 +432,9 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     }
                 };
 
-                Ajax.call([request])[0]
+                Ajax.call([request], { timeout: 300000 })[0] // 5 minutes timeout
                     .done(function(data) {
+                        console.log('BLC Modules: AJAX success response:', data);
                         if (data.success) {
                             // Show success message briefly before reload
                             var successMsg = data.successful > 1 
@@ -447,7 +448,11 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             }, 1000);
                         } else {
                             var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + '</span>');
+                            var errorDetails = '';
+                            if (data.failed > 0 && data.successful > 0) {
+                                errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
+                            }
+                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
                             $('.submitForm').removeAttr("disabled");
                             $('.closeModal').removeAttr("disabled");
                             $(".modal-header .fa.fa-spinner").remove();
@@ -455,23 +460,68 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     })
                     .fail(function(error) {
                         console.error('AJAX request failed:', error);
-                        
+                        console.log('BLC Modules: Full error object:', error);
+
+                        // Check if this is actually a successful response with error data
+                        if (error && error.responseJSON) {
+                            console.log('BLC Modules: Found responseJSON in error, treating as success with error data');
+                            // Treat this as a successful response but with error data
+                            var data = error.responseJSON;
+                            console.log('BLC Modules: Error response data:', data);
+
+                            if (data.success) {
+                                // Show success message briefly before reload
+                                var successMsg = data.successful > 1
+                                    ? data.successful + ' modules loaded successfully!'
+                                    : 'Module loaded successfully!';
+                                $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
+
+                                // Reload after short delay to show success message
+                                setTimeout(function() {
+                                    location.reload(true);
+                                }, 1000);
+                                return;
+                            } else {
+                                var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
+                                var errorDetails = '';
+                                if (data.failed > 0 && data.successful > 0) {
+                                    errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
+                                }
+                                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
+                                $('.submitForm').removeAttr("disabled");
+                                $('.closeModal').removeAttr("disabled");
+                                $(".modal-header .fa.fa-spinner").remove();
+                                return;
+                            }
+                        }
+
                         // Check if error is timeout - the process may still be running in background
-                        var isTimeout = error && (error.error === 'timeout' || error.exception === 'moodle_exception');
-                        
+                        var isTimeout = error && (error.error === 'timeout' || error.exception === 'moodle_exception' || (error.statusText && error.statusText === 'timeout'));
+
                         if (isTimeout) {
                             // Timeout - show message that process is still running
                             $('.statusMsg').html(
                                 '<span style="color:#ff9800;"><i class="fa fa-clock-o"></i> ' +
-                                'Request timed out, but the process is still running in the background. ' +
-                                'Please refresh the page in a few moments to see the loaded modules.</span>' +
-                                '<br><button class="btn btn-primary mt-2" onclick="location.reload(true)">Refresh Now</button>'
+                                'Request timed out, but the process may still be running in the background. ' +
+                                'Please wait a moment and refresh the page to check if modules were loaded.</span>'
                             );
                         } else {
-                            // Real error - show error message
+                            // Real error - show error message with more details
                             var errorMsg = 'An error occurred while loading SCORM modules';
                             if (error && error.message) {
                                 errorMsg += ': ' + error.message;
+                            } else if (error && error.statusText) {
+                                errorMsg += ': ' + error.statusText;
+                            } else if (error && error.responseText) {
+                                // Try to extract meaningful error from response
+                                try {
+                                    var errorData = JSON.parse(error.responseText);
+                                    if (errorData.message) {
+                                        errorMsg += ': ' + errorData.message;
+                                    }
+                                } catch (e) {
+                                    // Ignore JSON parse errors
+                                }
                             }
                             $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '</span>');
                         }
