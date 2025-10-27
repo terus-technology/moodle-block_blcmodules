@@ -739,6 +739,7 @@ class blcservice extends external_api{
             'scormversion' => $scormobject->version ?? '1',
             'scormid' => $scormobject->id ?? '', // Package ID from API
             'scormurl' => $tempscormurl,
+            'subject' => $scormobject->subject ?? '',
         ];
 
         error_log('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
@@ -997,6 +998,7 @@ class blcservice extends external_api{
         $record->cmid = $cmid;
         $record->scormid = $scormdata['scormid'];
         $record->scormurl = $originalurl;
+        $record->subject = $scormdata['subject'] ?? '';
         $record->version = $scormdata['scormversion'];
         $record->timecreated = time();
         $record->timemodified = time();

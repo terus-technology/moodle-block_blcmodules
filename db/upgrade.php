@@ -60,7 +60,7 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         // Increase scormurl field length in block_blc_modules table.
         $table = new xmldb_table('block_blc_modules');
         $field = new xmldb_field('scormurl', XMLDB_TYPE_CHAR, '500', null, XMLDB_NOTNULL, null, null);
-        
+
         // Launch change of precision for field scormurl.
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_precision($table, $field);
@@ -69,7 +69,7 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         // Increase scormurl field length in block_blc_modules_doc table.
         $table = new xmldb_table('block_blc_modules_doc');
         $field = new xmldb_field('scormurl', XMLDB_TYPE_CHAR, '500', null, null, null, null);
-        
+
         // Launch change of precision for field scormurl.
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_precision($table, $field);
@@ -77,6 +77,20 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
 
         // Block savepoint reached.
         upgrade_block_savepoint(true, 2024123000, 'blc_modules');
+    }
+
+    // Add subject field to block_blc_modules table.
+    if ($oldversion < 2025011504) {
+        $table = new xmldb_table('block_blc_modules');
+        $field = new xmldb_field('subject', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'scormurl');
+
+        // Add field subject.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Block savepoint reached.
+        upgrade_block_savepoint(true, 2025011504, 'blc_modules');
     }
 
     return true;
