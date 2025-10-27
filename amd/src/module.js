@@ -243,7 +243,14 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             }
 
-            $(".course-content").append(`
+            // Determine Bootstrap version for correct data attributes
+            // In Moodle 5.0+, force Bootstrap 5 attributes
+            var bsVersion = 5; // Force Bootstrap 5 for Moodle 5.0+
+            var dataDismiss = 'data-bs-dismiss';
+            var dataToggle = 'data-bs-toggle';
+
+            // Append modal to body instead of .course-content for better compatibility
+            $(document.body).append(`
                 <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-md">
                         <div class="modal-content">
@@ -268,7 +275,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                 <div class="blcrow">
                                     <div class="blcrow">
                                         <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
+                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
                                             <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>
                                             </a>
                                         </span>
@@ -289,7 +296,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     <div class="blcrow">
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
+                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
                                                    
                                                 <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
                                                 </a>
@@ -310,7 +317,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     <div class="blcrow">
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
+                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
                                                         <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
                                             
                                                 </a>
@@ -327,7 +334,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-default closeModal" data-dismiss="modal">
+                            <button type="button" class="btn btn-default closeModal" ${dataDismiss}="modal">
                                 Close
                             </button>
                             <button type="button" disabled="disabled" class="btn btn-primary submitForm">
@@ -345,9 +352,15 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             $(".section.main").each(function () {
 
                 if (notifyeditingon == 1) {
+                    // Determine Bootstrap version for correct data attributes
+                    // In Moodle 5.0+, force Bootstrap 5 attributes
+                    var bsVersion = 5; // Force Bootstrap 5 for Moodle 5.0+
+                    var dataToggle = 'data-bs-toggle';
+                    var dataTarget = 'data-bs-target';
+                    
                     $(this).append(`
                             <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
-                                    data-toggle='modal' data-target='#bsModal3' style="float:right">
+                                    ${dataToggle}='modal' ${dataTarget}='#bsModal3' style="float:right">
                                 <div class="px-1">
                                     <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
                                     <span class="activity-add-text pr-1">Add BLC modules</span>
@@ -376,7 +389,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             });
 
-            $(".course-content").on("click", ".add-scrom", function () {
+            $(document).on("click", ".add-scrom", function () {
 
                 fillSubject();
 
@@ -394,7 +407,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             });
 
-            $(".course-content").on("click", ".submitForm", function () {
+            $(document).on("click", ".submitForm", function () {
                 var apikey = $('#apikey').val();
                 var scormurls = [];
                 var visibility = $("#id_visible").val();

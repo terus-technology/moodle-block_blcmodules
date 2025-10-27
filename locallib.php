@@ -27,16 +27,14 @@ defined('MOODLE_INTERNAL') || die;
 function get_subjects(){
 	global $DB;
     $subjects = [];
-    $blc_modules = $DB->get_records('block_blc_modules');
-    if ($blc_modules) {
-        foreach ($blc_modules as $blc_module) {
-            $scormurl = $blc_module->scormurl;
-            $scormurls = explode('/', $scormurl);
-            $count = count($scormurls);
-            if ($count > 1) {
-                $subject = $scormurls[$count - 2];
-                $subjects[$subject] = $subject;
-            }
+    // Optimized: Use SQL to get distinct subjects directly instead of fetching all records and looping.
+    $sql = "SELECT DISTINCT SUBSTRING_INDEX(SUBSTRING_INDEX(scormurl, '/', -2), '/', 1) as subject
+            FROM {block_blc_modules}
+            WHERE scormurl LIKE '%/%/%'";
+    $results = $DB->get_fieldset_sql($sql);
+    foreach ($results as $subject) {
+        if (!empty($subject)) {
+            $subjects[$subject] = $subject;
         }
     }
     return $subjects;
