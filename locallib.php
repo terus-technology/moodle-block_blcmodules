@@ -27,14 +27,19 @@ defined('MOODLE_INTERNAL') || die;
 function get_subjects(){
 	global $DB;
     $subjects = [];
-    // Optimized: Use SQL to get distinct subjects directly instead of fetching all records and looping.
-    $sql = "SELECT DISTINCT SUBSTRING_INDEX(SUBSTRING_INDEX(scormurl, '/', -2), '/', 1) as subject
-            FROM {block_blc_modules}
-            WHERE scormurl LIKE '%/%/%'";
+    // Get all scormurls and extract subjects using PHP for cross-database compatibility
+    $sql = "SELECT DISTINCT scormurl FROM {block_blc_modules} WHERE scormurl LIKE '%/%/%'";
     $results = $DB->get_fieldset_sql($sql);
-    foreach ($results as $subject) {
-        if (!empty($subject)) {
-            $subjects[$subject] = $subject;
+    foreach ($results as $scormurl) {
+        if (!empty($scormurl)) {
+            // Extract subject from URL path (second-to-last segment)
+            $parts = explode('/', trim($scormurl, '/'));
+            if (count($parts) >= 3) {
+                $subject = $parts[count($parts) - 2]; // Get second-to-last part
+                if (!empty($subject)) {
+                    $subjects[$subject] = $subject;
+                }
+            }
         }
     }
     return $subjects;
