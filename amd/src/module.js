@@ -188,6 +188,10 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         const defaultTextColor = 'black';
 
         buttons.forEach(button => {
+            // Set initial styles
+            button.style.backgroundColor = defaultBackgroundColor;
+            button.style.color = defaultTextColor;
+
             button.addEventListener('mouseenter', () => {
                 button.style.backgroundColor = hoverBackgroundColor;
                 button.style.color = hoverTextColor;
