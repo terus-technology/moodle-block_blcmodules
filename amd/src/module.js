@@ -180,21 +180,23 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
     }
 
     function createButtonAddBlc() {
-        const button = document.querySelector('.btn-blc-modules');
+        const buttons = document.querySelectorAll('.btn-blc-modules');
 
         const defaultBackgroundColor = '#cfe2f2';
         const hoverBackgroundColor = '#0f6cbf';
         const hoverTextColor = 'white';
-        const defaultTextColor = 'black'; 
-        
-        button.addEventListener('mouseenter', () => {
-            button.style.backgroundColor = hoverBackgroundColor;
-            button.style.color = hoverTextColor;
-        });
+        const defaultTextColor = 'black';
 
-        button.addEventListener('mouseleave', () => {
-            button.style.backgroundColor = defaultBackgroundColor;
-            button.style.color = defaultTextColor;
+        buttons.forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                button.style.backgroundColor = hoverBackgroundColor;
+                button.style.color = hoverTextColor;
+            });
+
+            button.addEventListener('mouseleave', () => {
+                button.style.backgroundColor = defaultBackgroundColor;
+                button.style.color = defaultTextColor;
+            });
         });
     }
     function init() {
