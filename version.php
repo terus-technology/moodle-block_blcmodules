@@ -24,11 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025011504;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2024100700;        // Requires Moodle 4.5.6 (2024100700)
+$plugin->version   = 2025102900;        // The current plugin version (Date: YYYYMMDDXX)
+$plugin->requires  = 2025041400;        // Requires Moodle 5.0 (2025041400)
 $plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.7';
+$plugin->release = '4.6.0';
 $plugin->dependencies = [
-    'mod_scorm' => 2024100700,  // Requires SCORM module
+    'mod_scorm' => 2025041400,  // Requires SCORM module
 ];

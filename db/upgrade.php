@@ -55,8 +55,8 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2020062704, 'blc_modules');
     }
 
-    // Upgrade for Moodle 4.5.6 compatibility - increase URL field length for MSSQL compatibility.
-    if ($oldversion < 2024123000) {
+    // Upgrade for Moodle 5.0 compatibility - increase URL field length for MSSQL compatibility.
+    if ($oldversion < 2025102801) {
         // Increase scormurl field length in block_blc_modules table.
         $table = new xmldb_table('block_blc_modules');
         $field = new xmldb_field('scormurl', XMLDB_TYPE_CHAR, '500', null, XMLDB_NOTNULL, null, null);
@@ -76,11 +76,11 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         }
 
         // Block savepoint reached.
-        upgrade_block_savepoint(true, 2024123000, 'blc_modules');
+        upgrade_block_savepoint(true, 2025102801, 'blc_modules');
     }
 
     // Add subject field to block_blc_modules table.
-    if ($oldversion < 2025011504) {
+    if ($oldversion < 2025102900) {
         $table = new xmldb_table('block_blc_modules');
         $field = new xmldb_field('subject', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'scormurl');
 
@@ -90,7 +90,7 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         }
 
         // Block savepoint reached.
-        upgrade_block_savepoint(true, 2025011504, 'blc_modules');
+        upgrade_block_savepoint(true, 2025102900, 'blc_modules');
     }
 
     return true;
