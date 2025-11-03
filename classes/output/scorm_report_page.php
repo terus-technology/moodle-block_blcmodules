@@ -107,7 +107,7 @@ class scorm_report_page implements renderable, templatable {
 
         // Get the count of BLC module documents.
         $block_blc_modules_docs = $DB->count_records('block_blc_modules_doc');
-        // var_dump($block_blc_modules); die();// Debugging line, can be removed later.
+
         return [$block_blc_modules,$block_blc_modules_docs];
     }
 

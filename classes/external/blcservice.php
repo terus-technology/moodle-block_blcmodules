@@ -75,7 +75,6 @@ class blcservice extends external_api{
     public static function get_blc_modules_version(string $apikey, string $requesturi, int $version): array {
         global $CFG, $DB;
         
-        $courseid = optional_param('id', '', PARAM_INT);
         $params = self::validate_parameters(self::get_blc_modules_version_parameters(), [
             'apikey' => $apikey,
             'requesturi' => $requesturi,
@@ -355,22 +354,27 @@ class blcservice extends external_api{
      * @return array Response with deletion results
      * @throws moodle_exception
      */
-    public static function get_blc_modules_scormdelete(string $apikey, int $courseid, array $scormurls): array {
+    public static function get_blc_modules_scormdelete(
+        string $apikey,
+        int $courseid,
+        array $scormurls
+    ): array {
+        global $DB, $USER, $CFG;
 
-    $courseid = optional_param('id', '', PARAM_INT);
-    $section = optional_param('sectionNumber', '', PARAM_INT);
-    $apikey = optional_param('apikey', '', PARAM_TEXT);
-    $scormurls = optional_param_array('scormurls', '', PARAM_TEXT);
-    $visibility = optional_param('visibility', '', PARAM_INT);
-    $hidebrowse = optional_param('hidebrowse', '', PARAM_INT);
-    $completion = optional_param('completion', '', PARAM_INT);
-    $completion = intval($completion);
+        // Validate parameters first
+        $params = self::validate_parameters(self::get_blc_modules_scormdelete_parameters(), [
+            'apikey' => $apikey,
+            'courseid' => $courseid,
+            'scormurls' => $scormurls,
+        ]);
 
-    global $DB, $USER, $CFG;
+        // Use validated params
+        $courseid = $params['courseid'];
+        $scormurls = $params['scormurls'];
 
-    if (!is_array($scormurls)) {
-        $scormurls = explode(",", $scormurls);
-    }
+        // Capability check
+        $context = \context_course::instance($courseid);
+        require_capability('moodle/course:manageactivities', $context);
 
     $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
 

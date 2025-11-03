@@ -36,7 +36,7 @@ class services
 
     function __construct()
     {
-        var_dump("Instance of " . __CLASS__);
+        debugging("Initialized instance of " . __CLASS__, DEBUG_DEVELOPER);
     }
 
     public static function blcscorm_add_instance($scorm, $mform = null)
