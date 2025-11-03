@@ -738,6 +738,7 @@ class blcservice extends external_api{
             'scormname' => str_replace("'", "'", $scormobject->scormname ?? ''),
             'scormversion' => $scormobject->version ?? '1',
             'scormid' => $scormobject->id ?? '', // Package ID from API
+            'subject' => $scormobject->subject ?? '',
             'scormurl' => $tempscormurl,
         ];
 
@@ -997,6 +998,8 @@ class blcservice extends external_api{
         $record->cmid = $cmid;
         $record->scormid = $scormdata['scormid'];
         $record->scormurl = $originalurl;
+        // Set subject from API
+        $record->subject = $scormdata['subject'] ?? '';
         $record->version = $scormdata['scormversion'];
         $record->timecreated = time();
         $record->timemodified = time();

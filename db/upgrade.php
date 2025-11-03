@@ -79,5 +79,27 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2024123000, 'blc_modules');
     }
 
+    if ($oldversion < 2025011600) {
+        $table = new xmldb_table('block_blc_modules');
+        $field = new xmldb_field('subject', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+            
+            // Populate existing records
+            $records = $DB->get_records('block_blc_modules');
+            foreach ($records as $record) {
+                $scormurls = explode('/', trim($record->scormurl, '/'));
+                $count = count($scormurls);
+                if ($count > 2) {
+                    $subject = $scormurls[$count - 3];
+                    $DB->set_field('block_blc_modules', 'subject', $subject, ['id' => $record->id]);
+                }
+            }
+        }
+        
+        upgrade_block_savepoint(true, 2025011600, 'blc_modules');
+    }
+
     return true;
 }

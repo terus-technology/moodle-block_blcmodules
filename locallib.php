@@ -24,25 +24,60 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-function get_subjects(){
-	global $DB;
+/**
+ * Get unique subjects from BLC modules.
+ * 
+ * This function retrieves a list of unique subjects from the block_blc_modules table.
+ * In Moodle 4.5+, it uses the dedicated 'subject' field instead of parsing URLs,
+ * which provides better performance and reliability.
+ *
+ * @param int|null $courseid Optional course ID to filter by specific course
+ * @return array Array of unique subjects in format [subject => subject] for backward compatibility
+ * @throws dml_exception If database error occurs
+ */
+function get_subjects(?int $courseid = null): array {
+    global $DB;
+    
+    // Build query to get distinct subjects
+    $params = [];
+    $sql = "SELECT DISTINCT subject 
+            FROM {block_blc_modules}
+            WHERE subject IS NOT NULL 
+              AND " . $DB->sql_compare_text('subject') . " != ''";
+    
+    // Add course filter if specified
+    if ($courseid !== null) {
+        $sql .= " AND courseid = :courseid";
+        $params['courseid'] = $courseid;
+    }
+    
+    $sql .= " ORDER BY subject ASC";
+    
+    // Get distinct subjects from database
+    $records = $DB->get_records_sql($sql, $params);
+    
+    // Format as [subject => subject] for backward compatibility with existing code
     $subjects = [];
-    $blc_modules = $DB->get_records('block_blc_modules');
-    if ($blc_modules) {
-        foreach ($blc_modules as $blc_module) {
-            $scormurl = $blc_module->scormurl;
-            $scormurls = explode('/', $scormurl);
-            $count = count($scormurls);
-            if ($count > 1) {
-                $subject = $scormurls[$count - 2];
-                $subjects[$subject] = $subject;
-            }
+    foreach ($records as $record) {
+        $subject = trim($record->subject);
+        if (!empty($subject)) {
+            $subjects[$subject] = $subject;
         }
     }
+    
     return $subjects;
 }
 
-function array_sort($array, $on, $order){
+/**
+ * Sort a multi-dimensional array by a specific key.
+ * 
+ * @deprecated since Moodle 4.5. Use core_collator::asort() or usort() with custom comparator instead.
+ * @param array $array The array to sort
+ * @param string $on The key to sort by
+ * @param string $order Sort order: 'ASC' or 'DESC'
+ * @return array The sorted array
+ */
+function array_sort(array $array, string $on, string $order): array {
 
     $new_array = array();
     $sortable_array = array();

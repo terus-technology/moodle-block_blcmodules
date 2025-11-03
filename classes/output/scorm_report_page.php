@@ -124,21 +124,13 @@ class scorm_report_page implements renderable, templatable {
 
     private function get_data_by_subject() {
         global $DB;
-        $subjects = get_subjects();
+        $sql = "SELECT subject, COUNT(*) AS count FROM {block_blc_modules} WHERE subject IS NOT NULL AND subject != '' GROUP BY subject ORDER BY count DESC";
+        $subjects = $DB->get_records_sql($sql);
         $data = [];
-        if (count($subjects) > 0 ){
-            foreach ($subjects as $subject) {
-                $sql = "SELECT *  FROM {block_blc_modules} WHERE ";
-                $sql .= $DB->sql_like('scormurl', ':subject');
-                $sqlparam = array('subject' => '%/'.$DB->sql_like_escape($subject).'/%');
-
-                $block_blc_modules = $DB->get_records_sql($sql,$sqlparam);
-    			$totalscorms = count($block_blc_modules);
-				$data[] = array($subject,$totalscorms);
-            }
+        foreach ($subjects as $record) {
+            $data[] = [$record->subject, $record->count];
         }
-        $data = array_sort($data, '1', 'DESC');
-        $data = array_slice($data, 0, 5, true); // Get top 5 subjects.
+        $data = array_slice($data, 0, 5, true); // Top 5 subjects
         return array_values($data);
     }
 
