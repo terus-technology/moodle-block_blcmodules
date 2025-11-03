@@ -364,7 +364,7 @@ class blccurl {
 
         if ($this->debug){
             echo '<h1>Return Data</h1>';
-            debugging('cURL Response: ' . $substr($ret, 0, 500), DEBUG_DEVELOPER);
+            debugging('cURL Response: ' . substr($ret, 0, 500), DEBUG_DEVELOPER);
             echo '<h1>Info</h1>';
             debugging('cURL Info: ' . json_encode($this->info), DEBUG_DEVELOPER);
             echo '<h1>Error</h1>';
