@@ -71,6 +71,20 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         var apikey = $('#apikey').val();
         $("#scormurls").html('');
 
+        // Add loading spinner inside the select2 container
+        var $subjectSelect = $("#scormsubject");
+        var $select2Container = $subjectSelect.next('.select2-container');
+
+        // Position spinner inside the Select2 dropdown
+        $select2Container.append('<div class="subject-loading-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 4px;"><i class="fa fa-spinner fa-spin" style="color: #0f6cbf; font-size: 16px;"></i></div>');
+
+        // Make sure container has relative positioning for absolute overlay
+        $select2Container.css('position', 'relative');
+
+        // Temporarily disable the select2 dropdown
+        $subjectSelect.prop('disabled', true);
+        $select2Container.addClass('select2-container--disabled');
+
         var request = {
             methodname: 'blocks_blc_modules_get_blc_modules_scormsubject',
             args: {
@@ -82,18 +96,41 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
         Ajax.call([request])[0]
             .done((data) => {
-                const items = ["<option value='0' selected>Select Subject</option>"];
-                
+                // Remove loading spinner overlay
+                $('.subject-loading-overlay').remove();
+
+                // Re-enable select2
+                $subjectSelect.prop('disabled', false);
+                $select2Container.removeClass('select2-container--disabled');
+
+                // Store current selection
+                var currentValue = $subjectSelect.val();
+
+                // Clear and repopulate options
+                $subjectSelect.html('<option value="0">Select Subject</option>');
+
                 if (data.length > 0) {
-                    items.push(...data.map(item => `<option value='${item}'>${item}</option>`));
+                    data.forEach(item => {
+                        $subjectSelect.append(`<option value="${item}">${item}</option>`);
+                    });
                 }
 
-                $("#scormsubject").html(items.join(""));
+                // Update select2 without breaking it
+                $subjectSelect.trigger('change.select2');
             })
             .fail((error) => {
+                // Remove loading spinner overlay
+                $('.subject-loading-overlay').remove();
+
+                // Re-enable select2
+                $subjectSelect.prop('disabled', false);
+                $select2Container.removeClass('select2-container--disabled');
+
                 console.error('Error loading subjects:', error);
+
+                // Show user-friendly error message
+                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load subjects. Please try again.</span>');
                 $('.submitForm').prop("disabled", true);
-                $('.statusMsg').html('<span style="color:red;">An error has occurred.</span>');
             });
     }
 
@@ -125,6 +162,20 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         var apikey = $('#apikey').val();
 
         if (scormsubject != 0) {
+            // Show loading state for SCORM URLs dropdown
+            var $scormSelect = $("#scormurls");
+            var $scormSelect2Container = $scormSelect.next('.select2-container');
+
+            // Add loading indicator below the multiselect dropdown
+            $scormSelect2Container.after('<div class="scorm-loading-indicator" style="margin: 8px 0 16px 0; padding: 8px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 4px; display: flex; align-items: center; gap: 8px; color: #0f6cbf; font-size: 14px;"><i class="fa fa-spinner fa-spin" style="color: #0f6cbf;"></i><span>Loading SCORM packages...</span></div>');
+
+            // Temporarily disable the select2 dropdown
+            $scormSelect.prop('disabled', true);
+            $scormSelect2Container.addClass('select2-container--disabled');
+
+            // Disable submit button during loading
+            $('.submitForm').prop('disabled', true);
+
             var request = {
                 methodname: 'blocks_blc_modules_get_blc_modules_scormurl',
                 args: {
@@ -134,21 +185,45 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     scormsubject: scormsubject  // You may need to modify the webservice to accept this parameter
                 }
             };
-           
 
             Ajax.call([request])[0]
                 .done(function(data) {
-                    var items = [];
-                    $.each(data, function(index, item) {
-                        var sanVal = item.scormname.replace(".zip", "");
-                        var key = item.scormurl.replace("'", "'");
-                        items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
-                    });
+                    // Remove loading indicator
+                    $('.scorm-loading-indicator').remove();
 
-                    $("#scormurls").html(items.join(""));
+                    // Re-enable select2
+                    $scormSelect.prop('disabled', false);
+                    $scormSelect2Container.removeClass('select2-container--disabled');
+
+                    // Clear and repopulate options
+                    $scormSelect.html('');
+
+                    if (data && data.length > 0) {
+                        $.each(data, function(index, item) {
+                            var sanVal = item.scormname.replace(".zip", "");
+                            var key = item.scormurl.replace("'", "'");
+                            $scormSelect.append("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
+                        });
+                    }
+
+                    // Update select2 without breaking it
+                    $scormSelect.trigger('change.select2');
+
+                    // Clear any previous status messages
+                    $('.statusMsg').html('');
                 })
                 .fail(function(error) {
+                    // Remove loading indicator
+                    $('.scorm-loading-indicator').remove();
+
+                    // Re-enable select2
+                    $scormSelect.prop('disabled', false);
+                    $scormSelect2Container.removeClass('select2-container--disabled');
+
                     console.error('Error loading SCORM URLs:', error);
+
+                    // Show user-friendly error message
+                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load SCORM packages. Please try again.</span>');
                 });
         }
     }
@@ -198,6 +273,77 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         });
     }
     function init() {
+
+        // Add CSS for smooth loading animations
+        $('<style>')
+            .prop('type', 'text/css')
+            .html(`
+                .subject-loading, .scorm-loading {
+                    opacity: 0;
+                    animation: fadeIn 0.3s ease-in forwards;
+                }
+
+                .processing-indicator {
+                    opacity: 0;
+                    animation: fadeIn 0.5s ease-in forwards;
+                }
+
+                .progress-container {
+                    opacity: 0;
+                    animation: slideDown 0.4s ease-out forwards;
+                }
+
+                .progress-bar {
+                    transition: width 0.3s ease, background-color 0.3s ease;
+                }
+
+                .progress-bar:hover {
+                    background: linear-gradient(90deg, #0d5cbf, #3a80d2);
+                }
+
+                .statusMsg span {
+                    display: inline-block;
+                    opacity: 0;
+                    animation: fadeInUp 0.4s ease-out forwards;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .btn-blc-modules {
+                    transition: all 0.2s ease;
+                }
+
+                .btn-blc-modules:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+            `)
+            .appendTo('head');
 
         var pageURL = $(location).attr("href");
 
@@ -386,12 +532,38 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
                 x = secNum;
 
+                // Set up modal event listeners for better UX
+                $('#bsModal3').off('shown.bs.modal').on('shown.bs.modal', function () {
+                    // Focus on the subject dropdown when modal opens
+                    setTimeout(function() {
+                        $('#scormsubject').select2('open');
+                    }, 100);
+                });
+
+                $('#bsModal3').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                    // Clean up any loading states when modal is closed
+                    $('.subject-loading, .scorm-loading, .processing-indicator').remove();
+                    $('.progress-container').remove();
+                    $('.statusMsg').html('');
+                    $('.submitForm').prop('disabled', true);
+                });
+
             });
 
-            $("#scormurls").click(function () {
-
-                $('.submitForm').removeAttr("disabled");
-
+            $("#scormurls").change(function () {
+                // Enable submit button when SCORM packages are selected
+                var selectedCount = $(this).find('option:selected').length;
+                if (selectedCount > 0) {
+                    $('.submitForm').removeAttr("disabled");
+                    // Show selection count feedback
+                    var selectionMsg = selectedCount > 1
+                        ? selectedCount + ' modules selected'
+                        : '1 module selected';
+                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + selectionMsg + '. Ready to add to course.</span>');
+                } else {
+                    $('.submitForm').prop("disabled", true);
+                    $('.statusMsg').html('');
+                }
             });
 
             $(".course-content").on("click", ".submitForm", function () {
@@ -407,17 +579,43 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     scormurls.push(urll);
                 });
 
+                // Enhanced loading state
                 $('.statusMsg').html('');
                 $('.submitForm').attr("disabled", "disabled");
                 $('.closeModal').attr("disabled", "disabled");
-                $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
 
-                // Show processing message with file count
+                // Disable all form controls during processing
+                $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', true);
+
+                // Add enhanced loading spinner and progress indicator
+                $(".modal-header").find('.fa-spinner').remove(); // Remove any existing spinner
+                $(".modal-header h4").after('<div class="processing-indicator" style="margin-left: 15px; display: inline-block;"><i class="fa fa-spinner fa-spin" style="font-size:18px; color: #0f6cbf;"></i></div>');
+
+                // Add progress bar for better visual feedback
+                $('.statusMsg').after('<div class="progress-container" style="margin-top: 15px; display: none;"><div class="progress" style="height: 8px; background-color: #f0f0f0; border-radius: 4px; overflow: hidden;"><div class="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0f6cbf, #4a90e2); transition: width 0.3s ease; border-radius: 4px;"></div></div></div>');
+
+                // Show processing message with file count and progress hint
                 var fileCount = scormurls.length;
-                var processingMsg = fileCount > 1 
-                    ? 'Processing ' + fileCount + ' files. This may take several minutes...'
-                    : 'Processing file. This may take a moment...';
-                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + processingMsg + '</span>');
+                var processingMsg = fileCount > 1
+                    ? 'Processing ' + fileCount + ' modules. This may take several minutes for large files...'
+                    : 'Processing module. This may take a moment...';
+                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-download"></i> ' + processingMsg + '</span>');
+
+                // Show progress container for multiple files
+                if (fileCount > 1) {
+                    $('.progress-container').show();
+                    // Simulate progress for better UX
+                    var progress = 0;
+                    var progressInterval = setInterval(function() {
+                        if (progress < 85) { // Cap at 85% until actual completion
+                            progress += Math.random() * 15;
+                            $('.progress-bar').css('width', Math.min(progress, 85) + '%');
+                        }
+                    }, 2000);
+
+                    // Store interval ID so we can clear it later
+                    $('.progress-container').data('interval', progressInterval);
+                }
 
                 var request = {
                     methodname: 'blocks_blc_modules_load_scorm_modules',
@@ -435,17 +633,26 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 Ajax.call([request], { timeout: 300000 })[0] // 5 minutes timeout
                     .done(function(data) {
                         console.log('BLC Modules: AJAX success response:', data);
+
+                        // Clean up enhanced loading states
+                        clearInterval($('.progress-container').data('interval'));
+                        $('.progress-container').remove();
+                        $('.processing-indicator').remove();
+
                         if (data.success) {
+                            // Complete progress bar
+                            $('.progress-bar').css('width', '100%');
+
                             // Show success message briefly before reload
-                            var successMsg = data.successful > 1 
-                                ? data.successful + ' modules loaded successfully!' 
+                            var successMsg = data.successful > 1
+                                ? data.successful + ' modules loaded successfully!'
                                 : 'Module loaded successfully!';
                             $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
-                            
+
                             // Reload after short delay to show success message
                             setTimeout(function() {
                                 location.reload(true);
-                            }, 1000);
+                            }, 1500);
                         } else {
                             var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
                             var errorDetails = '';
@@ -453,9 +660,11 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                 errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
                             }
                             $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
+
+                            // Re-enable form controls
                             $('.submitForm').removeAttr("disabled");
                             $('.closeModal').removeAttr("disabled");
-                            $(".modal-header .fa.fa-spinner").remove();
+                            $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
                         }
                     })
                     .fail(function(error) {
@@ -476,10 +685,15 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     : 'Module loaded successfully!';
                                 $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
 
+                                // Clean up enhanced loading states
+                                clearInterval($('.progress-container').data('interval'));
+                                $('.progress-container').remove();
+                                $('.processing-indicator').remove();
+
                                 // Reload after short delay to show success message
                                 setTimeout(function() {
                                     location.reload(true);
-                                }, 1000);
+                                }, 1500);
                                 return;
                             } else {
                                 var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
@@ -488,9 +702,15 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
                                 }
                                 $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
+
+                                // Clean up enhanced loading states
+                                clearInterval($('.progress-container').data('interval'));
+                                $('.progress-container').remove();
+                                $('.processing-indicator').remove();
+
                                 $('.submitForm').removeAttr("disabled");
                                 $('.closeModal').removeAttr("disabled");
-                                $(".modal-header .fa.fa-spinner").remove();
+                                $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
                                 return;
                             }
                         }
@@ -525,15 +745,34 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             }
                             $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '</span>');
                         }
-                        
+                        // Clean up enhanced loading states
+                        clearInterval($('.progress-container').data('interval'));
+                        $('.progress-container').remove();
+                        $('.processing-indicator').remove();
+
                         $('.submitForm').removeAttr("disabled");
                         $('.closeModal').removeAttr("disabled");
-                        $(".modal-header .fa.fa-spinner").remove();
+
+                        // Re-enable form controls
+                        $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
                     });
             });
 
             $('.select2').select2({
                 dropdownParent: $("#bsModal3")
+            });
+
+            // Add keyboard navigation support
+            $(document).on('keydown', '#bsModal3', function(e) {
+                // ESC key to close modal
+                if (e.keyCode === 27) {
+                    $('#bsModal3').modal('hide');
+                }
+                // Enter key to submit form if submit button is enabled
+                if (e.keyCode === 13 && !$('.submitForm').prop('disabled')) {
+                    e.preventDefault();
+                    $('.submitForm').click();
+                }
             });
 
         }
