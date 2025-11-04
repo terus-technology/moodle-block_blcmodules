@@ -390,7 +390,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             }
 
             $(".course-content").append(`
-                <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+                <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
                     <div class="modal-dialog modal-md">
                         <div class="modal-content">
                             <div class="modal-header">
@@ -473,7 +473,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-default closeModal" data-dismiss="modal">
+                            <button type="button" class="btn btn-default closeModal">
                                 Close
                             </button>
                             <button type="button" disabled="disabled" class="btn btn-primary submitForm">
@@ -548,6 +548,13 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     $('.submitForm').prop('disabled', true);
                 });
 
+            });
+
+            // Handler for Close button - close modal manually
+            $(".course-content").on("click", ".closeModal", function () {
+                // Blur focus first to prevent aria-hidden warning
+                $(this).blur();
+                $('#bsModal3').modal('hide');
             });
 
             $("#scormurls").change(function () {
@@ -762,12 +769,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 dropdownParent: $("#bsModal3")
             });
 
-            // Add keyboard navigation support
+            // Add keyboard navigation support (ESC disabled to prevent accidental close)
             $(document).on('keydown', '#bsModal3', function(e) {
-                // ESC key to close modal
-                if (e.keyCode === 27) {
-                    $('#bsModal3').modal('hide');
-                }
                 // Enter key to submit form if submit button is enabled
                 if (e.keyCode === 13 && !$('.submitForm').prop('disabled')) {
                     e.preventDefault();
