@@ -172,108 +172,50 @@ class services
 
         // NEW: Check if we should use Google Drive streaming.
         // The scorm->blc_package_id contains the ID from block_scorm_package table.
-        // We need to fetch the Google Drive ID from block_scorm_package.scormid field.
-        $usegdrive = false;
-        $driveid = null;
-
-        require_once($CFG->dirroot . '/blocks/blc_modules/classes/helper/gdrive_helper.php');
-
-        // PRIORITY 1: Check if reference field contains Drive ID in format "gdrive:{id}"
-        // This is set by load_scorm_modules() when it extracts Drive ID from URL
-        if (!empty($scorm->reference) && strpos($scorm->reference, 'gdrive:') === 0) {
-            $driveid = substr($scorm->reference, 7); // Remove "gdrive:" prefix
-            if ($driveid) {
-                $usegdrive = \block_blc_modules\helper\gdrive_helper::is_streaming_enabled();
-                debugging('Found Google Drive ID from reference field: ' . $driveid, DEBUG_DEVELOPER);
-                error_log('BLC Modules: Using Google Drive ID from reference field: ' . $driveid);
-            }
-        }
-
-        // PRIORITY 2: Try to extract from reference URL if it's a Google Drive URL
-        if (!$usegdrive && !empty($scorm->reference)) {
-            if (\block_blc_modules\helper\gdrive_helper::is_gdrive_url($scorm->reference)) {
-                $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($scorm->reference);
-                if ($driveid) {
-                    $usegdrive = \block_blc_modules\helper\gdrive_helper::is_streaming_enabled();
-                    debugging('Found Google Drive ID in reference URL: ' . $driveid, DEBUG_DEVELOPER);
-                    error_log('BLC Modules: Extracted Google Drive ID from reference URL: ' . $driveid);
-                }
-            }
-        }
-
-        // PRIORITY 3: Fetch Google Drive ID from block_scorm_package table if package ID is available.
-        if (!$usegdrive && !empty($scorm->blc_package_id)) {
-            // Get the SCORM package record from database to get Google Drive ID.
-            $packagerecord = $DB->get_record('block_scorm_package', ['id' => $scorm->blc_package_id], 'scormid');
+        // Download file from reference URL.
+        // Note: URL may be from local_scormurl service (temporary URL) or direct URL.
+        // Google Drive downloads are handled server-side by local_scormurl service.
+        if (!empty($scorm->reference)) {
+            debugging('Downloading SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
+            error_log('BLC Modules: Starting SCORM download from reference URL');
             
-            if ($packagerecord && !empty($packagerecord->scormid)) {
-                // Check if scormid looks like a Google Drive ID.
-                $driveid = \block_blc_modules\helper\gdrive_helper::extract_drive_id($packagerecord->scormid);
-                
-                if ($driveid) {
-                    $usegdrive = \block_blc_modules\helper\gdrive_helper::is_streaming_enabled();
-                    debugging('Found Google Drive ID from block_scorm_package.scormid (package id=' . $scorm->blc_package_id . '): ' . $driveid, DEBUG_DEVELOPER);
-                    error_log('BLC Modules: Using Google Drive ID from database: ' . $driveid);
-                }
-            }
-        }
-
-        // Download using appropriate method.
-        if ($usegdrive && $driveid) {
-            // Use Google Drive streaming - no file size limitations.
-            debugging('Using Google Drive streaming for: ' . $driveid, DEBUG_DEVELOPER);
             try {
-                require_once($CFG->dirroot . '/blocks/blc_modules/classes/helper/gdrive_helper.php');
-                $packagefile = \block_blc_modules\helper\gdrive_helper::stream_to_storage($driveid, $filerecord, $context);
+                // Set longer timeout for large files.
+                \core_php_time_limit::raise(1800); // 30 minutes.
                 
-                if ($packagefile) {
-                    $newhash = $packagefile->get_contenthash();
-                    debugging('Successfully downloaded from Google Drive: ' . $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
-                } else {
-                    $newhash = null;
-                    debugging('Failed to download from Google Drive', DEBUG_DEVELOPER);
-                }
-            } catch (\Exception $e) {
-                $newhash = null;
-                debugging('Google Drive error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                // Fallback to traditional download.
-                $usegdrive = false;
-            }
-        }
-        
-        // Fallback to traditional download if not using Google Drive or if it failed.
-        if (!$usegdrive || !$packagefile) {
-            debugging('Using traditional download method', DEBUG_DEVELOPER);
-            
-            // Download options for the SCORM package.
-            $options = [
-                'calctimeout' => true,
-                'connecttimeout' => 600,
-                'skipcertverify' => true,
-                'timeout' => 300,
-            ];
-            
-            // Download the file content.
-            $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
-            
-            if ($content !== false && strlen($content) > 0) {
-                try {
+                // Download the file content using standard Moodle function.
+                $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
+                
+                if ($content !== false && strlen($content) > 0) {
                     // Create file from the downloaded content.
                     $packagefile = $fs->create_file_from_string($filerecord, $content);
+                    
                     if ($packagefile) {
                         $newhash = $packagefile->get_contenthash();
+                        debugging('Successfully downloaded SCORM package: ' . 
+                                 $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
+                        error_log('BLC Modules: Successfully downloaded and stored SCORM package: ' . 
+                                 $packagefile->get_filesize() . ' bytes');
                     } else {
                         $newhash = null;
-                        debugging('Failed to create SCORM package file from downloaded content', DEBUG_DEVELOPER);
+                        debugging('Failed to create SCORM package file from content', DEBUG_DEVELOPER);
+                        error_log('BLC Modules: Failed to create file from downloaded content');
                     }
-                } catch (\Exception $e) {
+                } else {
                     $newhash = null;
-                    debugging('Error creating SCORM package file: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
+                    error_log('BLC Modules: Download failed or returned empty content');
                 }
-            } else {
+                
+            } catch (\Exception $e) {
                 $newhash = null;
-                debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
+                debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                error_log('BLC Modules: Exception during download: ' . $e->getMessage());
             }
+        } else {
+            $newhash = null;
+            debugging('No reference URL provided for SCORM package', DEBUG_DEVELOPER);
+            error_log('BLC Modules: No reference URL available');
         }
 
         // Update SCORM record with new hash.
@@ -490,105 +432,59 @@ class services
                 'filepath' => '/',
             ];
 
-            // Check if reference is in format "gdrive:{id}" (set by load_scorm_modules)
-            require_once($CFG->dirroot . '/blocks/blc_modules/classes/helper/gdrive_helper.php');
+            // Extract filename from URL for file record
+            $filerecord['filename'] = 'package.zip'; // Default filename
             
-            $isGdriveReference = (strpos($scorm->reference, 'gdrive:') === 0);
-            $extractedDriveId = null;
-            
-            if ($isGdriveReference) {
-                // Extract Drive ID from "gdrive:{id}" format
-                $extractedDriveId = substr($scorm->reference, 7);
-                debugging('Reference is Google Drive ID format: ' . $extractedDriveId, DEBUG_DEVELOPER);
-                
-                // For Drive ID reference, use a generic filename that will be updated from metadata
-                $filerecord['filename'] = 'package.zip';
-            } else {
-                // Extract filename from URL - with validation
+            // Try to extract a better filename from URL if possible
+            if (!empty($scorm->reference)) {
                 $parts = explode('/', trim($scorm->reference, '/'));
-                $filename = array_pop($parts);
-                $cleanfilename = clean_param($filename, PARAM_FILE);
+                $urlfilename = array_pop($parts);
+                $cleanfilename = clean_param($urlfilename, PARAM_FILE);
                 
-                // CRITICAL: Validate filename is not empty after cleaning
-                if (empty($cleanfilename)) {
-                    debugging('Extracted filename is empty after cleaning in scorm_parse. URL: ' . $scorm->reference, DEBUG_DEVELOPER);
-                    debugging('This usually means the URL has no filename or ends with a slash.', DEBUG_DEVELOPER);
-                    return;
+                if (!empty($cleanfilename) && preg_match('/\.zip$/i', $cleanfilename)) {
+                    $filerecord['filename'] = $cleanfilename;
+                    debugging('Using filename from URL: ' . $cleanfilename, DEBUG_DEVELOPER);
                 }
-                
-                $filerecord['filename'] = $cleanfilename;
-                
-                // Additional safety check
-                if (empty($filerecord['filename'])) {
-                    debugging('File record filename is empty in scorm_parse. Cannot create file.', DEBUG_DEVELOPER);
-                    return;
-                }
-                
-                debugging('Extracted filename for scorm_parse: ' . $cleanfilename, DEBUG_DEVELOPER);
             }
             
             $filerecord['source'] = clean_param($scorm->reference, PARAM_URL);
 
-            // If reference is Drive ID format, use it directly
-            if ($isGdriveReference && $extractedDriveId) {
-                debugging('Using Google Drive streaming from reference field', DEBUG_DEVELOPER);
-                error_log('BLC Modules: Using Google Drive API for reference: ' . $extractedDriveId);
+            // Download file from reference URL.
+            // URL from local_scormurl service already handles Google Drive downloads server-side.
+            debugging('Downloading SCORM package from URL: ' . $scorm->reference, DEBUG_DEVELOPER);
+            error_log('BLC Modules (scorm_parse): Starting SCORM download');
+            
+            try {
+                \core_php_time_limit::raise(1800); // 30 minutes for large files
                 
-                try {
-                    \core_php_time_limit::raise(1800); // 30 minutes for large files
-                    $packagefile = \block_blc_modules\helper\gdrive_helper::stream_to_storage(
-                        $extractedDriveId, 
-                        $filerecord, 
-                        $context
-                    );
-                    
-                    if ($packagefile) {
-                        $newhash = $packagefile->get_contenthash();
-                        debugging('Successfully downloaded from Google Drive via reference: ' . 
-                                 $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
-                        error_log('BLC Modules: Successfully downloaded ' . $packagefile->get_filesize() . 
-                                 ' bytes from Google Drive');
-                    } else {
-                        $newhash = null;
-                        debugging('Failed to download from Google Drive', DEBUG_DEVELOPER);
-                        error_log('BLC Modules: ERROR - Failed to download from Google Drive');
-                    }
-                } catch (\Exception $e) {
-                    $newhash = null;
-                    debugging('Google Drive error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                    error_log('BLC Modules: ERROR - Google Drive download failed: ' . $e->getMessage());
-                    // Don't fallback for Drive ID format - it should always use API
-                }
-            } else {
-                // Traditional download for non-Drive-ID references
-                $options = [
-                    'calctimeout' => true,
-                    'skipcertverify' => true,
-                    'connecttimeout' => 600,
-                    'timeout' => 300,
-                ];
-
-                // Download the file content using the same method as blcscormurl_filesize (which works)
+                // Download the file content using standard Moodle function.
                 $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
                 
                 if ($content !== false && strlen($content) > 0) {
-                    try {
-                        // Create file from the downloaded content
-                        $packagefile = $fs->create_file_from_string($filerecord, $content);
-                        if ($packagefile) {
-                            $newhash = $packagefile->get_contenthash();
-                        } else {
-                            $newhash = null;
-                            debugging('Failed to create SCORM package file from downloaded content', DEBUG_DEVELOPER);
-                        }
-                    } catch (Exception $e) {
+                    // Create file from the downloaded content.
+                    $packagefile = $fs->create_file_from_string($filerecord, $content);
+                    
+                    if ($packagefile) {
+                        $newhash = $packagefile->get_contenthash();
+                        debugging('Successfully downloaded SCORM package: ' . 
+                                 $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
+                        error_log('BLC Modules: Successfully downloaded and stored: ' . 
+                                 $packagefile->get_filesize() . ' bytes');
+                    } else {
                         $newhash = null;
-                        debugging('Error creating SCORM package file: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                        debugging('Failed to create SCORM package file from content', DEBUG_DEVELOPER);
+                        error_log('BLC Modules: ERROR - Failed to create file from content');
                     }
                 } else {
                     $newhash = null;
                     debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
+                    error_log('BLC Modules: ERROR - Download failed or empty content');
                 }
+                
+            } catch (\Exception $e) {
+                $newhash = null;
+                debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                error_log('BLC Modules: ERROR - Exception during download: ' . $e->getMessage());
             }
         } else {
             debugging('SCORM reference URL is empty in scorm_parse. Scorm object: ' . print_r($scorm, true), DEBUG_DEVELOPER);
