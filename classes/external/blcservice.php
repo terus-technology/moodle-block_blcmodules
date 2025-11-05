@@ -650,7 +650,7 @@ class blcservice extends external_api{
     /**
      * Helper method to fetch SCORM data from external service
      */
-    private static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
+    public static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
         global $DB; // Declare global at function start
         
         $function_name = 'local_scormurl_get_tempscormurls';
@@ -770,7 +770,7 @@ class blcservice extends external_api{
      * @param string|null $driveid Optional parameter (deprecated, not used)
      * @return bool True if URL format is valid, false otherwise
      */
-    private static function validate_scorm_url(string $scormurl, ?string $driveid = null): bool {
+    public static function validate_scorm_url(string $scormurl, ?string $driveid = null): bool {
         // Basic URL format validation
         if (empty($scormurl)) {
             debugging('Empty SCORM URL provided', DEBUG_DEVELOPER);
@@ -792,7 +792,7 @@ class blcservice extends external_api{
     /**
      * Helper method to create SCORM module
      */
-    private static function create_scorm_module(
+    public static function create_scorm_module(
         \stdClass $course,
         int $sectionnumber,
         array $scormdata,
@@ -905,7 +905,7 @@ class blcservice extends external_api{
     /**
      * Helper method to record BLC module data
      */
-    private static function record_blc_module(
+    public static function record_blc_module(
         int $courseid,
         int $sectionnumber,
         int $cmid,
@@ -937,7 +937,7 @@ class blcservice extends external_api{
      * @param string $apikey API key
      * @param int $scormid SCORM package ID
      */
-    private static function ensure_api_key_mapping(string $apikey, int $scormid): void {
+    public static function ensure_api_key_mapping(string $apikey, int $scormid): void {
         global $DB;
         
         if (empty($scormid) || empty($apikey)) {
@@ -989,7 +989,7 @@ class blcservice extends external_api{
     /**
      * Helper method to create accessibility document
      */
-    private static function create_accessibility_document(
+    public static function create_accessibility_document(
         \stdClass $course,
         int $sectionnumber,
         array $scormdata,
@@ -1272,7 +1272,7 @@ class blcservice extends external_api{
     /**
      * Helper method to clean up temporary SCORM files
      */
-    private static function cleanup_temp_files(
+    public static function cleanup_temp_files(
         string $apikey,
         string $url,
         string $token,

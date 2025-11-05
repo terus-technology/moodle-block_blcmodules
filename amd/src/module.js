@@ -586,183 +586,143 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     scormurls.push(urll);
                 });
 
-                // Enhanced loading state
                 $('.statusMsg').html('');
                 $('.submitForm').attr("disabled", "disabled");
                 $('.closeModal').attr("disabled", "disabled");
-
-                // Disable all form controls during processing
                 $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', true);
 
-                // Add enhanced loading spinner and progress indicator
-                $(".modal-header").find('.fa-spinner').remove(); // Remove any existing spinner
+                $(".modal-header").find('.fa-spinner').remove();
                 $(".modal-header h4").after('<div class="processing-indicator" style="margin-left: 15px; display: inline-block;"><i class="fa fa-spinner fa-spin" style="font-size:18px; color: #0f6cbf;"></i></div>');
 
-                // Add progress bar for better visual feedback
-                $('.statusMsg').after('<div class="progress-container" style="margin-top: 15px; display: none;"><div class="progress" style="height: 8px; background-color: #f0f0f0; border-radius: 4px; overflow: hidden;"><div class="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0f6cbf, #4a90e2); transition: width 0.3s ease; border-radius: 4px;"></div></div></div>');
+                $('.statusMsg').after('<div class="progress-container" style="margin-top: 15px;"><div class="progress" style="height: 20px; background-color: #f0f0f0; border-radius: 4px; overflow: hidden;"><div class="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0f6cbf, #4a90e2); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; transition: width 0.3s ease;"><span class="progress-text">0%</span></div></div><div class="progress-status" style="margin-top: 8px; font-size: 13px; color: #666;"></div></div>');
 
-                // Show processing message with file count and progress hint
                 var fileCount = scormurls.length;
-                var processingMsg = fileCount > 1
-                    ? 'Processing ' + fileCount + ' modules. This may take several minutes for large files...'
-                    : 'Processing module. This may take a moment...';
-                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-download"></i> ' + processingMsg + '</span>');
+                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-download"></i> Starting process...</span>');
 
-                // Show progress container for multiple files
-                if (fileCount > 1) {
-                    $('.progress-container').show();
-                    // Simulate progress for better UX
-                    var progress = 0;
-                    var progressInterval = setInterval(function() {
-                        if (progress < 85) { // Cap at 85% until actual completion
-                            progress += Math.random() * 15;
-                            $('.progress-bar').css('width', Math.min(progress, 85) + '%');
+                var processorUrl = M.cfg.wwwroot + '/blocks/blc_modules/scorm_load_processor.php';
+                var sesskey = M.cfg.sesskey;
+                var consecutiveErrors = 0;
+                var maxErrors = 10;
+
+                function startProcess() {
+                    $.ajax({
+                        url: processorUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'start',
+                            sesskey: sesskey,
+                            courseid: parseInt(id),
+                            sectionnumber: parseInt(x),
+                            apikey: apikey,
+                            scormurls: JSON.stringify(scormurls),
+                            visibility: parseInt(visibility),
+                            hidebrowse: parseInt(hidebrowse),
+                            completion: parseInt(completion)
+                        },
+                        dataType: 'json',
+                        timeout: 30000,
+                        success: function(response) {
+                            if (response.success) {
+                                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>');
+                                setTimeout(processNext, 500);
+                            } else {
+                                showError('Failed to start: ' + response.message);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            showError('Failed to initialize process: ' + error);
                         }
-                    }, 2000);
-
-                    // Store interval ID so we can clear it later
-                    $('.progress-container').data('interval', progressInterval);
+                    });
                 }
 
-                var request = {
-                    methodname: 'blocks_blc_modules_load_scorm_modules',
-                    args: {
-                        courseid: parseInt(id),
-                        sectionnumber: parseInt(x),
-                        apikey: apikey,
-                        scormurls: scormurls,
-                        visibility: parseInt(visibility),
-                        hidebrowse: parseInt(hidebrowse),
-                        completion: parseInt(completion)
-                    }
-                };
+                function processNext() {
+                    $.ajax({
+                        url: processorUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'process',
+                            sesskey: sesskey
+                        },
+                        dataType: 'json',
+                        timeout: 120000,
+                        success: function(response) {
+                            consecutiveErrors = 0;
+                            
+                            if (response.success && response.data) {
+                                var data = response.data;
+                                
+                                if (data.total > 0) {
+                                    var percentage = Math.round((data.processed / data.total) * 100);
+                                    $('.progress-bar').css('width', percentage + '%');
+                                    $('.progress-text').text(percentage + '%');
+                                    $('.progress-status').text('Processing ' + data.processed + ' of ' + data.total + ' modules...');
+                                }
 
-                Ajax.call([request], { timeout: 300000 })[0] // 5 minutes timeout
-                    .done(function(data) {
-                        console.log('BLC Modules: AJAX success response:', data);
+                                if (data.current_module && data.current_module.name) {
+                                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> ' + data.current_module.name + '</span>');
+                                }
 
-                        // Clean up enhanced loading states
-                        clearInterval($('.progress-container').data('interval'));
-                        $('.progress-container').remove();
-                        $('.processing-indicator').remove();
-
-                        if (data.success) {
-                            // Complete progress bar
-                            $('.progress-bar').css('width', '100%');
-
-                            // Show success message briefly before reload
-                            var successMsg = data.successful > 1
-                                ? data.successful + ' modules loaded successfully!'
-                                : 'Module loaded successfully!';
-                            $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
-
-                            // Reload after short delay to show success message
-                            setTimeout(function() {
-                                location.reload(true);
-                            }, 1500);
-                        } else {
-                            var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                            var errorDetails = '';
-                            if (data.failed > 0 && data.successful > 0) {
-                                errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
-                            }
-                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
-
-                            // Re-enable form controls
-                            $('.submitForm').removeAttr("disabled");
-                            $('.closeModal').removeAttr("disabled");
-                            $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
-                        }
-                    })
-                    .fail(function(error) {
-                        console.error('AJAX request failed:', error);
-                        console.log('BLC Modules: Full error object:', error);
-
-                        // Check if this is actually a successful response with error data
-                        if (error && error.responseJSON) {
-                            console.log('BLC Modules: Found responseJSON in error, treating as success with error data');
-                            // Treat this as a successful response but with error data
-                            var data = error.responseJSON;
-                            console.log('BLC Modules: Error response data:', data);
-
-                            if (data.success) {
-                                // Show success message briefly before reload
-                                var successMsg = data.successful > 1
-                                    ? data.successful + ' modules loaded successfully!'
-                                    : 'Module loaded successfully!';
-                                $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
-
-                                // Clean up enhanced loading states
-                                clearInterval($('.progress-container').data('interval'));
-                                $('.progress-container').remove();
-                                $('.processing-indicator').remove();
-
-                                // Reload after short delay to show success message
-                                setTimeout(function() {
-                                    location.reload(true);
-                                }, 1500);
-                                return;
+                                if (data.complete) {
+                                    handleCompletion(data);
+                                } else {
+                                    setTimeout(processNext, 100);
+                                }
                             } else {
-                                var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                                var errorDetails = '';
-                                if (data.failed > 0 && data.successful > 0) {
-                                    errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
-                                }
-                                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
-
-                                // Clean up enhanced loading states
-                                clearInterval($('.progress-container').data('interval'));
-                                $('.progress-container').remove();
-                                $('.processing-indicator').remove();
-
-                                $('.submitForm').removeAttr("disabled");
-                                $('.closeModal').removeAttr("disabled");
-                                $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
-                                return;
+                                showError('Process error: ' + (response.message || 'Unknown error'));
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            consecutiveErrors++;
+                            if (consecutiveErrors < maxErrors) {
+                                setTimeout(processNext, 2000);
+                            } else {
+                                showError('Too many errors. Process may have failed.');
                             }
                         }
-
-                        // Check if error is timeout - the process may still be running in background
-                        var isTimeout = error && (error.error === 'timeout' || error.exception === 'moodle_exception' || (error.statusText && error.statusText === 'timeout'));
-
-                        if (isTimeout) {
-                            // Timeout - show message that process is still running
-                            $('.statusMsg').html(
-                                '<span style="color:#ff9800;"><i class="fa fa-clock-o"></i> ' +
-                                'Request timed out, but the process may still be running in the background. ' +
-                                'Please wait a moment and refresh the page to check if modules were loaded.</span>'
-                            );
-                        } else {
-                            // Real error - show error message with more details
-                            var errorMsg = 'An error occurred while loading SCORM modules';
-                            if (error && error.message) {
-                                errorMsg += ': ' + error.message;
-                            } else if (error && error.statusText) {
-                                errorMsg += ': ' + error.statusText;
-                            } else if (error && error.responseText) {
-                                // Try to extract meaningful error from response
-                                try {
-                                    var errorData = JSON.parse(error.responseText);
-                                    if (errorData.message) {
-                                        errorMsg += ': ' + errorData.message;
-                                    }
-                                } catch (e) {
-                                    // Ignore JSON parse errors
-                                }
-                            }
-                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '</span>');
-                        }
-                        // Clean up enhanced loading states
-                        clearInterval($('.progress-container').data('interval'));
-                        $('.progress-container').remove();
-                        $('.processing-indicator').remove();
-
-                        $('.submitForm').removeAttr("disabled");
-                        $('.closeModal').removeAttr("disabled");
-
-                        // Re-enable form controls
-                        $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
                     });
+                }
+
+                function handleCompletion(data) {
+                    $('.processing-indicator').remove();
+                    $('.progress-bar').css('width', '100%');
+                    $('.progress-text').text('100%');
+
+                    if (data.failed === 0 && data.success > 0) {
+                        var msg = data.success === 1 ? '1 module loaded!' : data.success + ' modules loaded successfully!';
+                        $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + msg + '</span>');
+                        $('.progress-status').text('All modules processed successfully!');
+                        
+                        setTimeout(function() {
+                            location.reload(true);
+                        }, 1500);
+                    } else if (data.success > 0) {
+                        $('.statusMsg').html('<span style="color:#ff9800;"><i class="fa fa-exclamation-triangle"></i> ' + data.success + ' succeeded, ' + data.failed + ' failed</span>');
+                        $('.progress-status').text('Process completed with some errors');
+                        
+                        if (data.errors && data.errors.length > 0) {
+                            $('.progress-status').append('<br><small style="color:red;">' + data.errors.join('<br>') + '</small>');
+                        }
+                        
+                        setTimeout(function() {
+                            location.reload(true);
+                        }, 3000);
+                    } else {
+                        showError('All modules failed to load');
+                        if (data.errors && data.errors.length > 0) {
+                            $('.progress-status').html('<small style="color:red;">' + data.errors.join('<br>') + '</small>');
+                        }
+                    }
+                }
+
+                function showError(message) {
+                    $('.processing-indicator').remove();
+                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + message + '</span>');
+                    $('.submitForm').removeAttr("disabled");
+                    $('.closeModal').removeAttr("disabled");
+                    $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+                }
+
+                startProcess();
             });
 
             $('.select2').select2({
