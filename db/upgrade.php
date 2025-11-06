@@ -101,5 +101,30 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2025011600, 'blc_modules');
     }
 
+    // Performance optimization: Add indexes for bulk update queries.
+    if ($oldversion < 2025110600) {
+        $table = new xmldb_table('block_blc_modules');
+        
+        // Add index on scormid for faster lookups.
+        $index = new xmldb_index('scormid_idx', XMLDB_INDEX_NOTUNIQUE, ['scormid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        
+        // Add index on cmid for faster lookups.
+        $index = new xmldb_index('cmid_idx', XMLDB_INDEX_NOTUNIQUE, ['cmid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        
+        // Add composite index on scormid+version for bulk update comparison.
+        $index = new xmldb_index('scormid_version_idx', XMLDB_INDEX_NOTUNIQUE, ['scormid', 'version']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        
+        upgrade_block_savepoint(true, 2025110600, 'blc_modules');
+    }
+
     return true;
 }
