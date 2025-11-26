@@ -221,6 +221,14 @@ class blcservice extends external_api{
                 }
             }
         }
+        
+        // Sort modules alphabetically by scormname (case-insensitive)
+        if (count($scorm) > 0) {
+            usort($scorm, function($a, $b) {
+                return strcasecmp($a['scormname'], $b['scormname']);
+            });
+        }
+        
         return $scorm;
 
 
