@@ -126,5 +126,48 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2025110600, 'blc_modules');
     }
 
+    // Add SCORM load logging table.
+    if ($oldversion < 2025120100) {
+        $table = new xmldb_table('block_blc_modules_log');
+        
+        // Add fields.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('sectionnumber', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('process_type', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('process_status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('session_id', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('parameters', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('scormurl', XMLDB_TYPE_CHAR, '500', null, null, null, null);
+        $table->add_field('scormname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('scormid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('log_level', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('error_details', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('ip_address', XMLDB_TYPE_CHAR, '45', null, null, null, null);
+        $table->add_field('user_agent', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        
+        // Add keys.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        
+        // Add indexes for performance.
+        $table->add_index('userid_idx', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+        $table->add_index('courseid_idx', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+        $table->add_index('session_idx', XMLDB_INDEX_NOTUNIQUE, ['session_id']);
+        $table->add_index('timecreated_idx', XMLDB_INDEX_NOTUNIQUE, ['timecreated']);
+        $table->add_index('process_status_idx', XMLDB_INDEX_NOTUNIQUE, ['process_status']);
+        $table->add_index('log_level_idx', XMLDB_INDEX_NOTUNIQUE, ['log_level']);
+        
+        // Create table if it doesn't exist.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        
+        upgrade_block_savepoint(true, 2025120100, 'blc_modules');
+    }
+
     return true;
 }

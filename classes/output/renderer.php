@@ -74,4 +74,15 @@ class renderer extends plugin_renderer_base {
         return $this->render_from_template('block_blc_modules/bulk_update_progress', $data);
     }
 
+    /**
+     * Render the SCORM Load Log page.
+     *
+     * @param scorm_load_log_page $page
+     * @return string
+     */
+    public function render_scorm_load_log_page(scorm_load_log_page $page){
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/scorm_load_log_page', $data);
+    }
+
 }

@@ -27,13 +27,14 @@ defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
 
-    // Update Scorm.
     $settings->add(new admin_setting_heading('updatescorm', '', 
         get_string('updatescorm', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
     $settings->add(new admin_setting_heading('updatedoc', '', 
         get_string('updatedoc', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
     $settings->add(new admin_setting_heading('scormreport', '', 
         get_string('scormreport', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
+    $settings->add(new admin_setting_heading('scormloadlog', '', 
+        get_string('scormloadlog', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
             
     // Default Api key.
     $setting = new admin_setting_configtext('block_blc_modules/api_key',

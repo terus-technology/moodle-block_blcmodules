@@ -46,7 +46,8 @@ if (!isset($_SESSION['scorm_load_progress'])) {
     ];
 }
 
-function add_load_log($message, $type = 'info') {
+function add_load_log($message, $type = 'info', $extra_data = []) {
+    // EXISTING: Session-based logging (unchanged)
     if (!isset($_SESSION['scorm_load_progress']['log'])) {
         $_SESSION['scorm_load_progress']['log'] = [];
     }
@@ -57,6 +58,41 @@ function add_load_log($message, $type = 'info') {
     ];
     if (count($_SESSION['scorm_load_progress']['log']) > 50) {
         $_SESSION['scorm_load_progress']['log'] = array_slice($_SESSION['scorm_load_progress']['log'], -50);
+    }
+    
+    // NEW: Database logging (additive)
+    if (isset($_SESSION['scorm_load_progress']['task_data'])) {
+        $task = $_SESSION['scorm_load_progress']['task_data'];
+        
+        // Prepare log data
+        $logdata = [
+            'courseid' => $task['courseid'],
+            'sectionnumber' => $task['sectionnumber'],
+            'status' => $_SESSION['scorm_load_progress']['status'] ?? 'unknown',
+            'log_level' => $type,
+            'message' => $message,
+        ];
+        
+        // Add extra data if provided (scormname, scormid, cmid, scormurl).
+        if (!empty($extra_data)) {
+            foreach (['scormname', 'scormid', 'cmid', 'scormurl'] as $field) {
+                if (isset($extra_data[$field])) {
+                    $logdata[$field] = $extra_data[$field];
+                }
+            }
+        }
+
+        // Fallback: Add current module info if available AND not already set.
+        if (empty($logdata['scormurl']) && isset($task['current_index']) && isset($task['scormurls'][$task['current_index']])) {
+            // Only add if status is processing to avoid adding it during start/complete.
+            if (($logdata['status'] ?? '') === 'processing') {
+                $logdata['scormurl'] = $task['scormurls'][$task['current_index']];
+            }
+        }
+        
+        // Log to database
+        require_once(__DIR__ . '/classes/logger.php');
+        \block_blc_modules\logger::log_scorm_load($logdata);
     }
 }
 
@@ -113,7 +149,27 @@ switch ($action) {
                 ]
             ];
 
+            // Log process start (will be logged to both session and database via add_load_log).
             add_load_log('SCORM load process initialized with ' . count($scormurls_array) . ' modules', 'info');
+            
+            // Store parameters separately in database (one-time, won't duplicate).
+            require_once(__DIR__ . '/classes/logger.php');
+            \block_blc_modules\logger::log_scorm_load([
+                'courseid' => $courseid,
+                'sectionnumber' => $sectionnumber,
+                'status' => 'started',
+                'log_level' => 'info',
+                'message' => 'Process parameters',
+                'parameters' => [
+                    'courseid' => $courseid,
+                    'sectionnumber' => $sectionnumber,
+                    'apikey' => $apikey, // Will be masked by logger
+                    'total_modules' => count($scormurls_array),
+                    'visibility' => $visibility,
+                    'hidebrowse' => $hidebrowse,
+                    'completion' => $completion,
+                ]
+            ]);
 
             echo json_encode([
                 'success' => true,
@@ -234,7 +290,12 @@ switch ($action) {
             $task['current_index'] = $index + 1;
             update_load_progress(['task_data' => $task]);
 
-            add_load_log('Successfully loaded: ' . $scormdata['scormname'], 'success');
+            add_load_log('Successfully loaded: ' . $scormdata['scormname'], 'success', [
+                'scormname' => $scormdata['scormname'],
+                'scormid' => $scormdata['scormid'] ?? null,
+                'cmid' => $scormcm->id ?? null,
+                'scormurl' => $url // Explicitly pass the URL we just processed
+            ]);
 
             echo json_encode([
                 'success' => true,
