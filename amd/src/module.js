@@ -353,12 +353,26 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
         pageURL = pageURL.split("#")[0];
         var id = getUrlParameter(pageURL, "id");
+        
+        // Detect if we're on section.php (id = section ID) or view.php (id = course ID)
+        var courseId = id;
+        var isSectionPage = pageURL.indexOf('/course/section.php') !== -1;
+        
+        if (isSectionPage) {
+            // On section.php, need to get course ID from page body attribute
+            // Moodle adds data-courseid to body or page-course-view-* class
+            var bodyClasses = $('body').attr('class');
+            var courseMatch = bodyClasses.match(/course-(\d+)/);
+            if (courseMatch && courseMatch[1]) {
+                courseId = courseMatch[1];
+            }
+        }
 
         var notifyeditingon = $("#userediting").val();
 
         if (notifyeditingon == 1) {
 
-            checkVersion(id);
+            checkVersion(courseId);
 
         }
 
@@ -611,7 +625,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                         data: {
                             action: 'start',
                             sesskey: sesskey,
-                            courseid: parseInt(id),
+                            courseid: parseInt(courseId),
                             sectionnumber: parseInt(x),
                             apikey: apikey,
                             scormurls: JSON.stringify(scormurls),
