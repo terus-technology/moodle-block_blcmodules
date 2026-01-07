@@ -24,11 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2025120101;        // The current plugin version (Date: YYYYMMDDXX)
+$plugin->version   = 2026010700;        // The current plugin version (Date: YYYYMMDDXX)
 $plugin->requires  = 2024100700;        // Requires Moodle 4.5.6 (2024100700)
 $plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.12'; // Fixed: SCORM load at section view page
+$plugin->release = '4.5.13'; // Fixed: Failed to download scorm package frequently.
 $plugin->dependencies = [
     'mod_scorm' => 2024100700,  // Requires SCORM module
 ];

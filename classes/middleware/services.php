@@ -178,39 +178,29 @@ class services
         if (!empty($scorm->reference)) {
             debugging('Downloading SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
             error_log('BLC Modules: Starting SCORM download from reference URL');
-            
+
             try {
                 // Set longer timeout for large files.
                 \core_php_time_limit::raise(1800); // 30 minutes.
-                
-                // Download the file content using standard Moodle function.
-                $content = download_file_content($scorm->reference, null, null, false, 300, 20, true);
-                
-                if ($content !== false && strlen($content) > 0) {
-                    // Create file from the downloaded content.
-                    $packagefile = $fs->create_file_from_string($filerecord, $content);
-                    
-                    if ($packagefile) {
-                        $newhash = $packagefile->get_contenthash();
-                        debugging('Successfully downloaded SCORM package: ' . 
-                                 $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
-                        error_log('BLC Modules: Successfully downloaded and stored SCORM package: ' . 
-                                 $packagefile->get_filesize() . ' bytes');
-                    } else {
-                        $newhash = null;
-                        debugging('Failed to create SCORM package file from content', DEBUG_DEVELOPER);
-                        error_log('BLC Modules: Failed to create file from downloaded content');
-                    }
+
+                $packagefile = \block_blc_modules\helper\file_helper::create_file_from_external_url($fs, $filerecord, $scorm->reference);
+
+                if ($packagefile) {
+                    $newhash = $packagefile->get_contenthash();
+                    debugging('Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
+                    error_log('BLC Modules: Successfully downloaded and stored SCORM package: ' . $packagefile->get_filesize() . ' bytes');
                 } else {
                     $newhash = null;
-                    debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
-                    error_log('BLC Modules: Download failed or returned empty content');
+                    debugging('Failed to download or create SCORM package file from: ' . $scorm->reference, DEBUG_DEVELOPER);
+                    error_log('BLC Modules: Download failed or failed to create package file');
+                    exit();
                 }
-                
+
             } catch (\Exception $e) {
                 $newhash = null;
                 debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
                 error_log('BLC Modules: Exception during download: ' . $e->getMessage());
+                exit();
             }
         } else {
             $newhash = null;
