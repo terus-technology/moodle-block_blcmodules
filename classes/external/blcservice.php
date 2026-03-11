@@ -938,6 +938,7 @@ class blcservice extends external_api {
                 return;
             }
 
+            // !TODO: Pindahkan ke block_scorm_package dan buat API untuk mengelola mapping ini, agar tidak tergantung langsung di sini.
             // Check if mapping record exists for this API key.
             $mapping = $DB->get_record('block_scorm_apikey', ['api_key' => $apikey]);
 
