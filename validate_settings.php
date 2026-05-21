@@ -18,13 +18,16 @@
  * This file will validate the settings.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use block_blc_modules\output\validate_settings_page;
+
 require_once(dirname(__FILE__).'/../../config.php');
 
-global $DB, $USER, $CFG;
+global $DB, $USER, $CFG, $PAGE, $OUTPUT, $SITE;
 require_login(null, false);
 
 // PERMISSION - Require site configuration capability for better security.
@@ -48,7 +51,7 @@ echo $OUTPUT->header();
 $renderer = $PAGE->get_renderer('block_blc_modules');
 
 // Create the validate settings page object.
-$validatesettings = new \block_blc_modules\output\validate_settings_page($baseurl, $url);
+$validatesettings = new validate_settings_page($baseurl, $url);
 
 echo $renderer->render($validatesettings);
 

@@ -17,9 +17,10 @@
 /**
  * Strings for component 'block_blc_modules', language 'en', branch 'MOODLE_20_STABLE'
  *
- * @package   block_blc_modules
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    block_blc_modules
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 // phpcs:ignoreFile moodle.Files.LangFilesOrdering.IncorrectOrder

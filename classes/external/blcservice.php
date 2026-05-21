@@ -18,7 +18,8 @@
  * Class blcservice
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,13 +27,22 @@ namespace block_blc_modules\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-use core_external\external_api;
+use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\file_helper;
+use block_blc_modules\middleware\services;
+use context_course;
+use context_module;
 use core\exception\moodle_exception;
+use core_external\external_api;
 use core_external\external_value;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
-use block_blc_modules\helper\blccurl;
+use core\notification;
+use Exception;
+use moodle_url;
+use stdClass;
+use Throwable;
 
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
@@ -43,10 +53,6 @@ require_once($CFG->dirroot.'/mod/resource/lib.php');
 
 /**
  * Class blcservice
- *
- * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class blcservice extends external_api {
     /**
@@ -90,12 +96,18 @@ class blcservice extends external_api {
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
         $functionname = 'local_scormurl_get_scormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-        . '&wsfunction='.$functionname . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
-        $curl = new blccurl;
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => 5,
+            'moodlewsrestformat' => 'json',
+        ]);
 
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // Improved error handling and validation.
         $scorms = [];
@@ -155,8 +167,8 @@ class blcservice extends external_api {
         return new external_function_parameters(
             [
                 'apikey' => new external_value(PARAM_ALPHANUMEXT, 'API key for authentication'),
-                'requesturi' => new external_value(PARAM_URL, 'Request URI for validation' ),
-                'version' => new external_value(PARAM_INT, 'Version number' ),
+                'requesturi' => new external_value(PARAM_URL, 'Request URI for validation'),
+                'version' => new external_value(PARAM_INT, 'Version number'),
                 'scormsubject' => new external_value(PARAM_TEXT, 'SCORM subject name'),
             ]
         );
@@ -183,13 +195,18 @@ class blcservice extends external_api {
         $domainname = get_config('block_blc_modules', 'domainname');
 
         $functionname = 'local_scormurl_get_scormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-            . '&wsfunction='.$functionname . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => 5,
+            'moodlewsrestformat' => 'json',
+        ]);
 
-        $curl = new blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // FIX: Decode as array and add error checking.
         $responses = json_decode($responses, true); // Force array instead of stdClass.
@@ -206,7 +223,7 @@ class blcservice extends external_api {
 
         $scorm = [];
         if (count($responses) > 0) {
-            foreach ($responses as $item => $scormdata) {
+            foreach ($responses as $scormdata) {
                 // FIX: Ensure $scormdata is an array before accessing its elements.
                 if (!is_array($scormdata)) {
                     continue; // Skip non-array items.
@@ -231,7 +248,7 @@ class blcservice extends external_api {
 
         // Sort modules alphabetically by scormname (case-insensitive).
         if (count($scorm) > 0) {
-            usort($scorm, function($a, $b) {
+            usort($scorm, function ($a, $b) {
                 return strcasecmp($a['scormname'], $b['scormname']);
             });
         }
@@ -289,12 +306,18 @@ class blcservice extends external_api {
         $domainname = get_config('block_blc_modules', 'domainname');
 
         $functionname = 'local_scormurl_get_scormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-        . '&wsfunction='.$functionname . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
-        $curl = new blccurl;
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => 5,
+            'moodlewsrestformat' => 'json',
+        ]);
 
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // FIX: Decode as array and add error checking.
         $responses = json_decode($responses, true); // Force array instead of stdClass.
@@ -373,7 +396,7 @@ class blcservice extends external_api {
         $scormurls = $params['scormurls'];
 
         // Capability check.
-        $context = \context_course::instance($courseid);
+        $context = context_course::instance($courseid);
         require_capability('moodle/course:manageactivities', $context);
 
         $token = get_config('block_blc_modules', 'token');
@@ -386,12 +409,16 @@ class blcservice extends external_api {
             sleep(20);
 
             $functionname = 'local_scormurl_get_deletetempscormurls';
-            $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-                . '&wsfunction='.$functionname . '&apikey='.$apikey. '&scormurl='.$tempurl;
-            $curl = new blccurl();
-            $curl->setHeader('Content-Type: application/json; charset=utf-8');
+            $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+                'wstoken' => $token,
+                'wsfunction' => $functionname,
+                'apikey' => $apikey,
+                'scormurl' => $tempurl,
+            ]);
 
-            $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+            $curl = new blccurl_helper();
+            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
         }
 
         return ['status' => 'completed', 'message' => 'SCORM deletion process completed'];
@@ -490,11 +517,11 @@ class blcservice extends external_api {
             // Capability checks.
             try {
                 $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-                $coursecontext = \context_course::instance($courseid);
+                $coursecontext = context_course::instance($courseid);
 
                 require_capability('moodle/course:manageactivities', $coursecontext);
                 require_capability('mod/scorm:addinstance', $coursecontext);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 debugging('BLC Modules: Capability check failed: ' . $e->getMessage());
                 throw $e;
             }
@@ -516,7 +543,7 @@ class blcservice extends external_api {
             $resourcemodule = $DB->get_record('modules', ['name' => 'resource']);
 
             if (!$scormmodule || !$resourcemodule) {
-                throw new \moodle_exception('invalidmodule', 'block_blc_modules', '', 'SCORM or Resource module not found');
+                throw new moodle_exception('invalidmodule', 'block_blc_modules', '', 'SCORM or Resource module not found');
             }
 
             $count = 0;
@@ -548,7 +575,7 @@ class blcservice extends external_api {
                             $results['messages'][] = "SCORM file not accessible: " . $scormdata['scormname'];
                             continue;
                         }
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         debugging('BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage());
                         $results['failed']++;
                         $results['messages'][] = "SCORM file validation failed: " . $scormdata['scormname'] .
@@ -585,7 +612,7 @@ class blcservice extends external_api {
 
                     // Ensure this SCORM ID is mapped to the API key for future access.
                     if (!empty($scormdata['scormid'])) {
-                        self::ensure_api_key_mapping($params['apikey'], (int)$scormdata['scormid']);
+                        self::ensure_api_key_mapping($params['apikey'], (int) $scormdata['scormid']);
                     }
 
                     // Clean up temporary files.
@@ -605,7 +632,7 @@ class blcservice extends external_api {
                             'type' => 'resource',
                         ];
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $results['failed']++;
                     $results['messages'][] = "Error processing URL $url: " . $e->getMessage();
                 }
@@ -617,8 +644,7 @@ class blcservice extends external_api {
             $results['success'] = ($results['successful'] > 0);
 
             return $results;
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             debugging('BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage());
             debugging('BLC Modules: Stack trace: ' . $e->getTraceAsString());
             debugging('BLC Modules: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
@@ -641,21 +667,24 @@ class blcservice extends external_api {
     public static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
         $functionname = 'local_scormurl_get_tempscormurls';
         $tempurl = urlencode($url);
-
-        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $functionname . '&apikey=' . $apikey . '&scormurl=' . $tempurl
-            . '&moodlewsrestformat=json';
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'scormurl' => $tempurl,
+            'moodlewsrestformat' => 'json',
+        ]);
 
         // Debug: Log the API request.
         debugging('BLC Modules: Calling API: ' . $functionname);
         debugging('BLC Modules: Original URL: ' . $url);
         debugging('BLC Modules: Encoded URL: ' . $tempurl);
 
-        $curl = new \block_blc_modules\helper\blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
 
         // Increase timeout for large file operations.
-        $responses = $curl->post($serverurl, '', [
+        $responses = $curl->post($serverurl->out(false), '', [
             'CURLOPT_FAILONERROR' => true,
             'CURLOPT_TIMEOUT' => 300, // 5 minutes timeout
             'CURLOPT_CONNECTTIMEOUT' => 30,
@@ -697,8 +726,7 @@ class blcservice extends external_api {
 
         // CRITICAL: Validate URL is not empty.
         if (empty($tempscormurl)) {
-            debugging('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' .
-                      ($scormobject->scormname ?? 'unknown'));
+            debugging('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . ($scormobject->scormname ?? 'unknown'));
             debugging('BLC Modules: Original URL requested: ' . $url);
             debugging('BLC Modules: Check if local_scormurl plugin is working correctly');
             return null;
@@ -748,10 +776,9 @@ class blcservice extends external_api {
      * valid, accessible files. This method now primarily validates format.
      *
      * @param string $scormurl The SCORM URL to validate
-     * @param string|null $driveid Optional parameter (deprecated, not used)
      * @return bool True if URL format is valid, false otherwise
      */
-    public static function validate_scorm_url(string $scormurl, ?string $driveid = null): bool {
+    public static function validate_scorm_url(string $scormurl): bool {
         // Basic URL format validation.
         if (empty($scormurl)) {
             debugging('Empty SCORM URL provided');
@@ -774,7 +801,7 @@ class blcservice extends external_api {
      * Helper method to create SCORM module
      */
     public static function create_scorm_module(
-        \stdClass $course,
+        stdClass $course,
         int $sectionnumber,
         array $scormdata,
         int $moduleid,
@@ -787,7 +814,7 @@ class blcservice extends external_api {
         $scormsection = $DB->get_record('course_sections', ['course' => $course->id, 'section' => $sectionnumber]);
 
         // Create course module.
-        $newcm = new \stdClass();
+        $newcm = new stdClass();
         $newcm->course = $course->id;
         $newcm->module = $moduleid;
         $newcm->section = $scormsection->id;
@@ -802,11 +829,11 @@ class blcservice extends external_api {
         $newcm->showdescription = 0;
 
         if (!$coursemodule = add_course_module($newcm)) {
-            throw new \moodle_exception('cannotaddcoursemodule', 'block_blc_modules');
+            throw new moodle_exception('cannotaddcoursemodule', 'block_blc_modules');
         }
 
         // Create SCORM instance.
-        $scorminstance = new \stdClass();
+        $scorminstance = new stdClass();
         $scorminstance->course = $course->id;
         $scorminstance->coursemodule = $coursemodule;
         $scorminstance->name = rtrim($scormdata['scormname'], '.zip');
@@ -838,7 +865,7 @@ class blcservice extends external_api {
 
         // Validate packageurl before proceeding.
         if (empty($scorminstance->packageurl)) {
-            throw new \moodle_exception(
+            throw new moodle_exception(
                 'invalidpackageurl',
                 'block_blc_modules',
                 '',
@@ -849,7 +876,7 @@ class blcservice extends external_api {
         // Validate URL has a valid filename.
         $urlparts = parse_url($scorminstance->packageurl);
         if (!isset($urlparts['path']) || empty(basename($urlparts['path']))) {
-            throw new \moodle_exception(
+            throw new moodle_exception(
                 'invalidpackageurl',
                 'block_blc_modules',
                 '',
@@ -871,10 +898,10 @@ class blcservice extends external_api {
             $scorminstance->forcenewattempt = 2;
         }
 
-        $id = \block_blc_modules\middleware\services::blcscorm_add_instance($scorminstance);
+        $id = services::blcscorm_add_instance($scorminstance);
 
         // Update course sections.
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->id = $scormsection->id;
         $record->sequence = !empty($scormsection->sequence)
             ? $scormsection->sequence . "," . $coursemodule
@@ -900,7 +927,7 @@ class blcservice extends external_api {
     ): void {
         global $DB, $USER;
 
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->userid = $USER->id;
         $record->courseid = $courseid;
         $record->sectionid = $sectionnumber;
@@ -931,14 +958,7 @@ class blcservice extends external_api {
         }
 
         try {
-            $dbmanager = $DB->get_manager();
-            $mappingtable = new \xmldb_table('block_scorm_apikey');
-            if (!$dbmanager->table_exists($mappingtable)) {
-                self::notify_missing_scorm_package_dependency();
-                return;
-            }
-
-            // !TODO: Pindahkan ke block_scorm_package dan buat API untuk mengelola mapping ini, agar tidak tergantung langsung di sini.
+            // TO DO: Pindahkan ke block_scorm_package dan buat API untuk mengelola mapping ini
             // Check if mapping record exists for this API key.
             $mapping = $DB->get_record('block_scorm_apikey', ['api_key' => $apikey]);
 
@@ -964,7 +984,7 @@ class blcservice extends external_api {
                 }
             } else {
                 // Create new mapping record.
-                $newmapping = new \stdClass();
+                $newmapping = new stdClass();
                 $newmapping->api_key = $apikey;
                 $newmapping->scormids = (string)$scormid;
                 $newmapping->timecreated = time();
@@ -973,7 +993,7 @@ class blcservice extends external_api {
 
                 debugging('BLC Modules: Created new API key mapping for SCORM ID ' . $scormid);
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if (self::is_missing_scorm_apikey_table_exception($e)) {
                 self::notify_missing_scorm_package_dependency();
                 return;
@@ -996,7 +1016,7 @@ class blcservice extends external_api {
         $message = get_string('missingscormpackagedependency', 'block_blc_modules', 'block_scorm_apikey');
 
         if (!(defined('CLI_SCRIPT') && CLI_SCRIPT)) {
-            \core\notification::warning($message);
+            notification::warning($message);
         }
 
         debugging('BLC Modules: ' . $message, DEBUG_NORMAL);
@@ -1005,10 +1025,10 @@ class blcservice extends external_api {
     /**
      * Detect missing table exception for block_scorm_apikey.
      *
-     * @param \Throwable $exception
+     * @param Throwable $exception
      * @return bool
      */
-    private static function is_missing_scorm_apikey_table_exception(\Throwable $exception): bool {
+    private static function is_missing_scorm_apikey_table_exception(Throwable $exception): bool {
         $needle = 'block_scorm_apikey';
 
         if (strpos(strtolower($exception->getMessage()), $needle) !== false) {
@@ -1026,7 +1046,7 @@ class blcservice extends external_api {
      * Helper method to create accessibility document
      */
     public static function create_accessibility_document(
-        \stdClass $course,
+        stdClass $course,
         int $sectionnumber,
         array $scormdata,
         int $resourceid,
@@ -1041,7 +1061,7 @@ class blcservice extends external_api {
         debugging('BLC Modules: Attempting to create accessibility document');
         debugging('BLC Modules: Original URL for doc lookup: ' . $originalurl);
 
-        // Try to fetch accessibility document data - use original URL like in deprecated/load_scorm.php.
+        // Try to fetch accessibility document data - use original URL.
         $docdata = self::fetch_accessibility_document($apikey, $originalurl, $token, $domainname);
 
         if (!$docdata) {
@@ -1057,7 +1077,7 @@ class blcservice extends external_api {
         ]);
 
         // Create course module for resource.
-        $newcm = new \stdClass();
+        $newcm = new stdClass();
         $newcm->course = $course->id;
         $newcm->module = $resourceid;
         $newcm->section = $scormsection->id;
@@ -1076,7 +1096,7 @@ class blcservice extends external_api {
         }
 
         // Create resource instance.
-        $resourceinstance = new \stdClass();
+        $resourceinstance = new stdClass();
         $resourceinstance->course = $course->id;
         $resourceinstance->coursemodule = $resourcecoursemodule;
         $resourceinstance->name = rtrim($docdata['docname'], '.docx');
@@ -1103,7 +1123,7 @@ class blcservice extends external_api {
         $DB->set_field('course_modules', 'instance', $id, ['id' => $resourcecoursemodule]);
 
         // Update course section sequence.
-        $record = new \stdClass();
+        $record = new stdClass();
         $record->id = $scormsection->id;
         $record->sequence = !empty($scormsection->sequence)
             ? $scormsection->sequence . "," . $resourcecoursemodule
@@ -1114,13 +1134,13 @@ class blcservice extends external_api {
         try {
             self::create_resource_file($resourcecoursemodule, $docdata);
             debugging('BLC Modules: Accessibility document file created successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Continue even if file creation fails.
             debugging('BLC Modules: Failed to create accessibility document file: ' . $e->getMessage());
             debugging("Failed to create accessibility document file: " . $e->getMessage());
         }
 
-        // Record the resource in block_blc_modules_doc table (like in deprecated/load_scorm.php line 509-521)
+        // Record the resource in block_blc_modules_doc table
         // We need to get the blcmoduleid from the SCORM module that was just created
         // Get the most recent blc_modules record for this course.
         $blcmodule = $DB->get_record_sql(
@@ -1130,7 +1150,7 @@ class blcservice extends external_api {
         );
 
         if ($blcmodule) {
-            $resourcerecord = new \stdClass();
+            $resourcerecord = new stdClass();
             $resourcerecord->userid = $USER->id;
             $resourcerecord->courseid = $course->id;
             $resourcerecord->blcmoduleid = $blcmodule->id;
@@ -1167,20 +1187,22 @@ class blcservice extends external_api {
 
         $functionname = 'local_scormurl_get_tempdocurls';
         $tempurl = urlencode($scormurl);
-
-        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $functionname . '&apikey=' . $apikey . '&scormurl=' . $tempurl
-            . '&moodlewsrestformat=json';
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'scormurl' => $tempurl,
+            'moodlewsrestformat' => 'json',
+        ]);
 
         // Debug: Log the API request.
         debugging('BLC Modules: Calling API: ' . $functionname);
         debugging('BLC Modules: Original URL: ' . $scormurl);
         debugging('BLC Modules: Encoded URL: ' . $tempurl);
 
-        $curl = new \block_blc_modules\helper\blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-
-        $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // Debug: Log raw response.
         debugging('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
@@ -1219,8 +1241,7 @@ class blcservice extends external_api {
 
         // CRITICAL: Validate URL is not empty.
         if (empty($downloadurl)) {
-            debugging('BLC Modules: ERROR - download URL is empty for Document: ' .
-                    ($docobject->docname ?? 'unknown'));
+            debugging('BLC Modules: ERROR - download URL is empty for Document: ' . ($docobject->docname ?? 'unknown'));
             debugging('BLC Modules: Original URL requested: ' . $scormurl);
             debugging('BLC Modules: Check if local_scormurl plugin is working correctly');
             return null;
@@ -1263,7 +1284,7 @@ class blcservice extends external_api {
     private static function create_resource_file(int $resourcecoursemodule, array $docdata): void {
         global $USER;
 
-        $context = \context_module::instance($resourcecoursemodule);
+        $context = context_module::instance($resourcecoursemodule);
         $fs = get_file_storage();
         $filename = $docdata['docname'] . '.docx';
 
@@ -1286,18 +1307,18 @@ class blcservice extends external_api {
         if (strpos($filepath, '/pluginfile.php/') !== false) {
             // Use the file helper to create from pluginfile URL.
             debugging('BLC Modules: Using pluginfile URL method');
-            $file = \block_blc_modules\helper\file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+            $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
             if (!$file) {
                 debugging('BLC Modules: ERROR - Failed to create file from pluginfile URL');
-                throw new \moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
+                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         } else {
             // For external URLs, use the enhanced download method.
             debugging('BLC Modules: Using external URL method');
-            $file = \block_blc_modules\helper\file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
+            $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
             if (!$file) {
                 debugging('BLC Modules: ERROR - Failed to create file from external URL');
-                throw new \moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
+                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         }
 
@@ -1315,16 +1336,21 @@ class blcservice extends external_api {
     ): void {
         $tempurl = urlencode($url);
         $functionname = 'local_scormurl_get_deletetempscormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $functionname . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'scormurl' => $tempurl,
+            'moodlewsrestformat' => 'json',
+        ]);
 
-        $curl = new \block_blc_modules\helper\blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-        $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
     }
 
     /**
-     * Helper method to clean up temporary document files (like in deprecated/load_scorm.php line 523-529)
+     * Helper method to clean up temporary document files
      */
     private static function cleanup_temp_doc_files(
         string $apikey,
@@ -1334,12 +1360,17 @@ class blcservice extends external_api {
     ): void {
         $tempurl = urlencode($url);
         $functionname = 'local_scormurl_get_deletetempdocurls';
-        $serverurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-            . '&wsfunction=' . $functionname . '&apikey=' . $apikey . '&scormurl=' . $tempurl;
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'scormurl' => $tempurl,
+            'moodlewsrestformat' => 'json',
+        ]);
 
-        $curl = new \block_blc_modules\helper\blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-        $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         debugging('BLC Modules: Temporary document files cleaned up on BLC server');
     }

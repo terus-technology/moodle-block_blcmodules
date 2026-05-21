@@ -18,22 +18,23 @@
  * Logger class for SCORM load processes
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace block_blc_modules;
 
-defined('MOODLE_INTERNAL') || die();
+use Exception;
+use stdClass;
 
 /**
  * Logger class for persistent SCORM load logging
  */
 class logger {
-    
     /** @var int Auto-cleanup retention period in seconds (30 days = 2592000 seconds) */
     const RETENTION_PERIOD = 2592000; // 30 days
-    
+
     /**
      * Log a SCORM load event to database
      *
@@ -54,19 +55,19 @@ class logger {
      */
     public static function log_scorm_load($data) {
         global $DB, $USER;
-        
+
         try {
-            $record = new \stdClass();
+            $record = new stdClass();
             $record->userid = $USER->id;
             $record->courseid = $data['courseid'];
             $record->sectionnumber = $data['sectionnumber'];
             $record->process_type = $data['process_type'] ?? 'scorm_load';
             $record->process_status = $data['status'];
             $record->session_id = session_id();
-            
-            // Store parameters as JSON if provided
+
+            // Store parameters as JSON if provided.
             if (isset($data['parameters']) && is_array($data['parameters'])) {
-                // Mask API key for security
+                // Mask API key for security.
                 if (isset($data['parameters']['apikey'])) {
                     $data['parameters']['apikey'] = self::mask_apikey($data['parameters']['apikey']);
                 }
@@ -74,7 +75,7 @@ class logger {
             } else {
                 $record->parameters = null;
             }
-            
+
             $record->scormurl = $data['scormurl'] ?? null;
             $record->scormname = $data['scormname'] ?? null;
             $record->scormid = $data['scormid'] ?? null;
@@ -83,19 +84,17 @@ class logger {
             $record->message = $data['message'];
             $record->error_details = $data['error_details'] ?? null;
             $record->ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
-            $record->user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? 
-                substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
+            $record->user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
             $record->timecreated = time();
-            
+
             return $DB->insert_record('block_blc_modules_log', $record);
-            
-        } catch (\Exception $e) {
-            // Log to Moodle error log instead of failing
+        } catch (Exception $e) {
+            // Log to Moodle error log instead of failing.
             debugging('Failed to log SCORM load event: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return false;
         }
     }
-    
+
     /**
      * Mask API key for security (show only last 4 characters)
      *
@@ -108,7 +107,7 @@ class logger {
         }
         return '****' . substr($apikey, -4);
     }
-    
+
     /**
      * Get logs with optional filters
      *
@@ -127,64 +126,64 @@ class logger {
      */
     public static function get_logs($filters = []) {
         global $DB;
-        
+
         $params = [];
         $where = [];
-        
+
         if (!empty($filters['userid'])) {
             $where[] = 'userid = :userid';
             $params['userid'] = $filters['userid'];
         }
-        
+
         if (!empty($filters['courseid'])) {
             $where[] = 'courseid = :courseid';
             $params['courseid'] = $filters['courseid'];
         }
-        
+
         if (!empty($filters['session_id'])) {
             $where[] = 'session_id = :session_id';
             $params['session_id'] = $filters['session_id'];
         }
-        
+
         if (!empty($filters['process_type'])) {
             $where[] = 'process_type = :process_type';
             $params['process_type'] = $filters['process_type'];
         }
-        
+
         if (!empty($filters['process_status'])) {
             $where[] = 'process_status = :process_status';
             $params['process_status'] = $filters['process_status'];
         }
-        
+
         if (!empty($filters['log_level'])) {
             $where[] = 'log_level = :log_level';
             $params['log_level'] = $filters['log_level'];
         }
-        
+
         if (!empty($filters['from_date'])) {
             $where[] = 'timecreated >= :from_date';
             $params['from_date'] = $filters['from_date'];
         }
-        
+
         if (!empty($filters['to_date'])) {
             $where[] = 'timecreated <= :to_date';
             $params['to_date'] = $filters['to_date'];
         }
-        
+
         $sql = "SELECT * FROM {block_blc_modules_log}";
-        
+
         if (!empty($where)) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
-        
+
         $sql .= ' ORDER BY timecreated DESC';
-        
+
         $limit = $filters['limit'] ?? 100;
         $offset = $filters['offset'] ?? 0;
-        
+
         return $DB->get_records_sql($sql, $params, $offset, $limit);
     }
-    
+
     /**
      * Get log statistics
      *
@@ -193,46 +192,48 @@ class logger {
      */
     public static function get_statistics($filters = []) {
         global $DB;
-        
+
         $params = [];
         $where = [];
-        
-        // Build WHERE clause (same as get_logs)
+
+        // Build WHERE clause (same as get_logs).
         if (!empty($filters['userid'])) {
             $where[] = 'userid = :userid';
             $params['userid'] = $filters['userid'];
         }
-        
+
         if (!empty($filters['courseid'])) {
             $where[] = 'courseid = :courseid';
             $params['courseid'] = $filters['courseid'];
         }
-        
+
         if (!empty($filters['from_date'])) {
             $where[] = 'timecreated >= :from_date';
             $params['from_date'] = $filters['from_date'];
         }
-        
+
         if (!empty($filters['to_date'])) {
             $where[] = 'timecreated <= :to_date';
             $params['to_date'] = $filters['to_date'];
         }
-        
+
         $whereclause = !empty($where) ? ' WHERE ' . implode(' AND ', $where) : '';
-        
-        // Get counts by log level
-        $sql = "SELECT 
-                    COUNT(*) as total_logs,
-                    SUM(CASE WHEN log_level = 'info' THEN 1 ELSE 0 END) as info_count,
-                    SUM(CASE WHEN log_level = 'success' THEN 1 ELSE 0 END) as success_count,
-                    SUM(CASE WHEN log_level = 'error' THEN 1 ELSE 0 END) as error_count,
-                    SUM(CASE WHEN log_level = 'warning' THEN 1 ELSE 0 END) as warning_count,
-                    COUNT(DISTINCT session_id) as total_sessions
-                FROM {block_blc_modules_log}" . $whereclause;
-        
+
+        // Get counts by log level.
+        $sql = "
+            SELECT
+                COUNT(*) as total_logs,
+                SUM(CASE WHEN log_level = 'info' THEN 1 ELSE 0 END) as info_count,
+                SUM(CASE WHEN log_level = 'success' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN log_level = 'error' THEN 1 ELSE 0 END) as error_count,
+                SUM(CASE WHEN log_level = 'warning' THEN 1 ELSE 0 END) as warning_count,
+                COUNT(DISTINCT session_id) as total_sessions
+            FROM {block_blc_modules_log}
+        " . $whereclause;
+
         return $DB->get_record_sql($sql, $params);
     }
-    
+
     /**
      * Get logs grouped by session
      *
@@ -242,7 +243,7 @@ class logger {
     public static function get_logs_by_session($filters = []) {
         $logs = self::get_logs($filters);
         $sessions = [];
-        
+
         foreach ($logs as $log) {
             $sessionid = $log->session_id ?? 'unknown';
             if (!isset($sessions[$sessionid])) {
@@ -255,10 +256,10 @@ class logger {
                     'courseid' => $log->courseid,
                 ];
             }
-            
+
             $sessions[$sessionid]['logs'][] = $log;
-            
-            // Update time range
+
+            // Update time range.
             if ($log->timecreated < $sessions[$sessionid]['start_time']) {
                 $sessions[$sessionid]['start_time'] = $log->timecreated;
             }
@@ -266,10 +267,10 @@ class logger {
                 $sessions[$sessionid]['end_time'] = $log->timecreated;
             }
         }
-        
+
         return array_values($sessions);
     }
-    
+
     /**
      * Clean up old logs based on retention period
      *
@@ -277,17 +278,17 @@ class logger {
      */
     public static function cleanup_old_logs() {
         global $DB;
-        
+
         $cutoff = time() - self::RETENTION_PERIOD;
-        
+
         try {
             return $DB->delete_records_select('block_blc_modules_log', 'timecreated < ?', [$cutoff]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             debugging('Failed to cleanup old logs: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return 0;
         }
     }
-    
+
     /**
      * Get unique courses that have logs
      *
@@ -295,15 +296,15 @@ class logger {
      */
     public static function get_courses_with_logs() {
         global $DB;
-        
-        $sql = "SELECT DISTINCT c.id, c.fullname 
+
+        $sql = "SELECT DISTINCT c.id, c.fullname
                 FROM {block_blc_modules_log} log
                 JOIN {course} c ON c.id = log.courseid
                 ORDER BY c.fullname";
-        
+
         return $DB->get_records_sql($sql);
     }
-    
+
     /**
      * Get unique users that have logs
      *
@@ -311,12 +312,12 @@ class logger {
      */
     public static function get_users_with_logs() {
         global $DB;
-        
-        $sql = "SELECT DISTINCT u.id, u.firstname, u.lastname 
+
+        $sql = "SELECT DISTINCT u.id, u.firstname, u.lastname
                 FROM {block_blc_modules_log} log
                 JOIN {user} u ON u.id = log.userid
                 ORDER BY u.lastname, u.firstname";
-        
+
         return $DB->get_records_sql($sql);
     }
 }

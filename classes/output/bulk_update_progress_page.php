@@ -16,9 +16,9 @@
 
 namespace block_blc_modules\output;
 
-use renderable;
-use renderer_base;
-use templatable;
+use core\output\renderable;
+use core\output\renderer_base;
+use core\output\templatable;
 use stdClass;
 
 /**
@@ -27,11 +27,11 @@ use stdClass;
  * Renderable class for bulk update progress page using Mustache template
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class bulk_update_progress_page implements renderable, templatable {
-
     /**
      * Export data for template.
      *
@@ -40,15 +40,15 @@ class bulk_update_progress_page implements renderable, templatable {
      */
     public function export_for_template(renderer_base $output) {
         global $CFG;
-        
+
         $data = new stdClass();
         $data->sesskey = sesskey();
         $data->wwwroot = $CFG->wwwroot;
         $data->current_time = date('H:i:s');
-        
-        // Enable JavaScript section in template
+
+        // Enable JavaScript section in template.
         $data->js = true;
-        
+
         return $data;
     }
 }

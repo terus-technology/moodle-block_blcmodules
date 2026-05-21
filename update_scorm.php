@@ -18,28 +18,30 @@
  * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
- 
+
+use block_blc_modules\output\update_scorm_page;
 
 require_once(dirname(__FILE__).'/../../config.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
-global $DB, $USER, $CFG;
+global $DB, $USER, $CFG, $PAGE, $OUTPUT;
 require_login(null, false);
 
-// Check permissions
+// Check permissions.
 require_capability('moodle/course:manageactivities', context_system::instance());
 
 $coursemodule = optional_param('cmid', '', PARAM_INT);
 $version = optional_param('version', '', PARAM_INT);
 
-// Validate parameters
+// Validate parameters.
 if (empty($coursemodule) || empty($version)) {
-    print_error('invalidparameters');
+    throw new moodle_exception('invalidparameters');
 }
 
 $PAGE->set_url('/blocks/blc_modules/update_scorm.php', ['cmid' => $coursemodule, 'version' => $version]);
@@ -54,7 +56,7 @@ echo $OUTPUT->header();
 $renderer = $PAGE->get_renderer('block_blc_modules');
 
 // Create the validate settings page object.
-$updatescorm = new \block_blc_modules\output\update_scorm_page($coursemodule, $version);
+$updatescorm = new update_scorm_page($coursemodule, $version);
 
 echo $renderer->render($updatescorm);
 

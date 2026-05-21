@@ -18,17 +18,18 @@
  * Version details
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026030200;
+$plugin->version   = 2026052100;
 $plugin->requires  = 2024100700;
 $plugin->component = 'block_blc_modules';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.14';
+$plugin->release = '4.5.15';
 $plugin->dependencies = [
     'mod_scorm' => 2024100700,
 ];

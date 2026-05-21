@@ -29,7 +29,7 @@ require_once($CFG->dirroot . '/course/modlib.php');
 
 use moodle_url;
 use context_system;
-use block_blc_modules\helper\blccurl;
+use block_blc_modules\helper\blccurl_helper;
 
 require_login(null, false);
 
