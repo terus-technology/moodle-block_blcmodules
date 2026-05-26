@@ -18,17 +18,18 @@
  * Version details
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026010700;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2024100700;        // Requires Moodle 4.5.6 (2024100700)
-$plugin->component = 'block_blc_modules'; // Full name of the plugin (used for diagnostics)
+$plugin->version   = 2026052100;
+$plugin->requires  = 2024100700;
+$plugin->component = 'block_blc_modules';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '4.5.13'; // Fixed: Failed to download scorm package frequently.
+$plugin->release = '4.5.15';
 $plugin->dependencies = [
-    'mod_scorm' => 2024100700,  // Requires SCORM module
+    'mod_scorm' => 2024100700,
 ];

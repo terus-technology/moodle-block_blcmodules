@@ -18,9 +18,12 @@
  * SCORM Load Log Viewer Page
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+use block_blc_modules\output\scorm_load_log_page;
 
 require(dirname(__FILE__).'/../../config.php');
 require_once($CFG->libdir.'/formslib.php');
@@ -28,14 +31,14 @@ require_once('locallib.php');
 
 require_login(null, false);
 
-global $DB, $USER, $CFG;
+global $DB, $USER, $CFG, $PAGE, $OUTPUT;
 
 $context = context_system::instance();
 $home = get_string('pluginname', 'block_blc_modules');
 $basetext = get_string('scormloadlogs', 'block_blc_modules');
 $baseurl = new moodle_url('/blocks/blc_modules/scorm_load_log.php');
 $homeurl = new moodle_url('/admin/settings.php', [
-    'section' => 'blocksettingblc_modules'
+    'section' => 'blocksettingblc_modules',
 ]);
 
 // Get filter parameters.
@@ -59,7 +62,7 @@ echo $OUTPUT->header();
 $renderer = $PAGE->get_renderer('block_blc_modules');
 
 // Create the log page object with filters.
-$logpage = new \block_blc_modules\output\scorm_load_log_page(
+$logpage = new scorm_load_log_page(
     $baseurl,
     $homeurl,
     [
@@ -68,7 +71,7 @@ $logpage = new \block_blc_modules\output\scorm_load_log_page(
         'loglevel' => $loglevel,
         'sessionid' => $sessionid,
         'fromdate' => $fromdate,
-        'todate' => $todate
+        'todate' => $todate,
     ]
 );
 

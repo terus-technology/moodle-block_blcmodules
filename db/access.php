@@ -18,32 +18,28 @@
  * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
-
-    'block/blc_modules:addinstance' => array(
+$capabilities = [
+    'block/blc_modules:addinstance' => [
         'riskbitmask' => RISK_SPAM | RISK_XSS,
-
         'captype' => 'write',
         'contextlevel' => CONTEXT_BLOCK,
-        'archetypes' => array(
+        'archetypes' => [
             'editingteacher' => CAP_ALLOW,
-        ),
-
-    ),
-    
-     'block/blc_modules:viewblock' => array(
+        ],
+    ],
+    'block/blc_modules:viewblock' => [
         'captype' => 'read',
         'contextlevel' => CONTEXT_BLOCK,
-        'archetypes' => array(
+        'archetypes' => [
             'editingteacher' => CAP_ALLOW,
-             'manager' => CAP_PREVENT,
-
-        )
-    )
-);
+            'manager' => CAP_PREVENT,
+        ],
+    ],
+];
