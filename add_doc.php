@@ -26,6 +26,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use block_blc_modules\helper\blccurl_helper;
 use core\output\notification;
 use core_completion\api;
 

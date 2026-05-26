@@ -600,9 +600,9 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
     $zipfilepath = null;
     $extractdir = null;
 
-    try {
-        $transaction = $DB->start_delegated_transaction();
+    $transaction = $DB->start_delegated_transaction();
 
+    try {
         // OPTIMIZATION: Download with streaming to reduce memory usage.
         $tempdir = make_temp_directory('scormpackage');
         $zipfilepath = $tempdir . '/' . time() . '_' . $scormcm->id . '.zip';
