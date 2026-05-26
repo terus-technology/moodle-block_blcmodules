@@ -129,6 +129,19 @@ if ($blcmodules) {
     foreach($blcmodules as $blcmodule){
         // Wrap entire processing in try-catch
         try {
+            // BUGFIX 2025-11-04: Reset all variables to prevent stale data reuse across iterations
+            // This prevents the last successfully downloaded document from being reused for modules
+            // that fail to fetch their own document data from the API
+            $doc_data = null;
+            $docname = null;
+            $docversion = null;
+            $docid = null;
+            $docurl = null;
+            $filepath = null;
+            $file_name = null;
+            $filerecord = null;
+            $file = null;
+            
             $cmid=$blcmodule->cmid;
             $course_modules = $DB->get_record('course_modules',array('id'=>$cmid,'deletioninprogress'=>0));
             
@@ -243,6 +256,115 @@ if ($blcmodules) {
                 continue;
             }
             $sectionid=$scormsection->id;
+
+            // ===================================================================
+            // ENHANCED DUPLICATE CHECK - Check BEFORE creating new module
+            // ===================================================================
+            
+            // Check 1: Does tracking record already exist?
+            $existing_tracking = $DB->get_records('block_blc_modules_doc', 
+                ['blcmoduleid' => $blcmoduleid]
+            );
+            
+            if ($existing_tracking) {
+                error_log("BLC add_doc: Module $blcmoduleid already has tracking record. Skipping duplicate creation.");
+                $success_count++;
+                continue;
+            }
+            
+            // Check 2: Does a resource module with matching name already exist in this section?
+            if (!empty($scormsection->sequence)) {
+                $sequence_cmids = explode(',', $scormsection->sequence);
+                
+                if (!empty($sequence_cmids)) {
+                    // Get all resource modules in this section
+                    list($in_sql, $params) = $DB->get_in_or_equal($sequence_cmids, SQL_PARAMS_NAMED);
+                    $params['modulename'] = 'resource';
+                    $params['courseid'] = $courseid;
+                    
+                    $sql = "SELECT cm.id as cmid, cm.instance, r.name
+                            FROM {course_modules} cm
+                            JOIN {modules} m ON m.id = cm.module
+                            JOIN {resource} r ON r.id = cm.instance
+                            WHERE cm.id $in_sql
+                              AND m.name = :modulename
+                              AND cm.course = :courseid
+                              AND cm.deletioninprogress = 0";
+                    
+                    $existing_resources = $DB->get_records_sql($sql, $params);
+                    
+                    // Check if document with matching name already exists
+                    foreach ($existing_resources as $resource) {
+                        $resource_name_lower = strtolower(trim($resource->name));
+                        $docname_lower = strtolower(trim($docname));
+                        
+                        // Match if:
+                        // 1. Exact match, OR
+                        // 2. Resource contains docname, OR
+                        // 3. Both contain "accessibility" keyword
+                        $is_match = false;
+                        
+                        if ($resource_name_lower === $docname_lower) {
+                            $is_match = true; // Exact match
+                        } else if (strpos($resource_name_lower, $docname_lower) !== false) {
+                            $is_match = true; // Resource name contains docname
+                        } else if (strpos($docname_lower, $resource_name_lower) !== false) {
+                            $is_match = true; // Docname contains resource name
+                        } else if (strpos($resource_name_lower, 'accessibility') !== false && 
+                                   strpos($docname_lower, 'accessibility') !== false) {
+                            // Both contain "accessibility" - check if same subject
+                            // Remove common generic words before comparing
+                            $generic_words = ['accessibility', 'version', 'document', 'file', 'resource', 'the', 'and', 'for'];
+                            
+                            $resource_words = array_filter(explode(' ', $resource_name_lower), function($w) use ($generic_words) {
+                                $w = trim($w, '()');
+                                return strlen($w) > 3 && !in_array($w, $generic_words);
+                            });
+                            $doc_words = array_filter(explode(' ', $docname_lower), function($w) use ($generic_words) {
+                                $w = trim($w, '()');
+                                return strlen($w) > 3 && !in_array($w, $generic_words);
+                            });
+                            
+                            $common_words = array_intersect($resource_words, $doc_words);
+                            // Need at least 3 significant subject words to match (e.g., "academic", "reading", "skills")
+                            if (count($common_words) >= 3) {
+                                $is_match = true;
+                            }
+                        }
+                        
+                        if ($is_match) {
+                            error_log("BLC add_doc: Found existing resource module '{$resource->name}' (cmid: {$resource->cmid}) " .
+                                     "for blcmodule $blcmoduleid. Creating tracking record instead of duplicate.");
+                            
+                            // Create tracking record for existing module
+                            $tracking = new stdClass();
+                            $tracking->userid = $USER->id;
+                            $tracking->courseid = $courseid;
+                            $tracking->blcmoduleid = $blcmoduleid;
+                            $tracking->sectionid = $section;
+                            $tracking->cmid = $resource->cmid;
+                            $tracking->scormid = $docid;
+                            $tracking->scormurl = $docurl;
+                            $tracking->version = $docversion;
+                            $tracking->timecreated = time();
+                            $tracking->timemodified = time();
+                            
+                            $DB->insert_record('block_blc_modules_doc', $tracking);
+                            error_log("BLC add_doc: Successfully created tracking record for existing module (blcmoduleid: $blcmoduleid, cmid: {$resource->cmid})");
+                            
+                            $success_count++;
+                            continue 2; // Skip to next blcmodule in foreach loop
+                        }
+                    }
+                }
+            }
+            
+            // If we reach here, no duplicate found - proceed with module creation
+            error_log("BLC add_doc: No existing document found for module $blcmoduleid. Proceeding with creation.");
+            
+            // ===================================================================
+            // END ENHANCED DUPLICATE CHECK
+            // ===================================================================
 
             // Create course module
             $newcm = new stdClass();

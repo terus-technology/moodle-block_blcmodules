@@ -144,4 +144,119 @@ class file_helper {
         // Return original URL if no conversion is needed
         return $url;
     }
+
+    /**
+     * Get optimized curl options for large file downloads
+     *
+     * @return array Curl options array
+     */
+    public static function get_download_curl_options() {
+        return [
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_TIMEOUT => 1800, // 30 minutes for large files
+            CURLOPT_CONNECTTIMEOUT => 60, // 1 minute connection timeout
+            CURLOPT_LOW_SPEED_LIMIT => 1024, // 1KB/s minimum speed
+            CURLOPT_LOW_SPEED_TIME => 300, // 5 minutes low speed timeout
+            CURLOPT_BUFFERSIZE => 128 * 1024, // 128KB buffer for better performance
+            CURLOPT_MAX_RECV_SPEED_LARGE => 0, // No speed limit
+        ];
+    }
+
+    /**
+     * Get optimal batch size based on server capabilities
+     *
+     * @return int Batch size
+     */
+    public static function get_optimal_batch_size() {
+        // Auto-detect based on memory and PHP limits
+        $memory_limit = ini_get('memory_limit');
+        $memory_bytes = self::parse_memory_limit($memory_limit);
+
+        // Conservative approach: smaller batches for limited memory
+        if ($memory_bytes < 256 * 1024 * 1024) { // Less than 256MB
+            return 3;
+        } elseif ($memory_bytes < 512 * 1024 * 1024) { // Less than 512MB
+            return 5;
+        } else {
+            return 8; // Default for higher memory
+        }
+    }
+
+    /**
+     * Parse PHP memory limit string to bytes
+     *
+     * @param string $memory_limit PHP memory limit
+     * @return int Memory limit in bytes
+     */
+    private static function parse_memory_limit($memory_limit) {
+        if (is_numeric($memory_limit)) {
+            return (int)$memory_limit;
+        }
+
+        $unit = strtolower(substr($memory_limit, -1));
+        $value = (int)substr($memory_limit, 0, -1);
+
+        switch ($unit) {
+            case 'g':
+                return $value * 1024 * 1024 * 1024;
+            case 'm':
+                return $value * 1024 * 1024;
+            case 'k':
+                return $value * 1024;
+            default:
+                return $value; // Assume bytes
+        }
+    }
+
+    /**
+     * Check if server has sufficient resources for large file processing
+     *
+     * @param int $estimated_file_size Estimated file size in bytes
+     * @return array Check results with warnings
+     */
+    public static function check_system_resources($estimated_file_size = 0) {
+        $warnings = [];
+        $memory_limit = ini_get('memory_limit');
+        $memory_bytes = self::parse_memory_limit($memory_limit);
+
+        // Check memory (need at least 3x file size for processing)
+        $required_memory = $estimated_file_size * 3;
+        if ($memory_bytes > 0 && $memory_bytes < $required_memory) {
+            $warnings[] = "Memory limit ({$memory_limit}) may be insufficient for file size " .
+                         round($estimated_file_size / 1024 / 1024, 1) . "MB. Consider increasing memory_limit.";
+        }
+
+        // Check execution time
+        $max_execution_time = ini_get('max_execution_time');
+        if ($max_execution_time > 0 && $max_execution_time < 1800) { // Less than 30 minutes
+            $warnings[] = "max_execution_time ({$max_execution_time}s) may be too low for large files. Consider increasing to 1800+.";
+        }
+
+        // Check disk space
+        $temp_dir = make_temp_directory('scormpackage');
+        $available_space = disk_free_space($temp_dir);
+        $required_space = $estimated_file_size * 4; // 4x for safety (zip + extract + temp)
+        if ($available_space < $required_space) {
+            $warnings[] = "Insufficient disk space. Available: " . round($available_space / 1024 / 1024, 1) .
+                         "MB, Required: " . round($required_space / 1024 / 1024, 1) . "MB";
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Get recommended PHP settings for large file processing
+     *
+     * @return array Recommended settings
+     */
+    public static function get_recommended_settings() {
+        return [
+            'memory_limit' => '1024M', // 1GB minimum
+            'max_execution_time' => '1800', // 30 minutes
+            'max_input_time' => '1800', // 30 minutes
+            'upload_max_filesize' => '512M', // Allow large uploads if needed
+            'post_max_size' => '512M', // Allow large POST data
+        ];
+    }
 }

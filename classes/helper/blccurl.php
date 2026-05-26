@@ -265,9 +265,9 @@ class blccurl {
 
         if ($this->debug){
             echo '<h1>Options</h1>';
-            var_dump($this->options);
+            debugging('cURL Options: ' . json_encode($this->options), DEBUG_DEVELOPER);
             echo '<h1>Header</h1>';
-            var_dump($this->header);
+            debugging('cURL Header: ' . json_encode($this->header), DEBUG_DEVELOPER);
         }
 
         // set options
@@ -364,11 +364,13 @@ class blccurl {
 
         if ($this->debug){
             echo '<h1>Return Data</h1>';
-            var_dump($ret);
+            debugging('cURL Response: ' . substr($ret, 0, 500), DEBUG_DEVELOPER);
             echo '<h1>Info</h1>';
-            var_dump($this->info);
+            debugging('cURL Info: ' . json_encode($this->info), DEBUG_DEVELOPER);
             echo '<h1>Error</h1>';
-            var_dump($this->error);
+            if (!empty($this->error)) {
+                debugging('cURL Error: ' . $this->error, DEBUG_DEVELOPER);
+            }
         }
 
         curl_close($curl);

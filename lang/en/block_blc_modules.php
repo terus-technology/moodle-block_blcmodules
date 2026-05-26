@@ -77,7 +77,7 @@ $string['successboth'] =  '
 $string['updatescormconfirm'] =  'Are you sure?';
 $string['updateconfirmmessage'] =  'Please be aware that updating SCORM packages can have implications for in-progress attempts.<br/> Students may loose their progress, and need to restart the module. They may also continue to be served the old version.<br/>It may be a good idea to do this during a strategic time in the academic year.<br/>We will try our best to track down and update all modules, however this may not always be possible, especially if a module has moved, been duplicated or renamed. ';
 $string['failupdatescormmesage'] =  'The server is currently busy updating another BLC college. Please try again later.';
-$string['scormreport'] = '<h4>Report</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_report.php">here</a> to access a report detailing the usage of BLC modules and accessibility documents added via this plugin.<h4>Plugin Settings</h4><br/>';
+$string['scormreport'] = '<h4>Report</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_report.php">here</a> to access a report detailing the usage of BLC modules and accessibility documents added via this plugin.';
 $string['scormreports'] = 'Report';
 $string['resource'] = 'Resource';
 $string['usage'] = 'Total';
@@ -102,3 +102,36 @@ $string['googleapinotinstalled'] = 'Google API library not installed. Please run
 $string['googlecredentialsnotfound'] = 'Google credentials file not found: {$a}';
 $string['invalidpackageurl'] = 'Invalid package URL: {$a}';
 $string['scormfilenotaccessible'] = 'SCORM file not accessible in Google Drive. The file may have been deleted, moved, or sharing permissions may have changed.';
+
+// SCORM Load Log Viewer strings (NEW).
+$string['scormloadlog'] = '<h4>SCORM Load Logs</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_load_log.php">here</a> to view detailed logs of SCORM loading processes.<h4>Plugin Settings</h4><br/>';
+$string['scormloadlogs'] = 'SCORM Load Logs';
+$string['filterlog'] = 'Filter Logs';
+$string['loglevel'] = 'Log Level';
+$string['clearfilter'] = 'Clear Filter';
+$string['statistics'] = 'Statistics';
+$string['totallogs'] = 'Total Logs';
+$string['successlogs'] = 'Success';
+$string['errorlogs'] = 'Errors';
+$string['warninglogs'] = 'Warnings';
+$string['infologs'] = 'Info';
+$string['logentries'] = 'Log Entries';
+$string['scormmodule'] = 'SCORM Module';
+$string['level'] = 'Level';
+$string['status'] = 'Status';
+$string['nologsfound'] = 'No logs found';
+$string['nologsfounddesc'] = 'There are no SCORM load logs matching your filter criteria. Try adjusting your filters or load some SCORM modules to generate logs.';
+$string['session'] = 'Session';
+$string['sessions'] = 'Sessions';
+$string['viewparameters'] = 'View Parameters';
+$string['parameter'] = 'Parameter';
+$string['value'] = 'Value';
+$string['time'] = 'Time';
+$string['unknown'] = 'Unknown';
+$string['info'] = 'Info';
+$string['success'] = 'Success';
+$string['warning'] = 'Warning';
+$string['error'] = 'Error';
+$string['all'] = 'All';
+$string['filter'] = 'Filter';
+?>

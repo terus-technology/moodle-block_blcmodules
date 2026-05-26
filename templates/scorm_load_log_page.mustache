@@ -1,0 +1,254 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_blc_modules/scorm_load_log_page
+    
+    SCORM Load Log Viewer Template
+    
+    Context variables:
+    * sessions - Array of log sessions
+    * total_logs - Total log count
+    * success_count - Success log count
+    * error_count - Error log count
+    * info_count - Info log count
+    * courses - Available courses for filter
+    * users - Available users for filter
+}}
+
+<div class="scorm-load-logs">
+    
+    <!-- Filter Section -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5><i class="fa fa-filter"></i> {{#str}}filterlog, block_blc_modules{{/str}}</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{{baseurl}}" class="form-inline">
+                <div class="form-group mr-2 mb-2">
+                    <label class="mr-2">{{#str}}course{{/str}}:</label>
+                    <select name="courseid" class="form-control">
+                        <option value="0">{{#str}}all{{/str}}</option>
+                        {{#courses}}
+                        <option value="{{id}}" {{#selected_courseid}}selected{{/selected_courseid}}>{{fullname}}</option>
+                        {{/courses}}
+                    </select>
+                </div>
+                
+                <div class="form-group mr-2 mb-2">
+                    <label class="mr-2">{{#str}}user{{/str}}:</label>
+                    <select name="userid" class="form-control">
+                        <option value="0">{{#str}}all{{/str}}</option>
+                        {{#users}}
+                        <option value="{{id}}" {{#selected_userid}}selected{{/selected_userid}}>{{firstname}} {{lastname}}</option>
+                        {{/users}}
+                    </select>
+                </div>
+                
+                <div class="form-group mr-2 mb-2">
+                    <label class="mr-2">{{#str}}loglevel, block_blc_modules{{/str}}:</label>
+                    <select name="loglevel" class="form-control">
+                        <option value="">{{#str}}all{{/str}}</option>
+                        <option value="info" {{#selected_loglevel}}selected{{/selected_loglevel}}>{{#str}}info{{/str}}</option>
+                        <option value="success">{{#str}}success{{/str}}</option>
+                        <option value="warning">{{#str}}warning{{/str}}</option>
+                        <option value="error">{{#str}}error{{/str}}</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mr-2 mb-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-search"></i> {{#str}}filter{{/str}}
+                    </button>
+                </div>
+                
+                <div class="form-group mb-2">
+                    <a href="{{baseurl}}" class="btn btn-secondary">
+                        <i class="fa fa-times"></i> {{#str}}clearfilter, block_blc_modules{{/str}}
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Statistics Section -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fa fa-chart-bar"></i> {{#str}}statistics, block_blc_modules{{/str}}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-primary">{{total_logs}}</h2>
+                                <p>{{#str}}totallogs, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-success">{{success_count}}</h2>
+                                <p>{{#str}}successlogs, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-danger">{{error_count}}</h2>
+                                <p>{{#str}}errorlogs, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-warning">{{warning_count}}</h2>
+                                <p>{{#str}}warninglogs, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-info">{{info_count}}</h2>
+                                <p>{{#str}}infologs, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="stat-box">
+                                <h2 class="text-secondary">{{total_sessions}}</h2>
+                                <p>{{#str}}sessions, block_blc_modules{{/str}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Log Sessions -->
+    {{#has_sessions}}
+    <div class="log-sessions">
+        {{#sessions}}
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-0">
+                            <i class="fa fa-layer-group"></i>
+                            {{#str}}session, block_blc_modules{{/str}}: <code>{{session_id_short}}</code>
+                        </h6>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <small>
+                            <i class="fa fa-user"></i> {{username}} |
+                            <i class="fa fa-book"></i> {{coursename}} |
+                            <i class="fa fa-clock"></i> {{start_time}} - {{end_time}} ({{duration}})
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th width="80">{{#str}}time{{/str}}</th>
+                            <th width="100">{{#str}}level, block_blc_modules{{/str}}</th>
+                            <th width="200">{{#str}}scormmodule, block_blc_modules{{/str}}</th>
+                            <th>{{#str}}message{{/str}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#logs}}
+                        <tr>
+                            <td><small>{{timeformatted}}</small></td>
+                            <td>
+                                <span class="badge {{log_level_class}}">
+                                    <i class="fa {{log_level_icon}}"></i> {{log_level}}
+                                </span>
+                            </td>
+                            <td><small>{{scormname}}</small></td>
+                            <td>
+                                {{message}}
+                                {{#has_error}}
+                                <br><small class="text-danger"><strong>{{#str}}error{{/str}}:</strong> {{error_details}}</small>
+                                {{/has_error}}
+                                {{#has_parameters}}
+                                <br>
+                                <a class="btn btn-sm btn-link p-0" data-toggle="collapse" href="#params-{{id}}" role="button">
+                                    <i class="fa fa-cog"></i> {{#str}}viewparameters, block_blc_modules{{/str}}
+                                </a>
+                                <div class="collapse mt-2" id="params-{{id}}">
+                                    <div class="card card-body bg-light">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th width="200">{{#str}}parameter, block_blc_modules{{/str}}</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{#parameters}}
+                                                <tr>
+                                                    <td><code>{{key}}</code></td>
+                                                    <td><small>{{value}}</small></td>
+                                                </tr>
+                                                {{/parameters}}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                {{/has_parameters}}
+                            </td>
+                        </tr>
+                        {{/logs}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{/sessions}}
+    </div>
+    {{/has_sessions}}
+    
+    {{^has_sessions}}
+    <div class="alert alert-info text-center">
+        <i class="fa fa-info-circle fa-3x mb-3"></i>
+        <h5>{{#str}}nologsfound, block_blc_modules{{/str}}</h5>
+        <p>{{#str}}nologsfounddesc, block_blc_modules{{/str}}</p>
+    </div>
+    {{/has_sessions}}
+    
+</div>
+
+<style>
+.scorm-load-logs .stat-box {
+    padding: 15px;
+    border-radius: 5px;
+    background: #f8f9fa;
+    margin: 5px;
+}
+.scorm-load-logs .stat-box h2 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.scorm-load-logs .stat-box p {
+    margin-bottom: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+.scorm-load-logs code {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+</style>

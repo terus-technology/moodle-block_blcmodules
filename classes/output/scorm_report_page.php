@@ -107,7 +107,7 @@ class scorm_report_page implements renderable, templatable {
 
         // Get the count of BLC module documents.
         $block_blc_modules_docs = $DB->count_records('block_blc_modules_doc');
-        // var_dump($block_blc_modules); die();// Debugging line, can be removed later.
+
         return [$block_blc_modules,$block_blc_modules_docs];
     }
 
@@ -125,14 +125,13 @@ class scorm_report_page implements renderable, templatable {
     private function get_data_by_subject() {
         global $DB;
         $sql = "SELECT subject, COUNT(*) AS count FROM {block_blc_modules} WHERE subject IS NOT NULL AND subject != '' GROUP BY subject ORDER BY count DESC";
-        $records = $DB->get_records_sql($sql);
+        $subjects = $DB->get_records_sql($sql);
         $data = [];
-        foreach ($records as $record) {
-            $data[] = array($record->subject, $record->count);
+        foreach ($subjects as $record) {
+            $data[] = [$record->subject, $record->count];
         }
-        // Get top 5 subjects
-        $data = array_slice($data, 0, 5);
-        return $data;
+        $data = array_slice($data, 0, 5, true); // Top 5 subjects
+        return array_values($data);
     }
 
 
