@@ -16,33 +16,39 @@
 
 namespace block_blc_modules\output;
 
-use renderable;
-use renderer_base;
-use templatable;
+use core\output\renderable;
+use core\output\renderer_base;
+use core\output\templatable;
 use stdClass;
-use block_blc_modules\helper\blccurl;
+use block_blc_modules\helper\blccurl_helper;
+use Exception;
 use moodle_url;
 
 /**
  * Class validate_settings_page
  *
  * @package    block_blc_modules
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-
 class validate_settings_page implements renderable, templatable {
-
+    /**
+     * @var string URL for the page
+     */
     public $url;
+
+    /**
+     * @var moodle_url Base URL for the page
+     */
     public $baseurl;
 
-     /**
+    /**
      * Constructor.
      *
      * @param array $url URL for the page
      * @param moodle_url $baseurl Base URL for the page
-     * 
+     * @return void
      */
     public function __construct($url, $baseurl) {
         $this->url = $url;
@@ -55,16 +61,15 @@ class validate_settings_page implements renderable, templatable {
      * @param renderer_base $output
      * @return string
      */
-
     public function export_for_template(renderer_base $output) {
         $data = new stdClass();
         $data->url = $this->url;
         $data->baseurl = $this->baseurl;
 
-        // Get validation data
+        // Get validation data.
         $validationdata = $this->get_data();
-        
-        // Merge validation data into the main data object
+
+        // Merge validation data into the main data object.
         foreach ($validationdata as $key => $value) {
             $data->$key = $value;
         }
@@ -72,82 +77,93 @@ class validate_settings_page implements renderable, templatable {
         return $data;
     }
 
+    /**
+     * Get validation data for the settings.
+     *
+     * @return array Validation results including status and configuration details
+     */
     private function get_data() {
-        global $DB, $CFG;
+        global $CFG;
 
         $apikey = get_config('block_blc_modules', 'api_key');
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
         $requesturi = $CFG->wwwroot;
-        
-        // FIXED: Use correct web service function name
-        $function_name = 'local_scormurl_check_scormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-            . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi
-            . '&moodlewsrestformat=json';
-        
-        // Initialize validation results
+
+        // FIXED: Use correct web service function name.
+        $functionname = 'local_scormurl_check_scormurls';
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'moodlewsrestformat' => 'json',
+        ]);
+
+        // Initialize validation results.
         $validationresults = [];
         $responses = '';
         $urlokay = 'false';
         $apiokay = 'false';
-        
+
         try {
-            $curl = new blccurl;
-            $curl->setHeader('Content-Type: application/json; charset=utf-8');
-            $responses = $curl->post($serverurl, '', array('CURLOPT_FAILONERROR' => true));
-            
+            $curl = new blccurl_helper();
+            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
+
             // FIXED: Parse JSON response correctly instead of CSV
             // Expected response: {"Status":"OK","ModuleCount":123} or {"Status":"Authentication failed"}
-            // Note: Response might be double-encoded, so we need to handle that
+            // Note: Response might be double-encoded, so we need to handle that.
             $jsonresponse = json_decode($responses, true);
-            
-            // Check if response is a string (double-encoded JSON)
+
+            // Check if response is a string (double-encoded JSON).
             if (is_string($jsonresponse)) {
-                error_log('BLC validate_settings: Response is double-encoded, decoding again');
+                debugging('BLC validate_settings: Response is double-encoded, decoding again', DEBUG_DEVELOPER);
                 $jsonresponse = json_decode($jsonresponse, true);
             }
-            
+
             if ($jsonresponse && isset($jsonresponse['Status'])) {
                 if ($jsonresponse['Status'] === 'OK') {
-                    // Both API key and URL are valid
+                    // Both API key and URL are valid.
                     $urlokay = 'true';
                     $apiokay = 'true';
-                    
-                    // Store module count if available
+
+                    // Store module count if available.
                     if (isset($jsonresponse['ModuleCount'])) {
                         $validationresults['module_count'] = $jsonresponse['ModuleCount'];
                     }
-                    
-                    error_log('BLC validate_settings: Validation SUCCESS - ModuleCount: ' . ($jsonresponse['ModuleCount'] ?? 'N/A'));
+
+                    debugging('BLC validate_settings: Validation SUCCESS - ModuleCount: ' .
+                    ($jsonresponse['ModuleCount'] ?? 'N/A'), DEBUG_DEVELOPER);
                 } else {
                     // Authentication failed - both invalid
                     // Note: Current check_scormurls function validates both together,
-                    // so we can't determine which specific part failed
+                    // so we can't determine which specific part failed.
                     $urlokay = 'false';
                     $apiokay = 'false';
-                    
-                    // Store error message if available
+
+                    // Store error message if available.
                     if (isset($jsonresponse['error'])) {
                         $validationresults['api_error'] = $jsonresponse['error'];
                     }
-                    
-                    error_log('BLC validate_settings: Validation FAILED - Status: ' . ($jsonresponse['Status'] ?? 'Unknown'));
+
+                    debugging('BLC validate_settings: Validation FAILED - Status: ' .
+                    ($jsonresponse['Status'] ?? 'Unknown'), DEBUG_DEVELOPER);
                 }
             } else {
-                // Invalid response format
+                // Invalid response format.
                 $urlokay = 'false';
                 $apiokay = 'false';
-                error_log('BLC validate_settings: Invalid JSON response: ' . $responses);
+                debugging('BLC validate_settings: Invalid JSON response: ' . $responses, DEBUG_DEVELOPER);
             }
-        } catch (\Exception $e) {
-            // Handle connection errors
+        } catch (Exception $e) {
+            // Handle connection errors.
             $validationresults['connection_error'] = true;
             $validationresults['error_message'] = $e->getMessage();
-            error_log('BLC validate_settings: Connection error: ' . $e->getMessage());
+            debugging('BLC validate_settings: Connection error: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
 
-        // Prepare alert messages
+        // Prepare alert messages.
         $validationresults['apisuccess'] = get_string('apisuccess', 'block_blc_modules');
         $validationresults['urlsuccess'] = get_string('urlsuccess', 'block_blc_modules');
         $validationresults['apifail'] = get_string('apifail', 'block_blc_modules');
@@ -157,33 +173,33 @@ class validate_settings_page implements renderable, templatable {
         $validationresults['failone'] = get_string('failone', 'block_blc_modules');
         $validationresults['refresh_text'] = get_string('refresh', 'block_blc_modules');
         $validationresults['return_text'] = get_string('return', 'block_blc_modules');
-        
-        // URLs for buttons
+
+        // URLs for buttons.
         $validationresults['refresh_url'] = $CFG->wwwroot . '/blocks/blc_modules/validate_settings.php';
         $validationresults['settings_url'] = $CFG->wwwroot . '/admin/settings.php?section=blocksettingblc_modules';
-        
-        // Determine validation status
-        $url_valid = (strpos($urlokay, 'true') !== false);
-        $api_valid = (strpos($apiokay, 'true') !== false);
-        
-        $validationresults['url_valid'] = $url_valid;
-        $validationresults['api_valid'] = $api_valid;
-        $validationresults['both_valid'] = $url_valid && $api_valid;
-        $validationresults['both_invalid'] = !$url_valid && !$api_valid;
-        $validationresults['partial_valid'] = ($url_valid && !$api_valid) || (!$url_valid && $api_valid);
-        
-        // Debug information (optional)
+
+        // Determine validation status.
+        $urlvalid = (strpos($urlokay, 'true') !== false);
+        $apivalid = (strpos($apiokay, 'true') !== false);
+
+        $validationresults['url_valid'] = $urlvalid;
+        $validationresults['api_valid'] = $apivalid;
+        $validationresults['both_valid'] = $urlvalid && $apivalid;
+        $validationresults['both_invalid'] = !$urlvalid && !$apivalid;
+        $validationresults['partial_valid'] = ($urlvalid && !$apivalid) || (!$urlvalid && $apivalid);
+
+        // Debug information (optional).
         $validationresults['debug_info'] = [
             'requesturi' => $requesturi,
-            'apikey' => substr($apikey, 0, 8) . '...', // Show only first 8 chars for security
-            'token' => substr($token, 0, 8) . '...', // Show only first 8 chars for security
+            'apikey' => substr($apikey, 0, 8) . '...', // Show only first 8 chars for security.
+            'token' => substr($token, 0, 8) . '...', // Show only first 8 chars for security.
             'domainname' => $domainname,
             'serverurl' => $serverurl,
             'responses' => $responses,
             'urlokay' => $urlokay,
-            'apiokay' => $apiokay
+            'apiokay' => $apiokay,
         ];
-        
+
         return $validationresults;
     }
 }

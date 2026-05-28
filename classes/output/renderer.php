@@ -18,36 +18,37 @@
  * Class render
  *
  * @package    block_blc_modules
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 
 namespace block_blc_modules\output;
 
 use plugin_renderer_base;
 
-
-
+/**
+ * Class renderer
+ */
 class renderer extends plugin_renderer_base {
-
     /**
      * Render the SCORM Report page.
      *
      * @param scorm_report_page $page
      * @return string
      */
-    public function render_scorm_report_page(scorm_report_page $page){
+    public function render_scorm_report_page(scorm_report_page $page) {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/scorm_report_page', $data);
     }
+
     /**
      * Render the Validate Settings page.
      *
      * @param validate_settings_page $page
      * @return string
      */
-    public function render_validate_settings_page(validate_settings_page $page){
+    public function render_validate_settings_page(validate_settings_page $page) {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/validate_settings_page', $data);
     }
@@ -58,7 +59,7 @@ class renderer extends plugin_renderer_base {
      * @param update_scorm_page $page
      * @return string
      */
-    public function render_update_scorm_page(update_scorm_page $page){
+    public function render_update_scorm_page(update_scorm_page $page) {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/update_scorm_page', $data);
     }
@@ -69,7 +70,7 @@ class renderer extends plugin_renderer_base {
      * @param bulk_update_progress_page $page
      * @return string
      */
-    public function render_bulk_update_progress_page(bulk_update_progress_page $page){
+    public function render_bulk_update_progress_page(bulk_update_progress_page $page) {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/bulk_update_progress', $data);
     }
@@ -80,9 +81,8 @@ class renderer extends plugin_renderer_base {
      * @param scorm_load_log_page $page
      * @return string
      */
-    public function render_scorm_load_log_page(scorm_load_log_page $page){
+    public function render_scorm_load_log_page(scorm_load_log_page $page) {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/scorm_load_log_page', $data);
     }
-
 }

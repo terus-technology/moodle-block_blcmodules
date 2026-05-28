@@ -14,26 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace block_blc_modules\output;
-
-use renderable;
-use renderer_base;
-use templatable;
-use stdClass;
-use moodle_url;
-
 /**
  * Class scorm_load_log_page
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+namespace block_blc_modules\output;
+
+defined('MOODLE_INTERNAL') || die();
+
+use block_blc_modules\logger;
+use core\output\renderable;
+use core\output\renderer_base;
+use core\output\templatable;
+use stdClass;
+use moodle_url;
+
 require_once($CFG->dirroot.'/blocks/blc_modules/locallib.php');
 
+/**
+ * Class scorm_load_log_page
+ */
 class scorm_load_log_page implements renderable, templatable {
-
     /** @var moodle_url Base URL */
     public $baseurl;
 
@@ -62,9 +68,7 @@ class scorm_load_log_page implements renderable, templatable {
      * @param renderer_base $output
      * @return stdClass
      */
-    public function export_for_template(renderer_base $output): stdClass {
-        global $DB;
-
+    public function export_for_template(renderer_base $output) {
         $data = new stdClass();
         $data->baseurl = $this->baseurl->out(false);
         $data->homeurl = $this->homeurl->out(false);
@@ -94,11 +98,11 @@ class scorm_load_log_page implements renderable, templatable {
         $dbfilters['limit'] = 500;
 
         // Get logs grouped by session.
-        $logger = new \block_blc_modules\logger();
+        $logger = new logger();
         $sessions = $logger::get_logs_by_session($dbfilters);
 
         // Initialize statistics counters.
-        $stats_counts = [
+        $statscounts = [
             'total' => 0,
             'info' => 0,
             'success' => 0,
@@ -126,11 +130,11 @@ class scorm_load_log_page implements renderable, templatable {
                 if ($log->log_level === 'info' && empty($log->parameters)) {
                     continue;
                 }
-                
+
                 // Count for statistics (only counted logs that are displayed).
-                $stats_counts['total']++;
-                $stats_counts[$log->log_level]++;
-                
+                $statscounts['total']++;
+                $statscounts[$log->log_level]++;
+
                 $logentry = new stdClass();
                 $logentry->id = $log->id;
                 $logentry->message = format_text($log->message, FORMAT_PLAIN);
@@ -162,11 +166,11 @@ class scorm_load_log_page implements renderable, templatable {
         $data->has_sessions = count($data->sessions) > 0;
 
         // Get statistics from manual counts (accurate with displayed logs).
-        $data->total_logs = $stats_counts['total'];
-        $data->success_count = $stats_counts['success'] ?? 0;
-        $data->error_count = $stats_counts['error'] ?? 0;
-        $data->info_count = $stats_counts['info'] ?? 0;
-        $data->warning_count = $stats_counts['warning'] ?? 0;
+        $data->total_logs = $statscounts['total'];
+        $data->success_count = $statscounts['success'] ?? 0;
+        $data->error_count = $statscounts['error'] ?? 0;
+        $data->info_count = $statscounts['info'] ?? 0;
+        $data->warning_count = $statscounts['warning'] ?? 0;
         $data->total_sessions = count($sessions);
 
         // Filter options.
@@ -188,8 +192,11 @@ class scorm_load_log_page implements renderable, templatable {
     private function get_username($userid) {
         global $DB;
         // Fetch all fields required by fullname() to avoid warnings.
-        $user = $DB->get_record('user', ['id' => $userid], 
-            'id, firstname, lastname, firstnamephonetic, lastnamephonetic, middlename, alternatename');
+        $user = $DB->get_record(
+            'user',
+            ['id' => $userid],
+            'id, firstname, lastname, firstnamephonetic, lastnamephonetic, middlename, alternatename'
+        );
         return $user ? fullname($user) : get_string('unknown', 'block_blc_modules');
     }
 
@@ -216,7 +223,7 @@ class scorm_load_log_page implements renderable, templatable {
             'info' => 'badge-info',
             'success' => 'badge-success',
             'error' => 'badge-danger',
-            'warning' => 'badge-warning'
+            'warning' => 'badge-warning',
         ];
         return $classes[$level] ?? 'badge-secondary';
     }
@@ -232,7 +239,7 @@ class scorm_load_log_page implements renderable, templatable {
             'info' => 'fa-info-circle',
             'success' => 'fa-check-circle',
             'error' => 'fa-exclamation-circle',
-            'warning' => 'fa-exclamation-triangle'
+            'warning' => 'fa-exclamation-triangle',
         ];
         return $icons[$level] ?? 'fa-circle';
     }
@@ -284,7 +291,7 @@ class scorm_load_log_page implements renderable, templatable {
      * @return array Courses
      */
     private function get_courses_list() {
-        $logger = new \block_blc_modules\logger();
+        $logger = new logger();
         return array_values($logger::get_courses_with_logs());
     }
 
@@ -294,7 +301,7 @@ class scorm_load_log_page implements renderable, templatable {
      * @return array Users
      */
     private function get_users_list() {
-        $logger = new \block_blc_modules\logger();
+        $logger = new logger();
         return array_values($logger::get_users_with_logs());
     }
 }

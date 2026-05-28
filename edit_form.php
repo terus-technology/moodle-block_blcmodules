@@ -18,12 +18,16 @@
  * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
- 
+
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Class block_blc_modules_edit_form.
+ */
 class block_blc_modules_edit_form extends block_edit_form {
     /**
      * The definition of the fields to use.
@@ -31,8 +35,6 @@ class block_blc_modules_edit_form extends block_edit_form {
      * @param MoodleQuickForm $mform
      */
     protected function specific_definition($mform) {
-        global $DB;
-
         // Load defaults.
         $blockconfig = get_config('block_blc_modules');
 
@@ -40,11 +42,9 @@ class block_blc_modules_edit_form extends block_edit_form {
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
         if (has_capability('moodle/site:config', context_system::instance())) {
-            $mform->addElement('text', 'api_key',
-                    get_string('api_key', 'block_blc_modules'));
+            $mform->addElement('text', 'api_key', get_string('api_key', 'block_blc_modules'));
             $mform->setDefault('api_key', $blockconfig->api_key);
             $mform->setType('api_key', PARAM_TEXT);
         }
-   
     }
 }

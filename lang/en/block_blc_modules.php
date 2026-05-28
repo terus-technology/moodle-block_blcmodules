@@ -17,10 +17,13 @@
 /**
  * Strings for component 'block_blc_modules', language 'en', branch 'MOODLE_20_STABLE'
  *
- * @package   block_blc_modules
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    block_blc_modules
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+// phpcs:ignoreFile moodle.Files.LangFilesOrdering.IncorrectOrder
 
 $string['blc_modules:addinstance'] = 'Add a new BLC Moodle block';
 $string['pluginname'] = 'BLC Modules';
@@ -35,9 +38,9 @@ $string['blc_modules:viewblock'] = 'BLC Module Picker viewblock';
 $string['token_value'] = 'd623555b36cb7e3db03cd06178ccb284';
 $string['webserviceaddress'] = 'https://blc.howcollege.ac.uk';
 $string['updatescorm'] = '<h4>Updates</h4>To update BLC Modules in bulk, please click <a href="{$a->wwwroot}/blocks/blc_modules/bulk_update.php">Here</a>.';
-$string['updatescormmesage'] =  'Successfully updated';
+$string['updatescormmesage'] = 'Successfully updated';
 $string['updatedoc'] = 'To automatically add an accessibility document under each BLC Module, please click <a href="{$a->wwwroot}/blocks/blc_modules/add_doc.php">Here</a>.';
-$string['updatedocmesage'] =  'Successfully added accessibility documents';
+$string['updatedocmesage'] = 'Successfully added accessibility documents';
 $string['adddocs'] = 'Add Accessibility Documents';
 $string['confirmbatchadddocs'] = 'This will create accessibility documents for {$a} SCORM modules that do not have them yet. Do you want to continue?';
 $string['batchprocesswarning'] = '<strong>Warning:</strong> This process may take several minutes depending on the number of modules. Please do not close this window until the process is complete.';
@@ -49,34 +52,28 @@ $string['skippednodoc'] = '{$a} modules were skipped because no accessibility do
 $string['nodocsfound'] = 'No accessibility documents were added. {$a} modules do not have accessibility documents available on the BLC server.';
 $string['missingconfig'] = 'Plugin configuration is incomplete. Please configure the API key, token, and domain name.';
 $string['resourcemodulenotfound'] = 'Resource module not found. Please ensure the Resource activity module is installed and enabled.';
-$string['apisuccess'] =  'Success: Your <b>API Key</b> is configured correctly.';
-$string['apifail'] =  'Failure: Your <b>API Key</b> is not configured correctly.';
-$string['urlsuccess'] =  'Success: Your <b>Moodle URL</b> is configured correctly.';
-$string['urlfail'] =  'Failure: Your <b>Moodle URL</b> is not configured correctly.';
-$string['refresh'] =  'Refresh';
-$string['return'] =  'Return to Settings';
+$string['apisuccess'] = 'Success: Your <b>API Key</b> is configured correctly.';
+$string['apifail'] = 'Failure: Your <b>API Key</b> is not configured correctly.';
+$string['urlsuccess'] = 'Success: Your <b>Moodle URL</b> is configured correctly.';
+$string['urlfail'] = 'Failure: Your <b>Moodle URL</b> is not configured correctly.';
+$string['refresh'] = 'Refresh';
+$string['return'] = 'Return to Settings';
 $string['validatesettings'] = 'Validate BLC Settings';
-$string['failone'] =  '
-
+$string['failone'] = '
 <h2>Configuration problem</h2>
 <p>There is a problem with some of your settings. We suggest revisiting <a href="https://blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and checking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
 ';
-$string['failboth'] =  '
-
+$string['failboth'] = '
 <h2>Configuration problem</h2>
 <p>There is a problem with both your API key and your URL. We suggest revisiting <a href="https://blc.howcollege.ac.uk">blc.howcollege.ac.uk</a> and rechecking the details. If you continue to experience issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
 ';
-$string['successboth'] =  '
-
+$string['successboth'] = '
 <h2>Fully Working</h2>
 <p>We can\'t see anything wrong with your configuration. If you experience any issues, please contact us at <a href="mailto:blc@howcollege.ac.uk">blc@howcollege.ac.uk</a></p>
-
 ';
-$string['updatescormconfirm'] =  'Are you sure?';
-$string['updateconfirmmessage'] =  'Please be aware that updating SCORM packages can have implications for in-progress attempts.<br/> Students may loose their progress, and need to restart the module. They may also continue to be served the old version.<br/>It may be a good idea to do this during a strategic time in the academic year.<br/>We will try our best to track down and update all modules, however this may not always be possible, especially if a module has moved, been duplicated or renamed. ';
-$string['failupdatescormmesage'] =  'The server is currently busy updating another BLC college. Please try again later.';
+$string['updatescormconfirm'] = 'Are you sure?';
+$string['updateconfirmmessage'] = 'Please be aware that updating SCORM packages can have implications for in-progress attempts.<br/> Students may loose their progress, and need to restart the module. They may also continue to be served the old version.<br/>It may be a good idea to do this during a strategic time in the academic year.<br/>We will try our best to track down and update all modules, however this may not always be possible, especially if a module has moved, been duplicated or renamed. ';
+$string['failupdatescormmesage'] = 'The server is currently busy updating another BLC college. Please try again later.';
 $string['scormreport'] = '<h4>Report</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_report.php">here</a> to access a report detailing the usage of BLC modules and accessibility documents added via this plugin.';
 $string['scormreports'] = 'Report';
 $string['resource'] = 'Resource';
@@ -102,6 +99,10 @@ $string['googleapinotinstalled'] = 'Google API library not installed. Please run
 $string['googlecredentialsnotfound'] = 'Google credentials file not found: {$a}';
 $string['invalidpackageurl'] = 'Invalid package URL: {$a}';
 $string['scormfilenotaccessible'] = 'SCORM file not accessible in Google Drive. The file may have been deleted, moved, or sharing permissions may have changed.';
+$string['missingscormpackagedependency'] = 'BLC Modules warning: Required database table "{$a}" was not found. This is usually caused by a missing or incomplete scorm_package plugin installation. Please verify the scorm_package plugin is installed correctly, then run Moodle database upgrade via Site administration > Notifications.';
+$string['jsondecodeerror'] = 'Error decoding JSON response from BLC API: {$a}';
+$string['cannotaddcoursemodule'] = 'Cannot add course module';
+$string['invalidmodule'] = 'Invalid course module';
 
 // SCORM Load Log Viewer strings (NEW).
 $string['scormloadlog'] = '<h4>SCORM Load Logs</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_load_log.php">here</a> to view detailed logs of SCORM loading processes.<h4>Plugin Settings</h4><br/>';
@@ -134,4 +135,3 @@ $string['warning'] = 'Warning';
 $string['error'] = 'Error';
 $string['all'] = 'All';
 $string['filter'] = 'Filter';
-?>
