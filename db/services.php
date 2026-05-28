@@ -15,17 +15,18 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * TODO describe file service
+ * Web service definitions for BLC modules block.
  *
  * @package    block_blc_modules
- * @copyright  2025 YOUR NAME <your@email.com>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $functions = [
-    'blocks_blc_modules_get_blc_modules_version'=> [
+    'blocks_blc_modules_get_blc_modules_version' => [
         'classname' => 'block_blc_modules\external\blcservice',
         'methodname' => 'get_blc_modules_version',
         'returns' => 'block_blc_modules\external\blcservice::get_blc_modules_version_returns',
@@ -33,7 +34,7 @@ $functions = [
         'type'  => 'read',
         'ajax' => 'true',
     ],
-    'blocks_blc_modules_get_blc_modules_scormurl'=> [
+    'blocks_blc_modules_get_blc_modules_scormurl' => [
         'classname' => 'block_blc_modules\external\blcservice',
         'methodname' => 'get_blc_modules_scormurl',
         'returns' => 'block_blc_modules\external\blcservice::get_blc_modules_scormurl_returns',
@@ -41,7 +42,7 @@ $functions = [
         'type'  => 'read',
         'ajax' => 'true',
     ],
-    'blocks_blc_modules_get_blc_modules_scormsubject'=> [
+    'blocks_blc_modules_get_blc_modules_scormsubject' => [
         'classname' => 'block_blc_modules\external\blcservice',
         'methodname' => 'get_blc_modules_scormsubject',
         'returns' => 'block_blc_modules\external\blcservice::get_blc_modules_scormsubject_returns',
@@ -49,7 +50,7 @@ $functions = [
         'type'  => 'read',
         'ajax' => 'true',
     ],
-    'blocks_blc_modules_get_blc_modules_scormdelete'=> [
+    'blocks_blc_modules_get_blc_modules_scormdelete' => [
         'classname' => 'block_blc_modules\external\blcservice',
         'methodname' => 'get_blc_modules_scormdelete',
         'returns' => 'block_blc_modules\external\blcservice::get_blc_modules_scormdelete_returns',
@@ -66,7 +67,6 @@ $functions = [
         'ajax' => 'true',
     ],
 ];
-
 
 $services = [
     'BLC Modules Service' => [

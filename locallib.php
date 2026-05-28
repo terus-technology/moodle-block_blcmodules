@@ -15,67 +15,100 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This file  will validate the settings.
+ * This file will validate the settings.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-function get_subjects(){
-	global $DB;
+/**
+ * Get unique subjects from BLC modules.
+ *
+ * This function retrieves a list of unique subjects from the block_blc_modules table.
+ * In Moodle 4.5+, it uses the dedicated 'subject' field instead of parsing URLs,
+ * which provides better performance and reliability.
+ *
+ * @param int|null $courseid Optional course ID to filter by specific course
+ * @return array Array of unique subjects in format [subject => subject] for backward compatibility
+ * @throws dml_exception If database error occurs
+ */
+function get_subjects(?int $courseid = null): array {
+    global $DB;
+
+    // Build query to get distinct subjects.
+    $params = [];
+    $sql = "
+        SELECT DISTINCT subject
+        FROM {block_blc_modules}
+        WHERE subject IS NOT NULL AND " . $DB->sql_compare_text('subject') . " != ''
+    ";
+
+    // Add course filter if specified.
+    if ($courseid !== null) {
+        $sql .= " AND courseid = :courseid";
+        $params['courseid'] = $courseid;
+    }
+
+    $sql .= " ORDER BY subject ASC";
+
+    // Get distinct subjects from database.
+    $records = $DB->get_records_sql($sql, $params);
+
+    // Format as [subject => subject] for backward compatibility with existing code.
     $subjects = [];
-    // Get all scormurls and extract subjects using PHP for cross-database compatibility
-    $sql = "SELECT DISTINCT scormurl FROM {block_blc_modules} WHERE scormurl LIKE '%/%/%'";
-    $results = $DB->get_fieldset_sql($sql);
-    foreach ($results as $scormurl) {
-        if (!empty($scormurl)) {
-            // Extract subject from URL path (second-to-last segment)
-            $parts = explode('/', trim($scormurl, '/'));
-            if (count($parts) >= 3) {
-                $subject = $parts[count($parts) - 2]; // Get second-to-last part
-                if (!empty($subject)) {
-                    $subjects[$subject] = $subject;
-                }
-            }
+    foreach ($records as $record) {
+        $subject = trim($record->subject);
+        if (!empty($subject)) {
+            $subjects[$subject] = $subject;
         }
     }
+
     return $subjects;
 }
 
-function array_sort($array, $on, $order){
-
-    $new_array = array();
-    $sortable_array = array();
+/**
+ * Sort a multi-dimensional array by a specific key.
+ *
+ * @deprecated since Moodle 4.5. Use core_collator::asort() or usort() with custom comparator instead.
+ * @param array $array The array to sort
+ * @param string $on The key to sort by
+ * @param string $order Sort order: 'ASC' or 'DESC'
+ * @return array The sorted array
+ */
+function array_sort(array $array, string $on, string $order): array {
+    $newarray = [];
+    $sortablearray = [];
 
     if (count($array) > 0) {
         foreach ($array as $k => $v) {
             if (is_array($v)) {
                 foreach ($v as $k2 => $v2) {
                     if ($k2 == $on) {
-                        $sortable_array[$k] = $v2;
+                        $sortablearray[$k] = $v2;
                     }
                 }
             } else {
-                $sortable_array[$k] = $v;
+                $sortablearray[$k] = $v;
             }
         }
 
         switch ($order) {
             case 'ASC':
-                asort($sortable_array);
+                asort($sortablearray);
                 break;
             case 'DESC':
-                arsort($sortable_array);
+                arsort($sortablearray);
                 break;
         }
 
-        foreach ($sortable_array as $k => $v) {
-            $new_array[$k] = $array[$k];
+        foreach ($sortablearray as $k => $v) {
+            $newarray[$k] = $array[$k];
         }
     }
 
-    return $new_array;
+    return $newarray;
 }

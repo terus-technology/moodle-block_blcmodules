@@ -14,43 +14,74 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 /**
  * Defines the form for editing add scorm block instances.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
+    $settings->add(
+        new admin_setting_heading(
+            'updatescorm',
+            '',
+            get_string('updatescorm', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])
+        )
+    );
+    $settings->add(
+        new admin_setting_heading(
+            'updatedoc',
+            '',
+            get_string('updatedoc', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])
+        )
+    );
+    $settings->add(
+        new admin_setting_heading(
+            'scormreport',
+            '',
+            get_string('scormreport', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])
+        )
+    );
+    $settings->add(
+        new admin_setting_heading(
+            'scormloadlog',
+            '',
+            get_string('scormloadlog', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])
+        )
+    );
 
-    // Update Scorm.
-    $settings->add(new admin_setting_heading('updatescorm', '', 
-        get_string('updatescorm', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
-    $settings->add(new admin_setting_heading('updatedoc', '', 
-        get_string('updatedoc', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
-    $settings->add(new admin_setting_heading('scormreport', '', 
-        get_string('scormreport', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot])));
-            
     // Default Api key.
-    $setting = new admin_setting_configtext('block_blc_modules/api_key',
+    $setting = new admin_setting_configtext(
+        'block_blc_modules/api_key',
         get_string('api_key', 'block_blc_modules'),
-        get_string('api_key_desc', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot]), '', PARAM_TEXT);
-    $settings->add($setting);
-    
-    // Default Token.
-    $setting = new admin_setting_configtext('block_blc_modules/token',
-        get_string('token', 'block_blc_modules'),
-        get_string('token_desc', 'block_blc_modules'), 'd623555b36cb7e3db03cd06178ccb284', PARAM_TEXT);
-    $settings->add($setting);
-    
-    // Default domain name.
-    $setting = new admin_setting_configtext('block_blc_modules/domainname',
-        get_string('domainname', 'block_blc_modules'),
-        get_string('domainname_desc', 'block_blc_modules'), 'https://blc.howcollege.ac.uk/', PARAM_TEXT);
+        get_string('api_key_desc', 'block_blc_modules', ['wwwroot' => $CFG->wwwroot]),
+        '',
+        PARAM_TEXT
+    );
     $settings->add($setting);
 
+    // Default Token.
+    $setting = new admin_setting_configtext(
+        'block_blc_modules/token',
+        get_string('token', 'block_blc_modules'),
+        get_string('token_desc', 'block_blc_modules'),
+        'd623555b36cb7e3db03cd06178ccb284',
+        PARAM_TEXT
+    );
+    $settings->add($setting);
+
+    // Default domain name.
+    $setting = new admin_setting_configtext(
+        'block_blc_modules/domainname',
+        get_string('domainname', 'block_blc_modules'),
+        get_string('domainname_desc', 'block_blc_modules'),
+        'https://blc.howcollege.ac.uk/',
+        PARAM_TEXT
+    );
+    $settings->add($setting);
 }

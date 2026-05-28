@@ -71,6 +71,20 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         var apikey = $('#apikey').val();
         $("#scormurls").html('');
 
+        // Add loading spinner inside the select2 container
+        var $subjectSelect = $("#scormsubject");
+        var $select2Container = $subjectSelect.next('.select2-container');
+
+        // Position spinner inside the Select2 dropdown
+        $select2Container.append('<div class="subject-loading-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 4px;"><i class="fa fa-spinner fa-spin" style="color: #0f6cbf; font-size: 16px;"></i></div>');
+
+        // Make sure container has relative positioning for absolute overlay
+        $select2Container.css('position', 'relative');
+
+        // Temporarily disable the select2 dropdown
+        $subjectSelect.prop('disabled', true);
+        $select2Container.addClass('select2-container--disabled');
+
         var request = {
             methodname: 'blocks_blc_modules_get_blc_modules_scormsubject',
             args: {
@@ -82,18 +96,41 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
         Ajax.call([request])[0]
             .done((data) => {
-                const items = ["<option value='0' selected>Select Subject</option>"];
-                
+                // Remove loading spinner overlay
+                $('.subject-loading-overlay').remove();
+
+                // Re-enable select2
+                $subjectSelect.prop('disabled', false);
+                $select2Container.removeClass('select2-container--disabled');
+
+                // Store current selection
+                var currentValue = $subjectSelect.val();
+
+                // Clear and repopulate options
+                $subjectSelect.html('<option value="0">Select Subject</option>');
+
                 if (data.length > 0) {
-                    items.push(...data.map(item => `<option value='${item}'>${item}</option>`));
+                    data.forEach(item => {
+                        $subjectSelect.append(`<option value="${item}">${item}</option>`);
+                    });
                 }
 
-                $("#scormsubject").html(items.join(""));
+                // Update select2 without breaking it
+                $subjectSelect.trigger('change.select2');
             })
             .fail((error) => {
+                // Remove loading spinner overlay
+                $('.subject-loading-overlay').remove();
+
+                // Re-enable select2
+                $subjectSelect.prop('disabled', false);
+                $select2Container.removeClass('select2-container--disabled');
+
                 console.error('Error loading subjects:', error);
+
+                // Show user-friendly error message
+                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load subjects. Please try again.</span>');
                 $('.submitForm').prop("disabled", true);
-                $('.statusMsg').html('<span style="color:red;">An error has occurred.</span>');
             });
     }
 
@@ -125,6 +162,20 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         var apikey = $('#apikey').val();
 
         if (scormsubject != 0) {
+            // Show loading state for SCORM URLs dropdown
+            var $scormSelect = $("#scormurls");
+            var $scormSelect2Container = $scormSelect.next('.select2-container');
+
+            // Add loading indicator below the multiselect dropdown
+            $scormSelect2Container.after('<div class="scorm-loading-indicator" style="margin: 8px 0 16px 0; padding: 8px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 4px; display: flex; align-items: center; gap: 8px; color: #0f6cbf; font-size: 14px;"><i class="fa fa-spinner fa-spin" style="color: #0f6cbf;"></i><span>Loading SCORM packages...</span></div>');
+
+            // Temporarily disable the select2 dropdown
+            $scormSelect.prop('disabled', true);
+            $scormSelect2Container.addClass('select2-container--disabled');
+
+            // Disable submit button during loading
+            $('.submitForm').prop('disabled', true);
+
             var request = {
                 methodname: 'blocks_blc_modules_get_blc_modules_scormurl',
                 args: {
@@ -134,21 +185,45 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     scormsubject: scormsubject  // You may need to modify the webservice to accept this parameter
                 }
             };
-           
 
             Ajax.call([request])[0]
                 .done(function(data) {
-                    var items = [];
-                    $.each(data, function(index, item) {
-                        var sanVal = item.scormname.replace(".zip", "");
-                        var key = item.scormurl.replace("'", "'");
-                        items.push("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
-                    });
+                    // Remove loading indicator
+                    $('.scorm-loading-indicator').remove();
 
-                    $("#scormurls").html(items.join(""));
+                    // Re-enable select2
+                    $scormSelect.prop('disabled', false);
+                    $scormSelect2Container.removeClass('select2-container--disabled');
+
+                    // Clear and repopulate options
+                    $scormSelect.html('');
+
+                    if (data && data.length > 0) {
+                        $.each(data, function(index, item) {
+                            var sanVal = item.scormname.replace(".zip", "");
+                            var key = item.scormurl.replace("'", "'");
+                            $scormSelect.append("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
+                        });
+                    }
+
+                    // Update select2 without breaking it
+                    $scormSelect.trigger('change.select2');
+
+                    // Clear any previous status messages
+                    $('.statusMsg').html('');
                 })
                 .fail(function(error) {
+                    // Remove loading indicator
+                    $('.scorm-loading-indicator').remove();
+
+                    // Re-enable select2
+                    $scormSelect.prop('disabled', false);
+                    $scormSelect2Container.removeClass('select2-container--disabled');
+
                     console.error('Error loading SCORM URLs:', error);
+
+                    // Show user-friendly error message
+                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load SCORM packages. Please try again.</span>');
                 });
         }
     }
@@ -180,30 +255,95 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
     }
 
     function createButtonAddBlc() {
-        const buttons = document.querySelectorAll('.btn-blc-modules');
+        const button = document.querySelector('.btn-blc-modules');
 
         const defaultBackgroundColor = '#cfe2f2';
         const hoverBackgroundColor = '#0f6cbf';
         const hoverTextColor = 'white';
-        const defaultTextColor = 'black';
+        const defaultTextColor = 'black'; 
+        
+        button.addEventListener('mouseenter', () => {
+            button.style.backgroundColor = hoverBackgroundColor;
+            button.style.color = hoverTextColor;
+        });
 
-        buttons.forEach(button => {
-            // Set initial styles
+        button.addEventListener('mouseleave', () => {
             button.style.backgroundColor = defaultBackgroundColor;
             button.style.color = defaultTextColor;
-
-            button.addEventListener('mouseenter', () => {
-                button.style.backgroundColor = hoverBackgroundColor;
-                button.style.color = hoverTextColor;
-            });
-
-            button.addEventListener('mouseleave', () => {
-                button.style.backgroundColor = defaultBackgroundColor;
-                button.style.color = defaultTextColor;
-            });
         });
     }
     function init() {
+
+        // Add CSS for smooth loading animations
+        $('<style>')
+            .prop('type', 'text/css')
+            .html(`
+                .subject-loading, .scorm-loading {
+                    opacity: 0;
+                    animation: fadeIn 0.3s ease-in forwards;
+                }
+
+                .processing-indicator {
+                    opacity: 0;
+                    animation: fadeIn 0.5s ease-in forwards;
+                }
+
+                .progress-container {
+                    opacity: 0;
+                    animation: slideDown 0.4s ease-out forwards;
+                }
+
+                .progress-bar {
+                    transition: width 0.3s ease, background-color 0.3s ease;
+                }
+
+                .progress-bar:hover {
+                    background: linear-gradient(90deg, #0d5cbf, #3a80d2);
+                }
+
+                .statusMsg span {
+                    display: inline-block;
+                    opacity: 0;
+                    animation: fadeInUp 0.4s ease-out forwards;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .btn-blc-modules {
+                    transition: all 0.2s ease;
+                }
+
+                .btn-blc-modules:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+            `)
+            .appendTo('head');
 
         var pageURL = $(location).attr("href");
 
@@ -213,12 +353,26 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
         pageURL = pageURL.split("#")[0];
         var id = getUrlParameter(pageURL, "id");
+        
+        // Detect if we're on section.php (id = section ID) or view.php (id = course ID)
+        var courseId = id;
+        var isSectionPage = pageURL.indexOf('/course/section.php') !== -1;
+        
+        if (isSectionPage) {
+            // On section.php, need to get course ID from page body attribute
+            // Moodle adds data-courseid to body or page-course-view-* class
+            var bodyClasses = $('body').attr('class');
+            var courseMatch = bodyClasses.match(/course-(\d+)/);
+            if (courseMatch && courseMatch[1]) {
+                courseId = courseMatch[1];
+            }
+        }
 
         var notifyeditingon = $("#userediting").val();
 
         if (notifyeditingon == 1) {
 
-            checkVersion(id);
+            checkVersion(courseId);
 
         }
 
@@ -249,15 +403,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             }
 
-            // Determine Bootstrap version for correct data attributes
-            // In Moodle 5.0+, force Bootstrap 5 attributes
-            var bsVersion = 5; // Force Bootstrap 5 for Moodle 5.0+
-            var dataDismiss = 'data-bs-dismiss';
-            var dataToggle = 'data-bs-toggle';
-
-            // Append modal to body instead of .course-content for better compatibility
-            $(document.body).append(`
-                <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+            $(".course-content").append(`
+                <div style="display:none;" class="modal fade" id="bsModal3" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
                     <div class="modal-dialog modal-md">
                         <div class="modal-content">
                             <div class="modal-header">
@@ -281,7 +428,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                 <div class="blcrow">
                                     <div class="blcrow">
                                         <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
+                                            <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 avail" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br />If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br />If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p></div>" data-html="true" tabindex="0" data-trigger="focus">
                                             <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>
                                             </a>
                                         </span>
@@ -302,7 +449,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     <div class="blcrow">
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
+                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 prev" role="button" id="" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>Preview mode allows a student to browse an activity before attempting it. If preview mode is disabled, the preview button is hidden.</p> </div> " data-html="true" tabindex="0" data-trigger="focus">
                                                    
                                                 <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
                                                 </a>
@@ -323,7 +470,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                                     <div class="blcrow">
                                         <div class="blccolmd6">
                                             <span style="float:left; margin-right:10px;" class="text-nowrap">
-                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" ${dataToggle}="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
+                                                <a style="box-shadow: none; background: none; padding-bottom:3px !important; border:none;" class="btn btn-link p-0 comp" id="" role="button" data-container="body" data-toggle="popover" data-placement="right" data-content="<div class=&quot;no-overflow&quot;><p>If enabled, activity completion is tracked, either manually or automatically.<br/> If Automatic is selected, the best options for BLC modules are set, whereas if manual is selected, the studnt must manually tick a box next to the activity for it to register as complete.</p> <p>A tick next to the activity name on the course page indicates when the activity is complete.</p> </div>" data-html="true" tabindex="0" data-trigger="focus">
                                                         <i class="icon fa fa-circle-question text-info fa-fw " title="Help with Availability" role="img" aria-label="Help with Availability"></i>                                               
                                             
                                                 </a>
@@ -340,7 +487,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-default closeModal" ${dataDismiss}="modal">
+                            <button type="button" class="btn btn-default closeModal">
                                 Close
                             </button>
                             <button type="button" disabled="disabled" class="btn btn-primary submitForm">
@@ -358,15 +505,9 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             $(".section.main").each(function () {
 
                 if (notifyeditingon == 1) {
-                    // Determine Bootstrap version for correct data attributes
-                    // In Moodle 5.0+, force Bootstrap 5 attributes
-                    var bsVersion = 5; // Force Bootstrap 5 for Moodle 5.0+
-                    var dataToggle = 'data-bs-toggle';
-                    var dataTarget = 'data-bs-target';
-                    
                     $(this).append(`
                             <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
-                                    ${dataToggle}='modal' ${dataTarget}='#bsModal3' style="float:right">
+                                    data-toggle='modal' data-target='#bsModal3' style="float:right">
                                 <div class="px-1">
                                     <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
                                     <span class="activity-add-text pr-1">Add BLC modules</span>
@@ -395,7 +536,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             });
 
-            $(document).on("click", ".add-scrom", function () {
+            $(".course-content").on("click", ".add-scrom", function () {
 
                 fillSubject();
 
@@ -405,15 +546,48 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
                 x = secNum;
 
+                // Set up modal event listeners for better UX
+                $('#bsModal3').off('shown.bs.modal').on('shown.bs.modal', function () {
+                    // Focus on the subject dropdown when modal opens
+                    setTimeout(function() {
+                        $('#scormsubject').select2('open');
+                    }, 100);
+                });
+
+                $('#bsModal3').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                    // Clean up any loading states when modal is closed
+                    $('.subject-loading, .scorm-loading, .processing-indicator').remove();
+                    $('.progress-container').remove();
+                    $('.statusMsg').html('');
+                    $('.submitForm').prop('disabled', true);
+                });
+
             });
 
-            $("#scormurls").click(function () {
-
-                $('.submitForm').removeAttr("disabled");
-
+            // Handler for Close button - close modal manually
+            $(".course-content").on("click", ".closeModal", function () {
+                // Blur focus first to prevent aria-hidden warning
+                $(this).blur();
+                $('#bsModal3').modal('hide');
             });
 
-            $(document).on("click", ".submitForm", function () {
+            $("#scormurls").change(function () {
+                // Enable submit button when SCORM packages are selected
+                var selectedCount = $(this).find('option:selected').length;
+                if (selectedCount > 0) {
+                    $('.submitForm').removeAttr("disabled");
+                    // Show selection count feedback
+                    var selectionMsg = selectedCount > 1
+                        ? selectedCount + ' modules selected'
+                        : '1 module selected';
+                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + selectionMsg + '. Ready to add to course.</span>');
+                } else {
+                    $('.submitForm').prop("disabled", true);
+                    $('.statusMsg').html('');
+                }
+            });
+
+            $(".course-content").on("click", ".submitForm", function () {
                 var apikey = $('#apikey').val();
                 var scormurls = [];
                 var visibility = $("#id_visible").val();
@@ -429,130 +603,153 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 $('.statusMsg').html('');
                 $('.submitForm').attr("disabled", "disabled");
                 $('.closeModal').attr("disabled", "disabled");
-                $(".modal-header").append('<i class="fa fa-spinner fa-spin" style="font-size:24px"></i>');
+                $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', true);
 
-                // Show processing message with file count
+                $(".modal-header").find('.fa-spinner').remove();
+                $(".modal-header h4").after('<div class="processing-indicator" style="margin-left: 15px; display: inline-block;"><i class="fa fa-spinner fa-spin" style="font-size:18px; color: #0f6cbf;"></i></div>');
+
+                $('.statusMsg').after('<div class="progress-container" style="margin-top: 15px;"><div class="progress" style="height: 20px; background-color: #f0f0f0; border-radius: 4px; overflow: hidden;"><div class="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0f6cbf, #4a90e2); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; transition: width 0.3s ease;"><span class="progress-text">0%</span></div></div><div class="progress-status" style="margin-top: 8px; font-size: 13px; color: #666;"></div></div>');
+
                 var fileCount = scormurls.length;
-                var processingMsg = fileCount > 1 
-                    ? 'Processing ' + fileCount + ' files. This may take several minutes...'
-                    : 'Processing file. This may take a moment...';
-                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + processingMsg + '</span>');
+                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-download"></i> Starting process...</span>');
 
-                var request = {
-                    methodname: 'blocks_blc_modules_load_scorm_modules',
-                    args: {
-                        courseid: parseInt(id),
-                        sectionnumber: parseInt(x),
-                        apikey: apikey,
-                        scormurls: scormurls,
-                        visibility: parseInt(visibility),
-                        hidebrowse: parseInt(hidebrowse),
-                        completion: parseInt(completion)
-                    }
-                };
+                var processorUrl = M.cfg.wwwroot + '/blocks/blc_modules/scorm_load_processor.php';
+                var sesskey = M.cfg.sesskey;
+                var consecutiveErrors = 0;
+                var maxErrors = 10;
 
-                Ajax.call([request], { timeout: 300000 })[0] // 5 minutes timeout
-                    .done(function(data) {
-                        console.log('BLC Modules: AJAX success response:', data);
-                        if (data.success) {
-                            // Show success message briefly before reload
-                            var successMsg = data.successful > 1 
-                                ? data.successful + ' modules loaded successfully!' 
-                                : 'Module loaded successfully!';
-                            $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
-                            
-                            // Reload after short delay to show success message
-                            setTimeout(function() {
-                                location.reload(true);
-                            }, 1000);
-                        } else {
-                            var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                            var errorDetails = '';
-                            if (data.failed > 0 && data.successful > 0) {
-                                errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
-                            }
-                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
-                            $('.submitForm').removeAttr("disabled");
-                            $('.closeModal').removeAttr("disabled");
-                            $(".modal-header .fa.fa-spinner").remove();
-                        }
-                    })
-                    .fail(function(error) {
-                        console.error('AJAX request failed:', error);
-                        console.log('BLC Modules: Full error object:', error);
-
-                        // Check if this is actually a successful response with error data
-                        if (error && error.responseJSON) {
-                            console.log('BLC Modules: Found responseJSON in error, treating as success with error data');
-                            // Treat this as a successful response but with error data
-                            var data = error.responseJSON;
-                            console.log('BLC Modules: Error response data:', data);
-
-                            if (data.success) {
-                                // Show success message briefly before reload
-                                var successMsg = data.successful > 1
-                                    ? data.successful + ' modules loaded successfully!'
-                                    : 'Module loaded successfully!';
-                                $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + successMsg + '</span>');
-
-                                // Reload after short delay to show success message
-                                setTimeout(function() {
-                                    location.reload(true);
-                                }, 1000);
-                                return;
+                function startProcess() {
+                    $.ajax({
+                        url: processorUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'start',
+                            sesskey: sesskey,
+                            courseid: parseInt(courseId),
+                            sectionnumber: parseInt(x),
+                            apikey: apikey,
+                            scormurls: JSON.stringify(scormurls),
+                            visibility: parseInt(visibility),
+                            hidebrowse: parseInt(hidebrowse),
+                            completion: parseInt(completion)
+                        },
+                        dataType: 'json',
+                        timeout: 30000,
+                        success: function(response) {
+                            if (response.success) {
+                                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>');
+                                setTimeout(processNext, 500);
                             } else {
-                                var errorMessage = data.messages ? data.messages.join('<br>') : 'Unknown error occurred';
-                                var errorDetails = '';
-                                if (data.failed > 0 && data.successful > 0) {
-                                    errorDetails = '<br><small>' + data.successful + ' modules loaded successfully, ' + data.failed + ' failed.</small>';
+                                showError('Failed to start: ' + response.message);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            showError('Failed to initialize process: ' + error);
+                        }
+                    });
+                }
+
+                function processNext() {
+                    $.ajax({
+                        url: processorUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'process',
+                            sesskey: sesskey
+                        },
+                        dataType: 'json',
+                        timeout: 120000,
+                        success: function(response) {
+                            consecutiveErrors = 0;
+                            
+                            if (response.success && response.data) {
+                                var data = response.data;
+                                
+                                if (data.total > 0) {
+                                    var percentage = Math.round((data.processed / data.total) * 100);
+                                    $('.progress-bar').css('width', percentage + '%');
+                                    $('.progress-text').text(percentage + '%');
+                                    $('.progress-status').text('Processing ' + data.processed + ' of ' + data.total + ' modules...');
                                 }
-                                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMessage + errorDetails + '</span>');
-                                $('.submitForm').removeAttr("disabled");
-                                $('.closeModal').removeAttr("disabled");
-                                $(".modal-header .fa.fa-spinner").remove();
-                                return;
+
+                                if (data.current_module && data.current_module.name) {
+                                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> ' + data.current_module.name + '</span>');
+                                }
+
+                                if (data.complete) {
+                                    handleCompletion(data);
+                                } else {
+                                    setTimeout(processNext, 100);
+                                }
+                            } else {
+                                showError('Process error: ' + (response.message || 'Unknown error'));
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            consecutiveErrors++;
+                            if (consecutiveErrors < maxErrors) {
+                                setTimeout(processNext, 2000);
+                            } else {
+                                showError('Too many errors. Process may have failed.');
                             }
                         }
+                    });
+                }
 
-                        // Check if error is timeout - the process may still be running in background
-                        var isTimeout = error && (error.error === 'timeout' || error.exception === 'moodle_exception' || (error.statusText && error.statusText === 'timeout'));
+                function handleCompletion(data) {
+                    $('.processing-indicator').remove();
+                    $('.progress-bar').css('width', '100%');
+                    $('.progress-text').text('100%');
 
-                        if (isTimeout) {
-                            // Timeout - show message that process is still running
-                            $('.statusMsg').html(
-                                '<span style="color:#ff9800;"><i class="fa fa-clock-o"></i> ' +
-                                'Request timed out, but the process may still be running in the background. ' +
-                                'Please wait a moment and refresh the page to check if modules were loaded.</span>'
-                            );
-                        } else {
-                            // Real error - show error message with more details
-                            var errorMsg = 'An error occurred while loading SCORM modules';
-                            if (error && error.message) {
-                                errorMsg += ': ' + error.message;
-                            } else if (error && error.statusText) {
-                                errorMsg += ': ' + error.statusText;
-                            } else if (error && error.responseText) {
-                                // Try to extract meaningful error from response
-                                try {
-                                    var errorData = JSON.parse(error.responseText);
-                                    if (errorData.message) {
-                                        errorMsg += ': ' + errorData.message;
-                                    }
-                                } catch (e) {
-                                    // Ignore JSON parse errors
-                                }
-                            }
-                            $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + errorMsg + '</span>');
+                    if (data.failed === 0 && data.success > 0) {
+                        var msg = data.success === 1 ? '1 module loaded!' : data.success + ' modules loaded successfully!';
+                        $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + msg + '</span>');
+                        $('.progress-status').text('All modules processed successfully!');
+                        
+                        setTimeout(function() {
+                            location.reload(true);
+                        }, 1500);
+                    } else if (data.success > 0) {
+                        $('.statusMsg').html('<span style="color:#ff9800;"><i class="fa fa-exclamation-triangle"></i> ' + data.success + ' succeeded, ' + data.failed + ' failed</span>');
+                        $('.progress-status').text('Process completed with some errors');
+                        
+                        if (data.errors && data.errors.length > 0) {
+                            $('.progress-status').append('<br><small style="color:red;">' + data.errors.join('<br>') + '</small>');
                         }
                         
-                        $('.submitForm').removeAttr("disabled");
-                        $('.closeModal').removeAttr("disabled");
-                        $(".modal-header .fa.fa-spinner").remove();
-                    });
+                        setTimeout(function() {
+                            location.reload(true);
+                        }, 3000);
+                    } else {
+                        showError('All modules failed to load');
+                        if (data.errors && data.errors.length > 0) {
+                            $('.progress-status').html('<small style="color:red;">' + data.errors.join('<br>') + '</small>');
+                        }
+                    }
+                }
+
+                function showError(message) {
+                    $('.processing-indicator').remove();
+                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + message + '</span>');
+                    $('.submitForm').removeAttr("disabled");
+                    $('.closeModal').removeAttr("disabled");
+                    $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+                }
+
+                startProcess();
             });
 
             $('.select2').select2({
                 dropdownParent: $("#bsModal3")
+            });
+
+            // Add keyboard navigation support (ESC disabled to prevent accidental close)
+            $(document).on('keydown', '#bsModal3', function(e) {
+                // Enter key to submit form if submit button is enabled
+                if (e.keyCode === 13 && !$('.submitForm').prop('disabled')) {
+                    e.preventDefault();
+                    $('.submitForm').click();
+                }
             });
 
         }

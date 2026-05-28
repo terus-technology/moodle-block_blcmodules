@@ -18,37 +18,46 @@
  * This file contains the Activity modules block.
  *
  * @package    block_blc_modules
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->libdir . '/filelib.php');
 
-class block_blc_modules extends block_list
-{
-    public function init()
-    {
+/**
+ * Class block_blc_modules
+ */
+class block_blc_modules extends block_list {
+    /**
+     * Initialize the block.
+     */
+    public function init() {
         $this->title = get_string('pluginname', 'block_blc_modules');
     }
 
-    public function get_content()
-    {
-        global $CFG, $DB, $OUTPUT, $USER, $COURSE, $PAGE;
+    /**
+     * Gets the content for the block.
+     *
+     * @return stdClass The block content object.
+     */
+    public function get_content() {
+        global $CFG, $DB, $OUTPUT, $USER, $COURSE;
 
         if ($this->content !== null) {
             return $this->content;
         }
 
-        $this->content = new stdClass;
-        $this->content->items = array();
-        $this->content->icons = array();
+        $this->content = new stdClass();
+        $this->content->items = [];
+        $this->content->icons = [];
         $this->content->footer = '';
 
         $course = $this->page->course;
 
         $this->page->requires->jquery();
-        // $this->page->requires->css(new moodle_url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippytheme.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/select2.css'));
 
@@ -63,9 +72,9 @@ class block_blc_modules extends block_list
         require_once($CFG->dirroot . '/course/lib.php');
 
         $modinfo = get_fast_modinfo($course);
-        $modfullnames = array();
+        $modfullnames = [];
 
-        $archetypes = array();
+        $archetypes = [];
 
         if (has_capability('block/blc_modules:viewblock', $this->context)) {
             $apikey = get_config('block_blc_modules', 'api_key');
@@ -78,9 +87,11 @@ class block_blc_modules extends block_list
                 $allowstealthval = 0;
             }
 
-            // Use proper completion API
-        require_once($CFG->libdir . '/completionlib.php');
-        $completion = new \completion_info($COURSE);
+            // Use proper completion API.
+            require_once($CFG->libdir . '/completionlib.php');
+
+            $completion = new completion_info($COURSE);
+
             if ($completion->is_enabled()) {
                 $completionon = 1;
             } else {
@@ -91,17 +102,16 @@ class block_blc_modules extends block_list
                 $completionon = 0;
             }
 
-            $this->content->items[] = ' <div id="addscorm" class="block_blc_modules"></div>
-            <input style="display:none;" type="hidden" id="userediting" value="' . s($USER->editing) . '">
-            <input style="display:none;" type="hidden" id="apikey" value="' . s($apikey) . '">
-            <input style="display:none;" type="hidden" id="allowstealthvalue" value="' . s($allowstealthval) . '">
-            <input style="display:none;" type="hidden" id="completionon" value="' . s($completionon) . '">';
+            $this->content->items[] = '
+                <div id="addscorm" class="block_blc_modules"></div>
+                <input style="display:none;" type="hidden" id="userediting" value="' . s($USER->editing) . '">
+                <input style="display:none;" type="hidden" id="apikey" value="' . s($apikey) . '">
+                <input style="display:none;" type="hidden" id="allowstealthvalue" value="' . s($allowstealthval) . '">
+                <input style="display:none;" type="hidden" id="completionon" value="' . s($completionon) . '">
+            ';
 
             return $this->content;
         }
-        //$modfullnames = core_collator::asort($modfullnames);
-
-
 
         return $this->content;
     }
@@ -113,25 +123,28 @@ class block_blc_modules extends block_list
      *
      * @return string 'navigation'
      */
-    public function get_aria_role()
-    {
+    public function get_aria_role() {
         return 'navigation';
     }
 
-    public function applicable_formats()
-    {
-        return array(
+    /**
+     * Specifies which page types this block can be added to.
+     *
+     * @return array Array of page types where this block can be displayed.
+     */
+    public function applicable_formats() {
+        return [
             'all' => true, 'mod' => false, 'my' => false, 'admin' => false,
-            'tag' => false
-        );
+            'tag' => false,
+        ];
     }
+
     /**
      * Allow the block to have a configuration page
      *
      * @return boolean
      */
-    public function has_config()
-    {
+    public function has_config() {
         return true;
     }
 }

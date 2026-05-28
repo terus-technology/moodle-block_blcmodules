@@ -1,11 +1,25 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Bulk Update Processor - AJAX endpoint for real-time progress updates
  *
  * @package    block_blc_modules
  * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -16,9 +30,8 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
-use context_course;
-use context_system;
-use block_blc_modules\helper\blccurl;
+use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\file_helper;
 
 require_login(null, false);
 require_capability('moodle/site:config', context_system::instance());
@@ -26,16 +39,15 @@ require_capability('moodle/site:config', context_system::instance());
 $action = required_param('action', PARAM_ALPHA);
 $sesskey = required_param('sesskey', PARAM_RAW);
 
-// Validate sesskey
 if (!confirm_sesskey($sesskey)) {
     echo json_encode([
         'success' => false,
-        'message' => 'Invalid session key'
+        'message' => 'Invalid session key',
     ]);
     exit;
 }
 
-// Progress data stored in session
+// Progress data stored in session.
 if (!isset($_SESSION['bulk_update_progress'])) {
     $_SESSION['bulk_update_progress'] = [
         'status' => 'idle',
@@ -46,23 +58,28 @@ if (!isset($_SESSION['bulk_update_progress'])) {
         'errors' => [],
         'log' => [],
         'complete' => false,
-        'current_module' => null
+        'current_module' => null,
     ];
 }
 
 /**
  * Add log entry to progress
+ *
+ * @param string $message Log message
+ * @param string $type Log type (info, success, warning, error)
  */
 function add_progress_log($message, $type = 'info') {
     if (!isset($_SESSION['bulk_update_progress']['log'])) {
         $_SESSION['bulk_update_progress']['log'] = [];
     }
+
     $_SESSION['bulk_update_progress']['log'][] = [
         'message' => $message,
         'type' => $type,
-        'time' => date('H:i:s')
+        'time' => date('H:i:s'),
     ];
-    // Keep only last 50 log entries
+
+    // Keep only last 50 log entries.
     if (count($_SESSION['bulk_update_progress']['log']) > 50) {
         $_SESSION['bulk_update_progress']['log'] = array_slice($_SESSION['bulk_update_progress']['log'], -50);
     }
@@ -70,6 +87,8 @@ function add_progress_log($message, $type = 'info') {
 
 /**
  * Update progress data
+ *
+ * @param array $data Key-value pairs to update in progress
  */
 function update_progress($data) {
     foreach ($data as $key => $value) {
@@ -79,19 +98,21 @@ function update_progress($data) {
 
 /**
  * Get current progress
+ *
+ * @return array Current progress data
  */
 function get_progress() {
     $progress = $_SESSION['bulk_update_progress'];
-    // Return only new log entries (implement read marker if needed)
+    // Return only new log entries (implement read marker if needed).
     return $progress;
 }
 
-// Handle different actions
+// Handle different actions.
 switch ($action) {
     case 'start':
-        // Start the bulk update process
+        // Start the bulk update process.
         try {
-            // Reset session for fresh start
+            // Reset session for fresh start.
             $_SESSION['bulk_update_progress'] = [
                 'status' => 'idle',
                 'total' => 0,
@@ -101,67 +122,66 @@ switch ($action) {
                 'errors' => [],
                 'log' => [],
                 'complete' => false,
-                'started' => false
+                'started' => false,
             ];
-            
+
             update_progress([
                 'status' => 'Starting bulk update...',
                 'complete' => false,
-                'started' => true
+                'started' => true,
             ]);
             add_progress_log('Bulk update process initiated', 'success');
-            
-            // Return immediately - process will run in background via subsequent calls
+
+            // Return immediately - process will run in background via subsequent calls.
             echo json_encode([
                 'success' => true,
-                'message' => 'Bulk update started'
+                'message' => 'Bulk update started',
             ]);
-            
-            // Flush output to browser
+
+            // Flush output to browser.
             if (function_exists('fastcgi_finish_request')) {
                 fastcgi_finish_request();
             } else {
                 ob_end_flush();
                 flush();
             }
-            
-            // Now run the actual bulk update in background
+
+            // Now run the actual bulk update in background.
             ignore_user_abort(true);
             set_time_limit(1800); // 30 minutes
-            
-            // Trigger actual bulk update
+
+            // Trigger actual bulk update.
             $result = perform_bulk_update();
-            
         } catch (Exception $e) {
             add_progress_log('Fatal error: ' . $e->getMessage(), 'error');
             update_progress([
                 'complete' => true,
-                'status' => 'Failed: ' . $e->getMessage()
+                'status' => 'Failed: ' . $e->getMessage(),
             ]);
             echo json_encode([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
             debugging('Bulk update fatal error: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
         break;
-        
+
     case 'get_progress':
     case 'getprogress':  // Handle minified version (underscore removed by minifier)
-        // Return current progress
+        // Return current progress.
         $progress = get_progress();
         echo json_encode([
             'success' => true,
-            'data' => $progress
+            'data' => $progress,
         ]);
         break;
-        
+
     default:
-        // Log invalid action for debugging
+        // Log invalid action for debugging.
         debugging('Invalid action received: ' . $action, DEBUG_DEVELOPER);
         echo json_encode([
             'success' => false,
-            'message' => 'Invalid action: ' . $action
+            'message' => 'Invalid action: ' . $action,
         ]);
 }
 
@@ -170,284 +190,357 @@ switch ($action) {
  */
 function perform_bulk_update() {
     global $DB, $CFG;
-    
+
     try {
+        $starttime = microtime(true);
+
         update_progress(['status' => 'Connecting to BLC server...']);
         add_progress_log('Connecting to BLC server...', 'info');
-        
+
         $requesturi = $CFG->wwwroot;
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
         $apikey = get_config('block_blc_modules', 'api_key');
-        
-        // Validate configuration
+
+        // Validate configuration.
         if (empty($token) || empty($domainname) || empty($apikey)) {
             throw new Exception('BLC configuration is incomplete. Please check plugin settings.');
         }
-        
-        // Get modules from BLC server
-        $function_name = 'local_scormurl_get_bulkupscormurls';
-        $serverurl = $domainname . '/webservice/rest/server.php'. '?wstoken=' . $token
-            . '&wsfunction='.$function_name . '&apikey='.$apikey. '&requesturi='.$requesturi. '&version=5&moodlewsrestformat=json';
-        
-        $curl = new blccurl();
-        $curl->setHeader('Content-Type: application/json; charset=utf-8');
-        
+
+        // Get modules from BLC server.
+        $functionname = 'local_scormurl_get_bulkupscormurls';
+        $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+            'wstoken' => $token,
+            'wsfunction' => $functionname,
+            'apikey' => $apikey,
+            'requesturi' => $requesturi,
+            'version' => 5,
+            'moodlewsrestformat' => 'json',
+        ]);
+
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+
         try {
-            $responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-            add_progress_log('Successfully connected to BLC server', 'success');
+            $requeststart = microtime(true);
+            $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
+            $requesttime = round(microtime(true) - $requeststart, 2);
+            add_progress_log("BLC server responded in {$requesttime}s", 'success');
         } catch (Exception $e) {
             add_progress_log('Error connecting to BLC server: ' . $e->getMessage(), 'error');
             update_progress(['complete' => true, 'status' => 'Failed to connect']);
             throw new Exception('Failed to connect to BLC server: ' . $e->getMessage());
         }
-        
+
         if (empty($responses)) {
             add_progress_log('Empty response from BLC server', 'error');
             update_progress(['complete' => true, 'status' => 'No data received']);
             throw new Exception('Empty response from BLC server');
         }
-    
-    // Parse response
-    $scorms = array();
-    $jsondata = json_decode($responses, true);
-    
-    if (json_last_error() === JSON_ERROR_NONE && is_array($jsondata)) {
-        foreach ($jsondata as $scormdata) {
-            if (is_array($scormdata) && isset($scormdata['id'])) {
-                $scormobject = new \stdClass();
-                $scormobject->id = $scormdata['id'];
-                $scormobject->scormname = $scormdata['scormname'] ?? '';
-                $scormobject->scormurl = $scormdata['scormurl'] ?? '';
-                $scormobject->scormid = $scormdata['scormid'] ?? '';
-                $scormobject->version = $scormdata['version'] ?? 0;
-                $scorms[$scormobject->id] = $scormobject;
-            }
-        }
-    }
-    
-    add_progress_log('Retrieved ' . count($scorms) . ' modules from BLC server', 'info');
-    
-    // Get local modules
-    $allcoursescorms = $DB->get_records('block_blc_modules');
-    $updatescorm = array();
-    
-    // Find modules that need updating
-    foreach($allcoursescorms as $coursescorm){
-        foreach($scorms as $scorm){
-            if($coursescorm->scormid == $scorm->id) {
-                if($coursescorm->version < $scorm->version){
-                    // Store both version AND record ID for update
-                    $updatescorm[$coursescorm->cmid] = [
-                        'version' => $scorm->version,
-                        'record_id' => $coursescorm->id,  // Store the block_blc_modules.id
-                        'scormname' => $coursescorm->scormname
+
+        // Parse response - extract only essential fields for memory efficiency
+        // Process incrementally to reduce memory footprint.
+        $scorms = [];
+        $jsondata = json_decode($responses, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && is_array($jsondata)) {
+            $totalfromserver = count($jsondata);
+            add_progress_log("Received $totalfromserver modules from BLC server, parsing...", 'info');
+
+            foreach ($jsondata as $scormdata) {
+                if (is_array($scormdata) && isset($scormdata['id'])) {
+                    // Store only essential fields to minimize memory.
+                    $scorms[$scormdata['id']] = [
+                        'id' => (int)$scormdata['id'],
+                        'version' => (int)($scormdata['version'] ?? 0),
+                        'scormname' => trim($scormdata['scormname'] ?? 'SCORM Module'),
                     ];
                 }
-                break;
+                // Free memory after processing each item.
+                unset($scormdata);
+            }
+
+            // Free original response data.
+            unset($jsondata);
+
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
             }
         }
-    }
-    
-    $total_available = count($updatescorm);
-    
-    // BATCH LIMITING: Process maximum 10 modules per run for reliability
-    $batch_size = 10;
-    $modules_to_process = $updatescorm;
-    $remaining_count = 0;
-    
-    if ($total_available > $batch_size) {
-        // Limit to first 10 modules
-        $modules_to_process = array_slice($updatescorm, 0, $batch_size, true);
-        $remaining_count = $total_available - $batch_size;
-        
-        add_progress_log("Processing batch of $batch_size modules (out of $total_available total)", 'info');
-    }
-    
-    $total = count($modules_to_process);
-    
-    update_progress([
-        'total' => $total,
-        'total_available' => $total_available,
-        'remaining' => $remaining_count,
-        'status' => "Processing $total modules" . ($remaining_count > 0 ? " ($remaining_count more available)" : "")
-    ]);
-    add_progress_log("Found $total_available modules requiring updates", 'info');
-    
-    if ($total == 0) {
-        update_progress(['complete' => true, 'status' => 'All modules up to date']);
-        add_progress_log('No updates needed - all modules are current', 'success');
-        return true;
-    }
-    
-    // Process each module in this batch
-    $success_count = 0;
-    $failed_count = 0;
-    $errors = [];
-    
-    foreach($modules_to_process as $coursemodule => $updateinfo){
-        try {
-            // Extract update info
-            $version = $updateinfo['version'];
-            $record_id = $updateinfo['record_id'];
-            
-            $coursescorm = $DB->get_record('block_blc_modules', array('cmid' => $coursemodule));
-            
-            if (!$coursescorm) {
-                $failed_count++;
-                $errors[] = "Module CM ID {$coursemodule}: Record not found in block_blc_modules";
-                update_progress([
-                    'failed' => $failed_count,
-                    'errors' => $errors
-                ]);
-                add_progress_log("CM {$coursemodule}: Record not found", 'error');
-                continue;
-            }
-            
-            // Validate record has required fields
-            if (empty($coursescorm->id)) {
-                $failed_count++;
-                $errors[] = "Module CM ID {$coursemodule}: BLC module record has no ID (using stored ID: {$record_id})";
-                // Use the stored ID as fallback
-                $coursescorm->id = $record_id;
-                add_progress_log("CM {$coursemodule}: Using stored record ID: {$record_id}", 'warning');
-            }
-            
-            // Update current module info
-            update_progress([
-                'current_module' => [
-                    'name' => $coursescorm->scormname,
-                    'cmid' => $coursemodule
-                ],
-                'status' => "Updating: {$coursescorm->scormname}"
-            ]);
-            add_progress_log("Processing: {$coursescorm->scormname} (CM: {$coursemodule})", 'info');
-            
-            // Get temporary URL
-            $url = $coursescorm->scormurl;
-            $tempurl = urlencode($url);
-            $function_name = 'local_scormurl_get_bulkuptempscormurls';
-            $serverurl = $domainname.'/webservice/rest/server.php'.'?wstoken='.$token
-                .'&wsfunction='.$function_name.'&apikey='.$apikey.'&scormurl='.$tempurl;
-            
-            add_progress_log("Requesting temp URL for: {$coursescorm->scormname}", 'info');
-            
-            $curl = new blccurl();
-            $curl->setHeader('Content-Type: application/json; charset=utf-8');
-            
-            try {
-                $responses = $curl->post($serverurl,'', array('CURLOPT_FAILONERROR' => true));
-            } catch (Exception $e) {
-                throw new Exception('Failed to get temp URL: ' . $e->getMessage());
-            }
-            
-            if (empty($responses)) {
-                throw new Exception('Empty response getting temp URL');
-            }
-            
-            // Parse temp URL response - try JSON first, then XML
-            $tempscormurl = null;
-            
-            // Try JSON first (modern API)
-            $jsondata = json_decode($responses, true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($jsondata['tempscormurl'])) {
-                $tempscormurl = $jsondata['tempscormurl'];
-                add_progress_log("Got temp URL from JSON response", 'info');
-            } else {
-                // Fallback to XML parsing (legacy API)
-                $xml = simplexml_load_string($responses);
-                if ($xml !== false) {
-                    $xml = (array)$xml;
-                    if (isset($xml['SINGLE'])) {
-                        $single = (array)$xml['SINGLE'];
-                        if (isset($single['KEY'])) {
-                            $keyarray = $single['KEY'];
-                            foreach ($keyarray as $key) {
-                                $key = (array)$key;
-                                if (isset($key['@attributes']['name']) && $key['@attributes']['name'] == 'tempscormurl') {
-                                    $tempscormurl = $key['VALUE'];
-                                    add_progress_log("Got temp URL from XML response", 'info');
-                                    break;
-                                }
-                            }
-                        }
-                    }
+
+        $totalblcmodules = count($scorms);
+        add_progress_log("Parsed $totalblcmodules modules successfully", 'info');
+
+        if (empty($scorms)) {
+            add_progress_log('No modules available from BLC server', 'warning');
+            update_progress(['complete' => true, 'status' => 'No modules to process']);
+            return true;
+        }
+
+        // OPTIMIZED: Use single SQL query instead of nested loops (N+1 problem fix)
+        // Build WHERE IN clause for scorm IDs.
+        $dbstart = microtime(true);
+        [$insql, $params] = $DB->get_in_or_equal(array_keys($scorms), SQL_PARAMS_NAMED);
+
+        $sql = "
+            SELECT id, cmid, scormid, version, subject, courseid, scormurl
+            FROM {block_blc_modules}
+            WHERE scormid $insql
+        ";
+
+        $localmodules = $DB->get_records_sql($sql, $params);
+        $dbtime = round(microtime(true) - $dbstart, 3);
+
+        add_progress_log("Database query completed in {$dbtime}s (" . count($localmodules) . " local modules)", 'info');
+
+        $updatescorm = [];
+
+        // Single pass comparison - O(n) instead of O(n²).
+        $comparestart = microtime(true);
+        foreach ($localmodules as $coursescorm) {
+            if (isset($scorms[$coursescorm->scormid])) {
+                $blcversion = $scorms[$coursescorm->scormid]['version'];
+
+                if ($coursescorm->version < $blcversion) {
+                    // Get scormname from BLC server data (not from local database).
+                    $scormname = $scorms[$coursescorm->scormid]['scormname'];
+
+                    // Store both version AND record ID for update.
+                    $updatescorm[$coursescorm->cmid] = [
+                        'version' => $blcversion,
+                        'record_id' => $coursescorm->id,
+                        'scormname' => $scormname,
+                        'courseid' => $coursescorm->courseid,
+                        'scormurl' => $coursescorm->scormurl,
+                    ];
                 }
             }
-            
-            if (empty($tempscormurl)) {
-                // Log the actual response for debugging
-                debugging('Temp URL response: ' . substr($responses, 0, 500), DEBUG_DEVELOPER);
-                throw new Exception('Failed to parse temp URL from response (not JSON or XML)');
-            }
-            
-            // Download and update
-            $scormcm = $DB->get_record('course_modules', array('id' => $coursemodule));
-            if (!$scormcm) {
-                throw new Exception('Course module not found');
-            }
-            
-            // Perform actual update
-            $result = update_scorm_module($scormcm, $coursescorm, $tempscormurl, $version);
-            
-            if ($result) {
-                $success_count++;
-                add_progress_log("✓ Successfully updated: {$coursescorm->scormname}", 'success');
-            } else {
-                throw new Exception('Update function returned false');
-            }
-            
-        } catch (Exception $e) {
-            $failed_count++;
-            $error_msg = "Module {$coursemodule}: " . $e->getMessage();
-            $errors[] = $error_msg;
-            add_progress_log("✗ Failed: " . $error_msg, 'error');
-            debugging("BLC Bulk Update Error for CM {$coursemodule}: " . $e->getMessage(), DEBUG_DEVELOPER);
         }
-        
-        // Update progress
+
+        $comparetime = round(microtime(true) - $comparestart, 3);
+        add_progress_log("Version comparison completed in {$comparetime}s", 'info');
+
+        // Free memory.
+        unset($scorms);
+        unset($localmodules);
+
+        $totalavailable = count($updatescorm);
+
+        // BATCH LIMITING: Use optimal batch size based on server capabilities.
+        $batchsize = file_helper::get_optimal_batch_size();
+        $modulestoprocess = $updatescorm;
+        $remainingcount = 0;
+
+        if ($totalavailable > $batchsize) {
+            // Limit to first 10 modules.
+            $modulestoprocess = array_slice($updatescorm, 0, $batchsize, true);
+            $remainingcount = $totalavailable - $batchsize;
+
+            add_progress_log("Processing batch of $batchsize modules (out of $totalavailable total)", 'info');
+        }
+
+        $total = count($modulestoprocess);
+
         update_progress([
-            'success' => $success_count,
-            'failed' => $failed_count,
-            'processed' => $success_count + $failed_count,
-            'errors' => $errors
+            'total' => $total,
+            'total_available' => $totalavailable,
+            'remaining' => $remainingcount,
+            'status' => "Processing $total modules" . ($remainingcount > 0 ? " ($remainingcount more available)" : ""),
         ]);
-        
-        // Small delay to allow UI to update
-        usleep(100000); // 0.1 second
-    }
-    
-    // Mark as complete
-    $completion_message = "Batch complete: $success_count succeeded";
-    if ($failed_count > 0) {
-        $completion_message .= ", $failed_count failed";
-    }
-    if ($remaining_count > 0) {
-        $completion_message .= " ($remaining_count modules remaining)";
-    }
-    
-    update_progress([
-        'complete' => true,
-        'status' => $completion_message,
-        'current_module' => null,
-        'remaining' => $remaining_count,
-        'batch_complete' => true
-    ]);
-    
-    if ($remaining_count > 0) {
-        add_progress_log("Batch completed: $success_count successful, $failed_count failed. $remaining_count modules still need updating.", 'success');
-    } else {
-        add_progress_log("All updates completed: $success_count successful, $failed_count failed", 'success');
-    }
-    
-    return true;
-    
+        add_progress_log("Found $totalavailable modules requiring updates", 'info');
+
+        if ($total == 0) {
+            update_progress(['complete' => true, 'status' => 'All modules up to date']);
+            add_progress_log('No updates needed - all modules are current', 'success');
+            return true;
+        }
+
+        // Check system resources before starting large file processing.
+        $resourcewarnings = file_helper::check_system_resources();
+        if (!empty($resourcewarnings)) {
+            foreach ($resourcewarnings as $warning) {
+                add_progress_log("Warning: {$warning}", 'warning');
+            }
+            // Continue but log warnings.
+        }
+
+        // Process each module in this batch.
+        $successcount = 0;
+        $failedcount = 0;
+        $errors = [];
+
+        // OPTIMIZATION: Reuse curl instance instead of creating new one each iteration.
+        $curl = new blccurl_helper();
+        $curl->set_header('Content-Type: application/json; charset=utf-8');
+
+        foreach ($modulestoprocess as $coursemodule => $updateinfo) {
+            try {
+                // Extract update info.
+                $version = $updateinfo['version'];
+                $recordid = $updateinfo['record_id'];
+                $scormname = $updateinfo['scormname'];
+                $courseid = $updateinfo['courseid'];
+                $scormurl = $updateinfo['scormurl'];
+
+                // Update current module info with file size estimate.
+                $estimatedsize = 'Unknown';
+                if (isset($tempscormurl)) {
+                    // Try to get file size from URL if possible (requires HEAD request).
+                    $ch = curl_init($tempscormurl);
+                    curl_setopt($ch, CURLOPT_NOBODY, true);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                    curl_exec($ch);
+                    $size = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+                    curl_close($ch);
+                    if ($size > 0) {
+                        $estimatedsize = round($size / 1024 / 1024, 1) . 'MB';
+                    }
+                }
+
+                update_progress([
+                    'current_module' => [
+                        'name' => $scormname,
+                        'cmid' => $coursemodule,
+                        'estimated_size' => $estimatedsize,
+                    ],
+                    'status' => "Updating: {$scormname} ({$estimatedsize})",
+                ]);
+                add_progress_log("Processing: {$scormname} (CM: {$coursemodule}, Size: {$estimatedsize})", 'info');
+
+                // Get temporary URL.
+                $url = $scormurl;
+                $tempurl = urlencode($url);
+                $functionname = 'local_scormurl_get_bulkuptempscormurls';
+                $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+                    'wstoken' => $token,
+                    'wsfunction' => $functionname,
+                    'apikey' => $apikey,
+                    'scormurl' => $tempurl,
+                ]);
+
+                add_progress_log("Requesting temp URL for: {$scormname}", 'info');
+
+                try {
+                    $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
+                } catch (Exception $e) {
+                    throw new Exception('Failed to get temp URL: ' . $e->getMessage());
+                }
+
+                if (empty($responses)) {
+                    throw new Exception('Empty response getting temp URL');
+                }
+
+                // OPTIMIZATION: Extract parsing to separate function for reusability.
+                $tempscormurl = parse_temp_url_response($responses);
+
+                if (empty($tempscormurl)) {
+                    debugging('Temp URL response: ' . substr($responses, 0, 500), DEBUG_DEVELOPER);
+                    throw new Exception('Failed to parse temp URL from response');
+                }
+
+                // Get course module.
+                $scormcm = $DB->get_record('course_modules', ['id' => $coursemodule]);
+                if (!$scormcm) {
+                    throw new Exception('Course module not found');
+                }
+
+                // Perform actual update with proper resource cleanup.
+                $result = update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempscormurl, $version);
+
+                if ($result) {
+                    $successcount++;
+                    add_progress_log("✓ Successfully updated: {$scormname}", 'success');
+                } else {
+                    throw new Exception('Update function returned false');
+                }
+            } catch (Exception $e) {
+                $failedcount++;
+                $errormsg = "Module {$coursemodule}: " . $e->getMessage();
+                $errors[] = $errormsg;
+                add_progress_log("✗ Failed: " . $errormsg, 'error');
+                debugging("BLC Bulk Update Error for CM {$coursemodule}: " . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+
+            // Update progress.
+            update_progress([
+                'success' => $successcount,
+                'failed' => $failedcount,
+                'processed' => $successcount + $failedcount,
+                'errors' => $errors,
+            ]);
+
+            // OPTIMIZATION: Aggressive memory cleanup after each iteration.
+            if (isset($updateinfo)) {
+                unset($updateinfo);
+            }
+            if (isset($version)) {
+                unset($version);
+            }
+            if (isset($recordid)) {
+                unset($recordid);
+            }
+            if (isset($scormname)) {
+                unset($scormname);
+            }
+            if (isset($courseid)) {
+                unset($courseid);
+            }
+            if (isset($scormurl)) {
+                unset($scormurl);
+            }
+
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
+            }
+
+            // Small delay to allow UI to update and prevent overwhelming the server.
+            usleep(200000); // 0.2 second
+        }
+
+        // Cleanup curl instance.
+        unset($curl);
+
+        // Calculate total execution time.
+        $totaltime = round(microtime(true) - $starttime, 2);
+
+        // Mark as complete.
+        $completionmessage = "Batch complete: $successcount succeeded";
+        if ($failedcount > 0) {
+            $completionmessage .= ", $failedcount failed";
+        }
+        if ($remainingcount > 0) {
+            $completionmessage .= " ($remainingcount modules remaining)";
+        }
+        $completionmessage .= " - Total time: {$totaltime}s";
+
+        update_progress([
+            'complete' => true,
+            'status' => $completionmessage,
+            'current_module' => null,
+            'remaining' => $remainingcount,
+            'batch_complete' => true,
+            'totaltime' => $totaltime,
+        ]);
+
+        if ($remainingcount > 0) {
+            add_progress_log(
+                "Batch completed in {$totaltime}s: $successcount successful, $failedcount failed.
+                $remainingcount modules still need updating.",
+                'success'
+            );
+        } else {
+            add_progress_log("All updates completed in {$totaltime}s: $successcount successful, $failedcount failed", 'success');
+        }
+
+        return true;
     } catch (Exception $e) {
-        // Catch any top-level exceptions
         add_progress_log('Critical error: ' . $e->getMessage(), 'error');
         update_progress([
             'complete' => true,
-            'status' => 'Failed: ' . $e->getMessage()
+            'status' => 'Failed: ' . $e->getMessage(),
         ]);
         debugging('Bulk update critical error: ' . $e->getMessage(), DEBUG_DEVELOPER);
         return false;
@@ -455,109 +548,202 @@ function perform_bulk_update() {
 }
 
 /**
- * Update individual SCORM module
+ * Parse temporary URL from API response (JSON or XML)
+ *
+ * @param string $response API response
+ * @return string|null Temporary SCORM URL or null if not found
  */
-function update_scorm_module($scormcm, $coursescorm, $tempscormurl, $version) {
-    global $DB, $CFG;
-    
-    require_once($CFG->libdir . '/filelib.php');
-    
-    // Debug: Log what we received
-    debugging("update_scorm_module called with coursescorm->id: " . 
-        (isset($coursescorm->id) ? $coursescorm->id : 'MISSING'), DEBUG_DEVELOPER);
-    
-    // Validate coursescorm has ID
-    if (empty($coursescorm->id)) {
-        debugging("ERROR: coursescorm->id is empty! Object: " . print_r($coursescorm, true), DEBUG_DEVELOPER);
-        throw new \Exception('BLC module record missing ID field');
+function parse_temp_url_response($response) {
+    // Try JSON first (modern API).
+    $jsondata = json_decode($response, true);
+    if (json_last_error() === JSON_ERROR_NONE && isset($jsondata['tempscormurl'])) {
+        return $jsondata['tempscormurl'];
     }
-    
-    // Download package
-    $tempdir = make_temp_directory('scormpackage');
-    $zipfilepath = $tempdir . '/' . time() . '.zip';
-    
-    $ch = curl_init($tempscormurl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $fileContents = curl_exec($ch);
-    curl_close($ch);
-    
-    if ($fileContents === false) {
-        return false;
-    }
-    
-    file_put_contents($zipfilepath, $fileContents);
-    
-    // Extract and update
-    $packer = get_file_packer('application/zip');
-    $fs = get_file_storage();
-    
-    $context = context_course::instance($coursescorm->courseid);
-    
-    // Delete old files
-    $fs->delete_area_files($context->id, 'mod_scorm', 'package', $scormcm->instance);
-    
-    // Extract new package
-    $extractdir = $tempdir . '/extract_' . time();
-    $packer->extract_to_pathname($zipfilepath, $extractdir);
-    
-    // Create file record
-    $filerecord = array(
-        'contextid' => $context->id,
-        'component' => 'mod_scorm',
-        'filearea' => 'package',
-        'itemid' => $scormcm->instance,
-        'filepath' => '/',
-        'filename' => basename($zipfilepath)
-    );
-    
-    $storedfile = $fs->create_file_from_pathname($filerecord, $zipfilepath);
-    
-    // Validate scormcm has required fields
-    if (empty($scormcm->instance)) {
-        debugging('ERROR: scormcm->instance is empty! Object: ' . print_r($scormcm, true), DEBUG_DEVELOPER);
-        throw new \Exception('Course module has no instance ID');
-    }
-    
-    // Update SCORM instance
-    $scorm = new \stdClass();
-    $scorm->id = $scormcm->instance;
-    $scorm->instance = $scormcm->instance;  // IMPORTANT: scorm_update_instance() uses this!
-    $scorm->course = $coursescorm->courseid;
-    $scorm->coursemodule = $scormcm->id;
-    $scorm->scormtype = 'local';
-    $scorm->timemodified = time();
-    
-    // Set default values to prevent undefined property errors
-    $scorm->timeopen = 0;
-    $scorm->timeclose = 0;
-    $scorm->completionstatusallscos = 0;
-    
-    debugging("Calling scorm_update_instance with scorm->id: {$scorm->id}, instance: {$scorm->instance}", DEBUG_DEVELOPER);
-    
-    if (scorm_update_instance($scorm)) {
-        // Update version in block_blc_modules
-        if (empty($coursescorm->id)) {
-            debugging('BLC Module record ID is empty for CM: ' . $scormcm->id, DEBUG_DEVELOPER);
-            throw new \Exception('BLC Module record ID is missing');
+
+    // Fallback to XML parsing (legacy API).
+    $xml = simplexml_load_string($response);
+    if ($xml !== false) {
+        $xml = (array)$xml;
+        if (isset($xml['SINGLE'])) {
+            $single = (array)$xml['SINGLE'];
+            if (isset($single['KEY'])) {
+                $keyarray = $single['KEY'];
+                foreach ($keyarray as $key) {
+                    $key = (array)$key;
+                    if (isset($key['@attributes']['name']) && $key['@attributes']['name'] == 'tempscormurl') {
+                        return $key['VALUE'];
+                    }
+                }
+            }
         }
-        
-        $scormrecord = new \stdClass();
-        $scormrecord->id = $coursescorm->id;
+    }
+
+    return null;
+}
+
+/**
+ * Update individual SCORM module
+ *
+ * @param stdClass $scormcm Course module record
+ * @param int $recordid Block BLC modules record ID
+ * @param int $courseid Course ID
+ * @param string $scormname SCORM name
+ * @param string $tempscormurl Temporary URL to download SCORM package
+ * @param int $version New version number
+ * @return bool Success status
+ */
+function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempscormurl, $version) {
+    global $DB, $CFG;
+
+    require_once($CFG->libdir . '/filelib.php');
+
+    $zipfilepath = null;
+    $extractdir = null;
+
+    $transaction = $DB->start_delegated_transaction();
+
+    try {
+        // OPTIMIZATION: Download with streaming to reduce memory usage.
+        $tempdir = make_temp_directory('scormpackage');
+        $zipfilepath = $tempdir . '/' . time() . '_' . $scormcm->id . '.zip';
+
+        // Download with streaming to handle large files (102MB+).
+        $fp = fopen($zipfilepath, 'w+');
+        if (!$fp) {
+            throw new Exception('Failed to create temporary file for download');
+        }
+
+        $ch = curl_init($tempscormurl);
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+
+        // Apply optimized curl options for large files.
+        $curloptions = file_helper::get_download_curl_options();
+        foreach ($curloptions as $option => $value) {
+            curl_setopt($ch, $option, $value);
+        }
+
+        $success = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        fclose($fp);
+
+        if (!$success || $httpcode !== 200) {
+            @unlink($zipfilepath); // Clean up failed download.
+            throw new Exception("Failed to download SCORM package (HTTP {$httpcode}): {$error}");
+        }
+
+        // Verify file was downloaded completely.
+        if (!file_exists($zipfilepath) || filesize($zipfilepath) === 0) {
+            throw new Exception('Downloaded file is empty or missing');
+        }
+
+        // Extract and update.
+        $packer = get_file_packer('application/zip');
+        $fs = get_file_storage();
+
+        $context = context_course::instance($courseid);
+
+        // Delete old files.
+        $fs->delete_area_files($context->id, 'mod_scorm', 'package', $scormcm->instance);
+
+        // Extract new package with progress indication.
+        $extractdir = $tempdir . '/extract_' . time() . '_' . $scormcm->id;
+
+        // Check available disk space before extraction.
+        $zipsize = filesize($zipfilepath);
+        $availablespace = disk_free_space($tempdir);
+        if ($availablespace < $zipsize * 3) { // Assume 3x expansion for safety.
+            throw new Exception('Insufficient disk space for SCORM extraction. Required: ' .
+            ($zipsize * 3) . ' bytes, Available: ' . $availablespace . ' bytes');
+        }
+
+        $extractresult = $packer->extract_to_pathname($zipfilepath, $extractdir);
+
+        if (!$extractresult) {
+            throw new Exception('Failed to extract SCORM package');
+        }
+
+        // Verify extraction was successful.
+        if (!is_dir($extractdir) || count(scandir($extractdir)) <= 2) {
+            throw new Exception('SCORM package extraction failed - no files extracted');
+        }
+
+        // Create file record.
+        $filerecord = [
+            'contextid' => $context->id,
+            'component' => 'mod_scorm',
+            'filearea' => 'package',
+            'itemid' => $scormcm->instance,
+            'filepath' => '/',
+            'filename' => basename($zipfilepath),
+        ];
+
+        $storedfile = $fs->create_file_from_pathname($filerecord, $zipfilepath);
+
+        if (!$storedfile) {
+            throw new Exception('Failed to store SCORM package in file system');
+        }
+
+        // Validate scormcm has required fields.
+        if (empty($scormcm->instance)) {
+            throw new Exception('Course module has no instance ID');
+        }
+
+        // Update SCORM instance.
+        $scorm = new stdClass();
+        $scorm->id = $scormcm->instance;
+        $scorm->instance = $scormcm->instance;
+        $scorm->course = $courseid;
+        $scorm->coursemodule = $scormcm->id;
+        $scorm->scormtype = 'local';
+        $scorm->timemodified = time();
+
+        // Set default values to prevent undefined property errors.
+        $scorm->timeopen = 0;
+        $scorm->timeclose = 0;
+        $scorm->completionstatusallscos = 0;
+
+        if (!scorm_update_instance($scorm)) {
+            throw new Exception('scorm_update_instance failed');
+        }
+
+        // Update version in block_blc_modules.
+        $scormrecord = new stdClass();
+        $scormrecord->id = $recordid;
         $scormrecord->version = $version;
         $scormrecord->timemodified = time();
-        
+
         $DB->update_record('block_blc_modules', $scormrecord);
-        
-        // Cleanup
-        @unlink($zipfilepath);
-        if (is_dir($extractdir)) {
-            remove_dir($extractdir);
-        }
-        
+
+        // Commit transaction.
+        $transaction->allow_commit();
+
         return true;
+    } catch (Exception $e) {
+        // Rollback transaction on error.
+        if (isset($transaction) && !$transaction->is_disposed()) {
+            $transaction->rollback($e);
+        }
+
+        debugging('SCORM update error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        throw $e;
+    } finally {
+        // CRITICAL: Always cleanup temporary files with error handling.
+        if (isset($zipfilepath) && file_exists($zipfilepath)) {
+            if (!@unlink($zipfilepath)) {
+                debugging('Failed to cleanup temporary zip file: ' . $zipfilepath, DEBUG_DEVELOPER);
+            }
+        }
+        if (isset($extractdir) && is_dir($extractdir)) {
+            if (!remove_dir($extractdir)) {
+                debugging('Failed to cleanup temporary extract directory: ' . $extractdir, DEBUG_DEVELOPER);
+            }
+        }
+
+        // Force garbage collection after large file operations.
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
+        }
     }
-    
-    return false;
 }

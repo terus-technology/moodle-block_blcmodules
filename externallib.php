@@ -15,28 +15,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * TODO describe file externallib
+ * External functions for the BLC Modules block.
  *
  * @package    block_blc_modules
- * @copyright  2025 Terus Technology <ali@teruselearning.co.uk>
+ * @copyright  2025 Terus Technology
+ * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 defined('MOODLE_INTERNAL') || die;
 
-// External API libraries are now autoloaded in Moodle 4.5.6
-// require_once($CFG->libdir . '/externallib.php');
-
+/**
+ * Class block_blc_modules_external
+ * External API libraries are now autoloaded in Moodle 4.5.6.
+ */
 class block_blc_modules_external extends \block_blc_modules\external\blcservice {
-
-    /**
-     * Returns the list of external functions provided by this plugin.
-     *
-     * @return array
-     */
+    // This class is intentionally left empty. It serves as a placeholder for any future external functions that may be added to the BLC Modules block.
 }
-
-
-
-
