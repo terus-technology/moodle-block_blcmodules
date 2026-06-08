@@ -27,7 +27,7 @@
 var root = M.cfg.wwwroot;
 var x = '';
 
-define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/ajax'], function ($, tippy, select2,Ajax) {
+define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/ajax', 'core/modal_factory'], function ($, tippy, select2, Ajax, ModalFactory) {
     return {
         getUrlParameter: getUrlParameter,
         fillSubject: fillSubject,
@@ -67,12 +67,12 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
     }
 
-    function fillSubject() {
+    function fillSubject(root) {
         var apikey = $('#apikey').val();
-        $("#scormurls").html('');
+        root.find("#scormurls").html('');
 
         // Add loading spinner inside the select2 container
-        var $subjectSelect = $("#scormsubject");
+        var $subjectSelect = $(root).find("#scormsubject");
         var $select2Container = $subjectSelect.next('.select2-container');
 
         // Position spinner inside the Select2 dropdown
@@ -97,7 +97,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         Ajax.call([request])[0]
             .done((data) => {
                 // Remove loading spinner overlay
-                $('.subject-loading-overlay').remove();
+                root.find('.subject-loading-overlay').remove();
 
                 // Re-enable select2
                 $subjectSelect.prop('disabled', false);
@@ -120,7 +120,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             })
             .fail((error) => {
                 // Remove loading spinner overlay
-                $('.subject-loading-overlay').remove();
+                root.find('.subject-loading-overlay').remove();
 
                 // Re-enable select2
                 $subjectSelect.prop('disabled', false);
@@ -129,8 +129,8 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 console.error('Error loading subjects:', error);
 
                 // Show user-friendly error message
-                $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load subjects. Please try again.</span>');
-                $('.submitForm').prop("disabled", true);
+                root.find('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load subjects. Please try again.</span>');
+                root.find('.submitForm').prop("disabled", true);
             });
     }
 
@@ -157,24 +157,29 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             });
     }
 
-    function fillscorm() {
-        var scormsubject = $('#scormsubject option:selected').text();
+    function fillscorm(root) {
+        var scormsubject = root.find('#scormsubject option:selected').text();
         var apikey = $('#apikey').val();
 
-        if (scormsubject != 0) {
-            // Show loading state for SCORM URLs dropdown
-            var $scormSelect = $("#scormurls");
+        if (scormsubject && scormsubject !== 'Select Subject') {
+
+            var $scormSelect = root.find('#scormurls');
             var $scormSelect2Container = $scormSelect.next('.select2-container');
 
-            // Add loading indicator below the multiselect dropdown
-            $scormSelect2Container.after('<div class="scorm-loading-indicator" style="margin: 8px 0 16px 0; padding: 8px; background: #f0f8ff; border: 1px solid #b3d9ff; border-radius: 4px; display: flex; align-items: center; gap: 8px; color: #0f6cbf; font-size: 14px;"><i class="fa fa-spinner fa-spin" style="color: #0f6cbf;"></i><span>Loading SCORM packages...</span></div>');
+            $scormSelect2Container.after(`
+                <div class="scorm-loading-indicator"
+                    style="margin:8px 0 16px 0;padding:8px;background:#f0f8ff;
+                    border:1px solid #b3d9ff;border-radius:4px;
+                    display:flex;align-items:center;gap:8px;">
+                    <i class="fa fa-spinner fa-spin"></i>
+                    <span>Loading SCORM packages...</span>
+                </div>
+            `);
 
-            // Temporarily disable the select2 dropdown
             $scormSelect.prop('disabled', true);
             $scormSelect2Container.addClass('select2-container--disabled');
 
-            // Disable submit button during loading
-            $('.submitForm').prop('disabled', true);
+            root.find('.submitForm').prop('disabled', true);
 
             var request = {
                 methodname: 'blocks_blc_modules_get_blc_modules_scormurl',
@@ -182,48 +187,46 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     apikey: apikey,
                     requesturi: M.cfg.wwwroot,
                     version: 5,
-                    scormsubject: scormsubject  // You may need to modify the webservice to accept this parameter
+                    scormsubject: scormsubject
                 }
             };
 
             Ajax.call([request])[0]
-                .done(function(data) {
-                    // Remove loading indicator
-                    $('.scorm-loading-indicator').remove();
+                .done(function (data) {
 
-                    // Re-enable select2
+                    root.find('.scorm-loading-indicator').remove();
+
                     $scormSelect.prop('disabled', false);
                     $scormSelect2Container.removeClass('select2-container--disabled');
 
-                    // Clear and repopulate options
-                    $scormSelect.html('');
+                    $scormSelect.empty();
 
                     if (data && data.length > 0) {
-                        $.each(data, function(index, item) {
-                            var sanVal = item.scormname.replace(".zip", "");
-                            var key = item.scormurl.replace("'", "'");
-                            $scormSelect.append("<option style='-moz-white-space: pre-wrap; -o-white-space: pre-wrap; white-space: pre-wrap;' value='" + key + "'>" + sanVal + "</option>");
+                        $.each(data, function (index, item) {
+                            $scormSelect.append(
+                                `<option value="${item.scormurl}">
+                                ${item.scormname.replace('.zip', '')}
+                            </option>`
+                            );
                         });
                     }
 
-                    // Update select2 without breaking it
                     $scormSelect.trigger('change.select2');
 
-                    // Clear any previous status messages
-                    $('.statusMsg').html('');
+                    root.find('.statusMsg').html('');
                 })
-                .fail(function(error) {
-                    // Remove loading indicator
-                    $('.scorm-loading-indicator').remove();
+                .fail(function (error) {
 
-                    // Re-enable select2
+                    root.find('.scorm-loading-indicator').remove();
+
                     $scormSelect.prop('disabled', false);
                     $scormSelect2Container.removeClass('select2-container--disabled');
 
-                    console.error('Error loading SCORM URLs:', error);
+                    console.error(error);
 
-                    // Show user-friendly error message
-                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> Failed to load SCORM packages. Please try again.</span>');
+                    root.find('.statusMsg').html(
+                        '<span style="color:red;"><i class="fa fa-exclamation-circle"></i>Failed to load SCORM packages.</span>'
+                    );
                 });
         }
     }
@@ -487,7 +490,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-default closeModal">
+                            <button type="button" class="btn btn-default closeModal" data-action="cancel">
                                 Close
                             </button>
                             <button type="button" disabled="disabled" class="btn btn-primary submitForm">
@@ -506,16 +509,84 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
                 if (notifyeditingon == 1) {
                     $(this).append(`
-                            <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
-                                    data-toggle='modal' data-target='#bsModal3' style="float:right">
-                                <div class="px-1">
-                                    <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
-                                    <span class="activity-add-text pr-1">Add BLC modules</span>
-                                </div>
-                            </button>
-                        `);
+                        <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
+                                data-toggle='modal' data-target='#bsModal3' style="float:right">
+                            <div class="px-1">
+                                <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
+                                <span class="activity-add-text pr-1">Add BLC modules</span>
+                            </div>
+                        </button>
+                    `);
 
                     createButtonAddBlc();
+
+                    // Initialize modal using Moodle's ModalFactory
+                    var modalElement = $('#bsModal3');
+                    var blcModal = null;
+                    
+                    ModalFactory.create({
+                        title: modalElement.find('.modal-title').text(),
+                        body: modalElement.find('.modal-body').html(),
+                        footer: modalElement.find('.modal-footer').html(),
+                        large: true,
+                    }, modalElement)
+                    .then(function(modal) {
+                        blcModal = modal;
+
+                        const root = modal.getRoot();
+
+                        $('.btn-blc-modules').off('click').on('click', function() {
+                            blcModal.show();
+
+                            root.find('.select2').select2({
+                                dropdownParent: root
+                            });
+
+                            fillSubject(root);
+                        });
+
+                        root.on('change', '#scormsubject', function () {
+                            fillscorm(root);
+                        });
+
+                        root.on('change', '#scormurls', function () {
+                            var selectedCount = $(this).find('option:selected').length;
+
+                            if (selectedCount > 0) {
+                                root.find('.submitForm').removeAttr('disabled');
+
+                                var selectionMsg = selectedCount > 1
+                                    ? selectedCount + ' modules selected'
+                                    : '1 module selected';
+
+                                root.find('.statusMsg').html(
+                                    '<span style="color:#0f6cbf;">' +
+                                    '<i class="fa fa-info-circle"></i> ' +
+                                    selectionMsg +
+                                    '. Ready to add to course.</span>'
+                                );
+                            } else {
+                                root.find('.submitForm').prop('disabled', true);
+                                root.find('.statusMsg').html('');
+                            }
+                        });
+
+                        root.on('click', '.closeModal', function () {
+                            $(this).blur();
+
+                            if (blcModal) {
+                                blcModal.hide();
+                            }
+                        });
+
+                        root.on('click', '.submitForm', function () {
+                            submitModules(root, courseId);
+                        });
+                    })
+                    .catch(function(error) {
+                        console.error("Failed to create modal", error);
+                    });
+
                 }
 
                 var margin = $(".row").css("margin-left");
@@ -530,15 +601,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             });
 
-            $("#scormsubject").change(function () {
-
-                fillscorm();
-
-            });
-
             $(".course-content").on("click", ".add-scrom", function () {
-
-                fillSubject();
 
                 var secId = $(this).closest(".section").attr('id');
 
@@ -562,185 +625,6 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     $('.submitForm').prop('disabled', true);
                 });
 
-            });
-
-            // Handler for Close button - close modal manually
-            $(".course-content").on("click", ".closeModal", function () {
-                // Blur focus first to prevent aria-hidden warning
-                $(this).blur();
-                $('#bsModal3').modal('hide');
-            });
-
-            $("#scormurls").change(function () {
-                // Enable submit button when SCORM packages are selected
-                var selectedCount = $(this).find('option:selected').length;
-                if (selectedCount > 0) {
-                    $('.submitForm').removeAttr("disabled");
-                    // Show selection count feedback
-                    var selectionMsg = selectedCount > 1
-                        ? selectedCount + ' modules selected'
-                        : '1 module selected';
-                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-info-circle"></i> ' + selectionMsg + '. Ready to add to course.</span>');
-                } else {
-                    $('.submitForm').prop("disabled", true);
-                    $('.statusMsg').html('');
-                }
-            });
-
-            $(".course-content").on("click", ".submitForm", function () {
-                var apikey = $('#apikey').val();
-                var scormurls = [];
-                var visibility = $("#id_visible").val();
-                var hidebrowse = $("#id_hidebrowse").val();
-                var completion = $("#id_completion").val();
-
-                $.each($("#scormurls option:selected"), function () {
-                    var urll = $(this).val();
-                    urll = urll.replace(",", "qqq");
-                    scormurls.push(urll);
-                });
-
-                $('.statusMsg').html('');
-                $('.submitForm').attr("disabled", "disabled");
-                $('.closeModal').attr("disabled", "disabled");
-                $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', true);
-
-                $(".modal-header").find('.fa-spinner').remove();
-                $(".modal-header h4").after('<div class="processing-indicator" style="margin-left: 15px; display: inline-block;"><i class="fa fa-spinner fa-spin" style="font-size:18px; color: #0f6cbf;"></i></div>');
-
-                $('.statusMsg').after('<div class="progress-container" style="margin-top: 15px;"><div class="progress" style="height: 20px; background-color: #f0f0f0; border-radius: 4px; overflow: hidden;"><div class="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0f6cbf, #4a90e2); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; transition: width 0.3s ease;"><span class="progress-text">0%</span></div></div><div class="progress-status" style="margin-top: 8px; font-size: 13px; color: #666;"></div></div>');
-
-                var fileCount = scormurls.length;
-                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-download"></i> Starting process...</span>');
-
-                var processorUrl = M.cfg.wwwroot + '/blocks/blc_modules/scorm_load_processor.php';
-                var sesskey = M.cfg.sesskey;
-                var consecutiveErrors = 0;
-                var maxErrors = 10;
-
-                function startProcess() {
-                    $.ajax({
-                        url: processorUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'start',
-                            sesskey: sesskey,
-                            courseid: parseInt(courseId),
-                            sectionnumber: parseInt(x),
-                            apikey: apikey,
-                            scormurls: JSON.stringify(scormurls),
-                            visibility: parseInt(visibility),
-                            hidebrowse: parseInt(hidebrowse),
-                            completion: parseInt(completion)
-                        },
-                        dataType: 'json',
-                        timeout: 30000,
-                        success: function(response) {
-                            if (response.success) {
-                                $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>');
-                                setTimeout(processNext, 500);
-                            } else {
-                                showError('Failed to start: ' + response.message);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            showError('Failed to initialize process: ' + error);
-                        }
-                    });
-                }
-
-                function processNext() {
-                    $.ajax({
-                        url: processorUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'process',
-                            sesskey: sesskey
-                        },
-                        dataType: 'json',
-                        timeout: 120000,
-                        success: function(response) {
-                            consecutiveErrors = 0;
-                            
-                            if (response.success && response.data) {
-                                var data = response.data;
-                                
-                                if (data.total > 0) {
-                                    var percentage = Math.round((data.processed / data.total) * 100);
-                                    $('.progress-bar').css('width', percentage + '%');
-                                    $('.progress-text').text(percentage + '%');
-                                    $('.progress-status').text('Processing ' + data.processed + ' of ' + data.total + ' modules...');
-                                }
-
-                                if (data.current_module && data.current_module.name) {
-                                    $('.statusMsg').html('<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> ' + data.current_module.name + '</span>');
-                                }
-
-                                if (data.complete) {
-                                    handleCompletion(data);
-                                } else {
-                                    setTimeout(processNext, 100);
-                                }
-                            } else {
-                                showError('Process error: ' + (response.message || 'Unknown error'));
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            consecutiveErrors++;
-                            if (consecutiveErrors < maxErrors) {
-                                setTimeout(processNext, 2000);
-                            } else {
-                                showError('Too many errors. Process may have failed.');
-                            }
-                        }
-                    });
-                }
-
-                function handleCompletion(data) {
-                    $('.processing-indicator').remove();
-                    $('.progress-bar').css('width', '100%');
-                    $('.progress-text').text('100%');
-
-                    if (data.failed === 0 && data.success > 0) {
-                        var msg = data.success === 1 ? '1 module loaded!' : data.success + ' modules loaded successfully!';
-                        $('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + msg + '</span>');
-                        $('.progress-status').text('All modules processed successfully!');
-                        
-                        setTimeout(function() {
-                            location.reload(true);
-                        }, 1500);
-                    } else if (data.success > 0) {
-                        $('.statusMsg').html('<span style="color:#ff9800;"><i class="fa fa-exclamation-triangle"></i> ' + data.success + ' succeeded, ' + data.failed + ' failed</span>');
-                        $('.progress-status').text('Process completed with some errors');
-                        
-                        if (data.errors && data.errors.length > 0) {
-                            $('.progress-status').append('<br><small style="color:red;">' + data.errors.join('<br>') + '</small>');
-                        }
-                        
-                        setTimeout(function() {
-                            location.reload(true);
-                        }, 3000);
-                    } else {
-                        showError('All modules failed to load');
-                        if (data.errors && data.errors.length > 0) {
-                            $('.progress-status').html('<small style="color:red;">' + data.errors.join('<br>') + '</small>');
-                        }
-                    }
-                }
-
-                function showError(message) {
-                    $('.processing-indicator').remove();
-                    $('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + message + '</span>');
-                    $('.submitForm').removeAttr("disabled");
-                    $('.closeModal').removeAttr("disabled");
-                    $('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
-                }
-
-                startProcess();
-            });
-
-            $('.select2').select2({
-                dropdownParent: $("#bsModal3")
             });
 
             // Add keyboard navigation support (ESC disabled to prevent accidental close)
@@ -767,8 +651,200 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         });
     }
 
-    function tippyInit() {
+    function submitModules(root, courseId) {
+        var apikey = $('#apikey').val();
+        var scormurls = [];
 
+        var visibility = root.find("#id_visible").val();
+        var hidebrowse = root.find("#id_hidebrowse").val();
+        var completion = root.find("#id_completion").val();
+
+        $.each(root.find("#scormurls option:selected"), function () {
+            var urll = $(this).val();
+            urll = urll.replace(",", "qqq");
+            scormurls.push(urll);
+        });
+
+        root.find('.statusMsg').html('');
+
+        root.find('.submitForm').attr("disabled", "disabled");
+        root.find('.closeModal').attr("disabled", "disabled");
+
+        root.find(
+            '#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion'
+        ).prop('disabled', true);
+
+        root.find(".modal-header .fa-spinner").remove();
+
+        root.find(".modal-header")
+            .append(
+                '<div class="processing-indicator" style="margin-left:15px;display:inline-block;">' +
+                '<i class="fa fa-spinner fa-spin" style="font-size:18px;color:#0f6cbf;"></i>' +
+                '</div>'
+            );
+
+        root.find('.progress-container').remove();
+
+        root.find('.statusMsg').after(
+            '<div class="progress-container" style="margin-top:15px;">' +
+            '<div class="progress" style="height:20px;">' +
+            '<div class="progress-bar progress-bar-striped active" role="progressbar" ' +
+            'style="width:0%; background: linear-gradient(90deg, #0f6cbf, #4a90e2);" ' +
+            'aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">' +
+            '<span class="progress-text">0%</span>' +
+            '</div>' +
+            '</div>' +
+            '<div class="progress-status"></div>' +
+            '</div>'
+        );
+
+        var processorUrl = M.cfg.wwwroot + '/blocks/blc_modules/scorm_load_processor.php';
+        var sesskey = M.cfg.sesskey;
+        var consecutiveErrors = 0;
+        var maxErrors = 10;
+        var fileCount = scormurls.length;
+
+        if (fileCount === 0) {
+            showError('No modules selected.');
+            return;
+        }
+
+        root.find('.statusMsg').html(
+            '<span style="color:#0f6cbf;"><i class="fa fa-download"></i> Starting process...</span>'
+        );
+        root.find('.progress-status').text('Preparing to process ' + fileCount + ' modules...');
+
+        function startProcess() {
+            $.ajax({
+                url: processorUrl,
+                type: 'POST',
+                data: {
+                    action: 'start',
+                    sesskey: sesskey,
+                    courseid: parseInt(courseId, 10),
+                    sectionnumber: parseInt(x, 10),
+                    apikey: apikey,
+                    scormurls: JSON.stringify(scormurls),
+                    visibility: parseInt(visibility, 10),
+                    hidebrowse: parseInt(hidebrowse, 10),
+                    completion: parseInt(completion, 10)
+                },
+                dataType: 'json',
+                timeout: 30000,
+                success: function(response) {
+                    if (response.success) {
+                        root.find('.statusMsg').html(
+                            '<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>'
+                        );
+                        setTimeout(processNext, 500);
+                    } else {
+                        showError('Failed to start: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showError('Failed to initialize process: ' + error);
+                }
+            });
+        }
+
+        function processNext() {
+            $.ajax({
+                url: processorUrl,
+                type: 'POST',
+                data: {
+                    action: 'process',
+                    sesskey: sesskey
+                },
+                dataType: 'json',
+                timeout: 120000,
+                success: function(response) {
+                    consecutiveErrors = 0;
+
+                    if (response.success && response.data) {
+                        var data = response.data;
+
+                        if (data.total > 0) {
+                            var percentage = Math.round((data.processed / data.total) * 100);
+                            root.find('.progress-bar').css('width', percentage + '%');
+                            root.find('.progress-bar').attr('aria-valuenow', percentage);
+                            root.find('.progress-text').text(percentage + '%');
+                            root.find('.progress-status').text('Processing ' + data.processed + ' of ' + data.total + ' modules...');
+                        }
+
+                        if (data.current_module && data.current_module.name) {
+                            root.find('.statusMsg').html(
+                                '<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> ' + data.current_module.name + '</span>'
+                            );
+                        }
+
+                        if (data.complete) {
+                            handleCompletion(data);
+                        } else {
+                            setTimeout(processNext, 100);
+                        }
+                    } else {
+                        showError('Process error: ' + (response.message || 'Unknown error'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    consecutiveErrors++;
+                    if (consecutiveErrors < maxErrors) {
+                        setTimeout(processNext, 2000);
+                    } else {
+                        showError('Too many errors. Process may have failed.');
+                    }
+                }
+            });
+        }
+
+        function handleCompletion(data) {
+            root.find('.processing-indicator').remove();
+            root.find('.progress-bar').css('width', '100%').attr('aria-valuenow', 100);
+            root.find('.progress-text').text('100%');
+
+            if (data.failed === 0 && data.success > 0) {
+                var msg = data.success === 1 ? '1 module loaded!' : data.success + ' modules loaded successfully!';
+                root.find('.statusMsg').html('<span style="color:green;"><i class="fa fa-check-circle"></i> ' + msg + '</span>');
+                root.find('.progress-status').text('All modules processed successfully!');
+
+                setTimeout(function() {
+                    location.reload(true);
+                }, 1500);
+            } else if (data.success > 0) {
+                root.find('.statusMsg').html('<span style="color:#ff9800;"><i class="fa fa-exclamation-triangle"></i> ' + data.success + ' succeeded, ' + data.failed + ' failed</span>');
+                root.find('.progress-status').text('Process completed with some errors');
+
+                if (data.errors && data.errors.length > 0) {
+                    root.find('.progress-status').append('<br><small style="color:red;">' + data.errors.join('<br>') + '</small>');
+                }
+
+                setTimeout(function() {
+                    location.reload(true);
+                }, 3000);
+            } else {
+                showError('All modules failed to load');
+                if (data.errors && data.errors.length > 0) {
+                    root.find('.progress-status').html('<small style="color:red;">' + data.errors.join('<br>') + '</small>');
+                }
+            }
+
+            root.find('.submitForm').removeAttr('disabled');
+            root.find('.closeModal').removeAttr('disabled');
+            root.find('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+        }
+
+        function showError(message) {
+            root.find('.processing-indicator').remove();
+            root.find('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + message + '</span>');
+            root.find('.submitForm').removeAttr('disabled');
+            root.find('.closeModal').removeAttr('disabled');
+            root.find('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+        }
+
+        startProcess();
+    }
+
+    function tippyInit() {
         tippy('.avail', {
             content: "<div class=&quot;no-overflow&quot;><p>If the availability is set to 'Show on course page', the activity or resource is available to students (subject to any access restrictions which may be set).<br /><br /> If the availability is set to 'Hide from students', the activity or resource is only available to users with permission to view hidden activities (by default, users with the role of teacher or non-editing teacher).<br /><br /> If the course contains many activities or resources, the course page may be simplified by setting the availability to 'Make available but not shown on course page'. In this case, a link to the activity or resource must be provided from elsewhere, such as from a page resource. The activity would still be listed in the gradebook and other reports.</p> </div> ",
             theme: "light",
@@ -789,11 +865,9 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             arrow: true,
             placement: "right"
         });
-
     }
 
     function bulkUpdateInit() {
-
         $(document).ready(function () {
 
             var checkExist = setInterval(function () {
@@ -814,7 +888,6 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             }, 500);
 
         });
-
     }
 
     /**

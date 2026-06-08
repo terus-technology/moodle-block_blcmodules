@@ -1,3 +1,4 @@
+/* eslint-disable */
 /*!
  * Select2 4.1.0-rc.0
  * https://select2.github.io

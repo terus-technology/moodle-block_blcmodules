@@ -61,11 +61,6 @@ class block_blc_modules extends block_list {
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippytheme.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/select2.css'));
 
-        // Bootstrap 4 to Bootstrap 5 compatibility for Moodle 5.0+
-        if ($CFG->branch >= 500) {
-            $this->page->requires->js_call_amd('theme_boost/bs4-compat', 'init');
-        }
-
         $this->page->requires->js_call_amd('block_blc_modules/module', 'init');
         $this->page->requires->js_call_amd('block_blc_modules/module', 'tippyInit');
 
