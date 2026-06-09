@@ -505,88 +505,21 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             var count = 0;
             var wwwroothidden = $('#wwwroot_hidden').html();
 
+            // Step 1: Append "Add BLC modules" button to each section (loop is ONLY for buttons).
+            // NOTE: Removed data-toggle='modal' data-target='#bsModal3' from buttons —
+            // ModalFactory handles showing the modal; Bootstrap's data-toggle causes a
+            // second competing modal-show which leads to duplicated event firing.
             $(".section.main").each(function () {
-
                 if (notifyeditingon == 1) {
                     $(this).append(`
-                        <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom" 
-                                data-toggle='modal' data-target='#bsModal3' style="float:right">
+                        <button class="btn add-content btn-blc-modules d-flex justify-content-center align-items-center p-1 icon-no-margin pull-right add-scrom"
+                                style="float:right">
                             <div class="px-1">
                                 <i class="icon fa fa-plus fa-fw" aria-hidden="true"></i>
                                 <span class="activity-add-text pr-1">Add BLC modules</span>
                             </div>
                         </button>
                     `);
-
-                    createButtonAddBlc();
-
-                    // Initialize modal using Moodle's ModalFactory
-                    var modalElement = $('#bsModal3');
-                    var blcModal = null;
-                    
-                    ModalFactory.create({
-                        title: modalElement.find('.modal-title').text(),
-                        body: modalElement.find('.modal-body').html(),
-                        footer: modalElement.find('.modal-footer').html(),
-                        large: true,
-                    }, modalElement)
-                    .then(function(modal) {
-                        blcModal = modal;
-
-                        const root = modal.getRoot();
-
-                        $('.btn-blc-modules').off('click').on('click', function() {
-                            blcModal.show();
-
-                            root.find('.select2').select2({
-                                dropdownParent: root
-                            });
-
-                            fillSubject(root);
-                        });
-
-                        root.on('change', '#scormsubject', function () {
-                            fillscorm(root);
-                        });
-
-                        root.on('change', '#scormurls', function () {
-                            var selectedCount = $(this).find('option:selected').length;
-
-                            if (selectedCount > 0) {
-                                root.find('.submitForm').removeAttr('disabled');
-
-                                var selectionMsg = selectedCount > 1
-                                    ? selectedCount + ' modules selected'
-                                    : '1 module selected';
-
-                                root.find('.statusMsg').html(
-                                    '<span style="color:#0f6cbf;">' +
-                                    '<i class="fa fa-info-circle"></i> ' +
-                                    selectionMsg +
-                                    '. Ready to add to course.</span>'
-                                );
-                            } else {
-                                root.find('.submitForm').prop('disabled', true);
-                                root.find('.statusMsg').html('');
-                            }
-                        });
-
-                        root.on('click', '.closeModal', function () {
-                            $(this).blur();
-
-                            if (blcModal) {
-                                blcModal.hide();
-                            }
-                        });
-
-                        root.on('click', '.submitForm', function () {
-                            submitModules(root, courseId);
-                        });
-                    })
-                    .catch(function(error) {
-                        console.error("Failed to create modal", error);
-                    });
-
                 }
 
                 var margin = $(".row").css("margin-left");
@@ -601,40 +534,101 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
 
             });
 
-            $(".course-content").on("click", ".add-scrom", function () {
+            // Step 2: Initialize hover effects and modal ONCE (outside the loop).
+            if (notifyeditingon == 1) {
+                createButtonAddBlc();
 
-                var secId = $(this).closest(".section").attr('id');
+                var modalElement = $('#bsModal3');
+                var blcModal = null;
 
-                var secNum = secId.split("-")[1];
+                ModalFactory.create({
+                    title: modalElement.find('.modal-title').text(),
+                    body: modalElement.find('.modal-body').html(),
+                    footer: modalElement.find('.modal-footer').html(),
+                    large: true,
+                })
+                .then(function(modal) {
+                    blcModal = modal;
 
-                x = secNum;
+                    const root = modal.getRoot();
 
-                // Set up modal event listeners for better UX
-                $('#bsModal3').off('shown.bs.modal').on('shown.bs.modal', function () {
-                    // Focus on the subject dropdown when modal opens
-                    setTimeout(function() {
-                        $('#scormsubject').select2('open');
-                    }, 100);
+                    // Use .off().on() for ALL handlers to guarantee single binding.
+                    $('.btn-blc-modules').off('click').on('click', function() {
+                        // Capture which section this button belongs to.
+                        var secId = $(this).closest(".section").attr('id');
+                        if (secId) {
+                            var parts = secId.split("-");
+                            // Take the last numeric part to handle formats like "section-0", "section-1-2", etc.
+                            x = parts[parts.length - 1];
+                        } else {
+                            // Fallback: try data-section-number attribute or default to 0.
+                            x = $(this).closest(".section").data('section-number') || '0';
+                        }
+
+                        // Validate x is a valid number.
+                        if (isNaN(parseInt(x, 10))) {
+                            x = '0';
+                        }
+
+                        blcModal.show();
+
+                        root.find('.select2').select2({
+                            dropdownParent: root
+                        });
+
+                        fillSubject(root);
+                    });
+
+                    root.off('change', '#scormsubject').on('change', '#scormsubject', function () {
+                        fillscorm(root);
+                    });
+
+                    root.off('change', '#scormurls').on('change', '#scormurls', function () {
+                        var selectedCount = $(this).find('option:selected').length;
+
+                        if (selectedCount > 0) {
+                            root.find('.submitForm').removeAttr('disabled');
+
+                            var selectionMsg = selectedCount > 1
+                                ? selectedCount + ' modules selected'
+                                : '1 module selected';
+
+                            root.find('.statusMsg').html(
+                                '<span style="color:#0f6cbf;">' +
+                                '<i class="fa fa-info-circle"></i> ' +
+                                selectionMsg +
+                                '. Ready to add to course.</span>'
+                            );
+                        } else {
+                            root.find('.submitForm').prop('disabled', true);
+                            root.find('.statusMsg').html('');
+                        }
+                    });
+
+                    root.off('click', '.closeModal').on('click', '.closeModal', function () {
+                        $(this).blur();
+
+                        if (blcModal) {
+                            blcModal.hide();
+                        }
+                    });
+
+                    root.off('click', '.submitForm').on('click', '.submitForm', function () {
+                        submitModules(root, courseId);
+                    });
+
+                    // Clean up when modal is hidden.
+                    root.off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                        $('.subject-loading, .scorm-loading, .processing-indicator').remove();
+                        $('.progress-container').remove();
+                        root.find('.statusMsg').html('');
+                        root.find('.submitForm').prop('disabled', true);
+                    });
+                })
+                .catch(function(error) {
+                    console.error("Failed to create modal", error);
                 });
-
-                $('#bsModal3').off('hidden.bs.modal').on('hidden.bs.modal', function () {
-                    // Clean up any loading states when modal is closed
-                    $('.subject-loading, .scorm-loading, .processing-indicator').remove();
-                    $('.progress-container').remove();
-                    $('.statusMsg').html('');
-                    $('.submitForm').prop('disabled', true);
-                });
-
-            });
-
-            // Add keyboard navigation support (ESC disabled to prevent accidental close)
-            $(document).on('keydown', '#bsModal3', function(e) {
-                // Enter key to submit form if submit button is enabled
-                if (e.keyCode === 13 && !$('.submitForm').prop('disabled')) {
-                    e.preventDefault();
-                    $('.submitForm').click();
-                }
-            });
+            }
 
         }
 
@@ -652,6 +646,12 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
     }
 
     function submitModules(root, courseId) {
+        // Guard: prevent concurrent executions (e.g. double-click, duplicate handlers).
+        if (root.data('blcProcessing')) {
+            return;
+        }
+        root.data('blcProcessing', true);
+
         var apikey = $('#apikey').val();
         var scormurls = [];
 
@@ -733,10 +733,16 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 timeout: 30000,
                 success: function(response) {
                     if (response.success) {
-                        root.find('.statusMsg').html(
-                            '<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>'
-                        );
-                        setTimeout(processNext, 500);
+                        // Verify the start action actually initialized the progress data.
+                        if (response.data && response.data.total > 0) {
+                            root.find('.statusMsg').html(
+                                '<span style="color:#0f6cbf;"><i class="fa fa-cog fa-spin"></i> Processing modules. This may take several minutes for large files...</span>'
+                            );
+                            setTimeout(processNext, 500);
+                        } else {
+                            showError('Process started but no modules were queued. Total: ' +
+                                (response.data ? response.data.total : 'unknown'));
+                        }
                     } else {
                         showError('Failed to start: ' + response.message);
                     }
@@ -763,6 +769,13 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                     if (response.success && response.data) {
                         var data = response.data;
 
+                        // Defensive check: if total is 0 but we know we started with modules,
+                        // the session data was likely lost. Show an error instead of a stuck bar.
+                        if (data.total === 0 && !data.complete && fileCount > 0) {
+                            showError('Session data lost. The progress tracking was interrupted. Please try again.');
+                            return;
+                        }
+
                         if (data.total > 0) {
                             var percentage = Math.round((data.processed / data.total) * 100);
                             root.find('.progress-bar').css('width', percentage + '%');
@@ -788,10 +801,23 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
                 },
                 error: function(xhr, status, error) {
                     consecutiveErrors++;
+
+                    // Show retry feedback on the progress bar so the user knows something is happening.
+                    root.find('.progress-status').text(
+                        'Connection issue, retrying (' + consecutiveErrors + '/' + maxErrors + ')...'
+                    );
+
+                    if (consecutiveErrors % 3 === 1) {
+                        root.find('.statusMsg').html(
+                            '<span style="color:#ff9800;"><i class="fa fa-exclamation-triangle"></i> Retrying... (' +
+                            consecutiveErrors + ' attempts)</span>'
+                        );
+                    }
+
                     if (consecutiveErrors < maxErrors) {
                         setTimeout(processNext, 2000);
                     } else {
-                        showError('Too many errors. Process may have failed.');
+                        showError('Too many errors. Process may have failed. Last error: ' + (error || status));
                     }
                 }
             });
@@ -831,6 +857,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             root.find('.submitForm').removeAttr('disabled');
             root.find('.closeModal').removeAttr('disabled');
             root.find('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+            root.removeData('blcProcessing');
         }
 
         function showError(message) {
@@ -839,6 +866,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
             root.find('.submitForm').removeAttr('disabled');
             root.find('.closeModal').removeAttr('disabled');
             root.find('#scormsubject, #scormurls, #id_visible, #id_hidebrowse, #id_completion').prop('disabled', false);
+            root.removeData('blcProcessing');
         }
 
         startProcess();

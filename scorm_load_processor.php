@@ -17,6 +17,10 @@
 /**
  * SCORM Load Processor - AJAX endpoint for real-time progress updates
  *
+ * Uses Moodle's $SESSION global for session data persistence instead of
+ * PHP's native $_SESSION, ensuring compatibility with Moodle's custom
+ * session handlers.
+ *
  * @package    block_blc_modules
  * @copyright  2025 Terus Technology
  * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
@@ -38,7 +42,7 @@ require_once($CFG->dirroot.'/mod/resource/lib.php');
 
 require_login(null, false);
 
-global $DB, $USER;
+global $DB, $USER, $SESSION;
 
 $action = required_param('action', PARAM_ALPHA);
 $sesskey = required_param('sesskey', PARAM_RAW);
@@ -51,18 +55,19 @@ if (!confirm_sesskey($sesskey)) {
     exit;
 }
 
-if (!isset($_SESSION['scorm_load_progress'])) {
-    $_SESSION['scorm_load_progress'] = [
-        'status' => 'idle',
-        'total' => 0,
-        'processed' => 0,
-        'success' => 0,
-        'failed' => 0,
-        'errors' => [],
-        'complete' => false,
-        'current_module' => null,
-        'task_data' => null,
-    ];
+// Use Moodle's $SESSION object instead of $_SESSION for reliable persistence.
+if (!isset($SESSION->blc_scorm_load_progress)) {
+    $SESSION->blc_scorm_load_progress = new stdClass();
+    $SESSION->blc_scorm_load_progress->status = 'idle';
+    $SESSION->blc_scorm_load_progress->total = 0;
+    $SESSION->blc_scorm_load_progress->processed = 0;
+    $SESSION->blc_scorm_load_progress->success = 0;
+    $SESSION->blc_scorm_load_progress->failed = 0;
+    $SESSION->blc_scorm_load_progress->errors = [];
+    $SESSION->blc_scorm_load_progress->complete = false;
+    $SESSION->blc_scorm_load_progress->current_module = null;
+    $SESSION->blc_scorm_load_progress->task_data = null;
+    $SESSION->blc_scorm_load_progress->log = [];
 }
 
 /**
@@ -74,30 +79,32 @@ if (!isset($_SESSION['scorm_load_progress'])) {
  * @return void
  */
 function add_load_log($message, $type = 'info', $extradata = []) {
-    // EXISTING: Session-based logging (unchanged).
-    if (!isset($_SESSION['scorm_load_progress']['log'])) {
-        $_SESSION['scorm_load_progress']['log'] = [];
+    global $SESSION;
+
+    // Session-based logging.
+    if (!isset($SESSION->blc_scorm_load_progress->log)) {
+        $SESSION->blc_scorm_load_progress->log = [];
     }
 
-    $_SESSION['scorm_load_progress']['log'][] = [
+    $SESSION->blc_scorm_load_progress->log[] = [
         'message' => $message,
         'type' => $type,
         'time' => date('H:i:s'),
     ];
 
-    if (count($_SESSION['scorm_load_progress']['log']) > 50) {
-        $_SESSION['scorm_load_progress']['log'] = array_slice($_SESSION['scorm_load_progress']['log'], -50);
+    if (count($SESSION->blc_scorm_load_progress->log) > 50) {
+        $SESSION->blc_scorm_load_progress->log = array_slice($SESSION->blc_scorm_load_progress->log, -50);
     }
 
-    // NEW: Database logging (additive).
-    if (isset($_SESSION['scorm_load_progress']['task_data'])) {
-        $task = $_SESSION['scorm_load_progress']['task_data'];
+    // Database logging (additive).
+    if (isset($SESSION->blc_scorm_load_progress->task_data)) {
+        $task = $SESSION->blc_scorm_load_progress->task_data;
 
         // Prepare log data.
         $logdata = [
             'courseid' => $task['courseid'],
             'sectionnumber' => $task['sectionnumber'],
-            'status' => $_SESSION['scorm_load_progress']['status'] ?? 'unknown',
+            'status' => $SESSION->blc_scorm_load_progress->status ?? 'unknown',
             'log_level' => $type,
             'message' => $message,
         ];
@@ -132,18 +139,37 @@ function add_load_log($message, $type = 'info', $extradata = []) {
  * @return void
  */
 function update_load_progress($data) {
+    global $SESSION;
+
     foreach ($data as $key => $value) {
-        $_SESSION['scorm_load_progress'][$key] = $value;
+        $SESSION->blc_scorm_load_progress->$key = $value;
     }
 }
 
 /**
- * Retrieves the current SCORM load progress session data.
+ * Retrieves the current SCORM load progress session data as an array.
  *
  * @return array The SCORM load progress data.
  */
 function get_load_progress() {
-    return $_SESSION['scorm_load_progress'];
+    global $SESSION;
+
+    $progress = $SESSION->blc_scorm_load_progress;
+
+    // Convert stdClass to array for JSON encoding, handling nested objects.
+    $result = [
+        'status' => $progress->status,
+        'total' => $progress->total,
+        'processed' => $progress->processed,
+        'success' => $progress->success,
+        'failed' => $progress->failed,
+        'errors' => $progress->errors,
+        'complete' => $progress->complete,
+        'current_module' => $progress->current_module,
+        'task_data' => $progress->task_data,
+    ];
+
+    return $result;
 }
 
 switch ($action) {
@@ -167,26 +193,25 @@ switch ($action) {
             require_capability('moodle/course:manageactivities', $coursecontext);
             require_capability('mod/scorm:addinstance', $coursecontext);
 
-            $_SESSION['scorm_load_progress'] = [
-                'status' => 'starting',
-                'total' => count($scormurlsarray),
-                'processed' => 0,
-                'success' => 0,
-                'failed' => 0,
-                'errors' => [],
-                'log' => [],
-                'complete' => false,
-                'current_module' => null,
-                'task_data' => [
-                    'courseid' => $courseid,
-                    'sectionnumber' => $sectionnumber,
-                    'apikey' => $apikey,
-                    'scormurls' => $scormurlsarray,
-                    'visibility' => $visibility,
-                    'hidebrowse' => $hidebrowse,
-                    'completion' => $completion,
-                    'current_index' => 0,
-                ],
+            $SESSION->blc_scorm_load_progress = new stdClass();
+            $SESSION->blc_scorm_load_progress->status = 'starting';
+            $SESSION->blc_scorm_load_progress->total = count($scormurlsarray);
+            $SESSION->blc_scorm_load_progress->processed = 0;
+            $SESSION->blc_scorm_load_progress->success = 0;
+            $SESSION->blc_scorm_load_progress->failed = 0;
+            $SESSION->blc_scorm_load_progress->errors = [];
+            $SESSION->blc_scorm_load_progress->log = [];
+            $SESSION->blc_scorm_load_progress->complete = false;
+            $SESSION->blc_scorm_load_progress->current_module = null;
+            $SESSION->blc_scorm_load_progress->task_data = [
+                'courseid' => $courseid,
+                'sectionnumber' => $sectionnumber,
+                'apikey' => $apikey,
+                'scormurls' => $scormurlsarray,
+                'visibility' => $visibility,
+                'hidebrowse' => $hidebrowse,
+                'completion' => $completion,
+                'current_index' => 0,
             ];
 
             // Log process start (will be logged to both session and database via add_load_log).
@@ -211,6 +236,10 @@ switch ($action) {
                 ],
             ]);
 
+            // CRITICAL: Flush session data to storage before the next AJAX call.
+            // This ensures the 'process' action can read the task_data immediately.
+            session_write_close();
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Process started successfully',
@@ -226,7 +255,7 @@ switch ($action) {
 
     case 'process':
         try {
-            $progress = $_SESSION['scorm_load_progress'];
+            $progress = get_load_progress();
 
             if (!isset($progress['task_data']) || $progress['complete']) {
                 echo json_encode([
@@ -273,7 +302,6 @@ switch ($action) {
             }
 
             require_once($CFG->dirroot.'/blocks/blc_modules/classes/external/blcservice.php');
-            $service = new blcservice();
 
             $scormdata = blcservice::fetch_scorm_data($apikey, $url, $token, $domainname);
 
@@ -322,6 +350,9 @@ switch ($action) {
 
             blcservice::cleanup_temp_files($apikey, $url, $token, $domainname);
 
+            // Re-read progress after all the processing above.
+            $progress = get_load_progress();
+
             update_load_progress([
                 'success' => $progress['success'] + 1,
                 'processed' => $progress['processed'] + 1,
@@ -342,7 +373,7 @@ switch ($action) {
                 'data' => get_load_progress(),
             ]);
         } catch (Exception $e) {
-            $progress = $_SESSION['scorm_load_progress'];
+            $progress = get_load_progress();
             $errors = $progress['errors'];
             $errors[] = $e->getMessage();
 
@@ -373,17 +404,18 @@ switch ($action) {
         break;
 
     case 'reset':
-        $_SESSION['scorm_load_progress'] = [
-            'status' => 'idle',
-            'total' => 0,
-            'processed' => 0,
-            'success' => 0,
-            'failed' => 0,
-            'errors' => [],
-            'complete' => false,
-            'current_module' => null,
-            'task_data' => null,
-        ];
+        $SESSION->blc_scorm_load_progress = new stdClass();
+        $SESSION->blc_scorm_load_progress->status = 'idle';
+        $SESSION->blc_scorm_load_progress->total = 0;
+        $SESSION->blc_scorm_load_progress->processed = 0;
+        $SESSION->blc_scorm_load_progress->success = 0;
+        $SESSION->blc_scorm_load_progress->failed = 0;
+        $SESSION->blc_scorm_load_progress->errors = [];
+        $SESSION->blc_scorm_load_progress->complete = false;
+        $SESSION->blc_scorm_load_progress->current_module = null;
+        $SESSION->blc_scorm_load_progress->task_data = null;
+        $SESSION->blc_scorm_load_progress->log = [];
+
         echo json_encode([
             'success' => true,
             'message' => 'Progress reset',

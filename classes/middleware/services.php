@@ -215,12 +215,15 @@ class services {
                 } else {
                     $newhash = null;
                     debugging('Failed to download or create SCORM package file from: ' . $scorm->reference, DEBUG_DEVELOPER);
-                    exit();
+                    throw new \moodle_exception('errorpackage', 'scorm', '', 'Failed to download SCORM package from: ' . $scorm->reference);
                 }
+            } catch (\moodle_exception $e) {
+                // Re-throw moodle_exceptions as-is (including our own from above).
+                throw $e;
             } catch (Exception $e) {
                 $newhash = null;
                 debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                exit();
+                throw new \moodle_exception('errorpackage', 'scorm', '', 'Exception downloading SCORM package: ' . $e->getMessage());
             }
         } else {
             $newhash = null;
