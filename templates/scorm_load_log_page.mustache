@@ -184,7 +184,7 @@
                                 {{/has_error}}
                                 {{#has_parameters}}
                                 <br>
-                                <a class="btn btn-sm btn-link p-0" data-toggle="collapse" href="#params-{{id}}" role="button">
+                                <a class="btn btn-sm btn-link p-0" data-bs-toggle="collapse" data-bs-target="#params-{{id}}" role="button" aria-expanded="false" aria-controls="params-{{id}}">
                                     <i class="fa fa-cog"></i> {{#str}}viewparameters, block_blc_modules{{/str}}
                                 </a>
                                 <div class="collapse mt-2" id="params-{{id}}">

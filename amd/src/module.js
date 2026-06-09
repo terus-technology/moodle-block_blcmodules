@@ -861,6 +861,7 @@ define(['jquery', 'block_blc_modules/tippy', 'block_blc_modules/select2', 'core/
         }
 
         function showError(message) {
+            root.find('.progress-container').remove();
             root.find('.processing-indicator').remove();
             root.find('.statusMsg').html('<span style="color:red;"><i class="fa fa-exclamation-circle"></i> ' + message + '</span>');
             root.find('.submitForm').removeAttr('disabled');

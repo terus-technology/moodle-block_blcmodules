@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026060900;
+$plugin->version   = 2026060901;
 $plugin->requires  = 2025041400;
 $plugin->component = 'block_blc_modules';
 $plugin->maturity = MATURITY_STABLE;
