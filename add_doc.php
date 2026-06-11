@@ -195,13 +195,12 @@ if ($blcmodules) {
 
             try {
                 $functionname = 'local_scormurl_get_tempdocurls';
-                $tempurl = urlencode($blcmodule->scormurl);
 
                 $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
                     'wstoken' => $token,
                     'wsfunction' => $functionname,
                     'apikey' => $apikey,
-                    'scormurl' => $tempurl,
+                    'scormurl' => $blcmodule->scormurl,
                     'moodlewsrestformat' => 'json',
                 ]);
 
@@ -613,15 +612,12 @@ if ($blcmodules) {
 
             // Cleanup temporary document files on API server.
             try {
-                $cleanuptempurl = urlencode($blcmodule->scormurl);
                 $cleanupfunction = 'local_scormurl_get_deletetempdocurls';
-                $cleanupurl = $domainname . '/webservice/rest/server.php' . '?wstoken=' . $token
-                    . '&wsfunction=' . $cleanupfunction . '&apikey=' . $apikey . '&scormurl=' . $cleanuptempurl;
                 $cleanupurl = new moodle_url($domainname . '/webservice/rest/server.php', [
                     'wstoken' => $token,
                     'wsfunction' => $cleanupfunction,
                     'apikey' => $apikey,
-                    'scormurl' => $cleanuptempurl,
+                    'scormurl' => $blcmodule->scormurl,
                     'moodlewsrestformat' => 'json',
                 ]);
 

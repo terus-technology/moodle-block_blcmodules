@@ -404,7 +404,6 @@ class blcservice extends external_api {
 
         foreach ($scormurls as $url) {
             $url = str_replace("’", "'", $url);
-            $tempurl = urlencode($url);
 
             sleep(20);
 
@@ -413,7 +412,7 @@ class blcservice extends external_api {
                 'wstoken' => $token,
                 'wsfunction' => $functionname,
                 'apikey' => $apikey,
-                'scormurl' => $tempurl,
+                'scormurl' => $url,
             ]);
 
             $curl = new blccurl_helper();
@@ -666,19 +665,17 @@ class blcservice extends external_api {
      */
     public static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
         $functionname = 'local_scormurl_get_tempscormurls';
-        $tempurl = urlencode($url);
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
             'wsfunction' => $functionname,
             'apikey' => $apikey,
-            'scormurl' => $tempurl,
+            'scormurl' => $url,
             'moodlewsrestformat' => 'json',
         ]);
 
         // Debug: Log the API request.
         debugging('BLC Modules: Calling API: ' . $functionname);
         debugging('BLC Modules: Original URL: ' . $url);
-        debugging('BLC Modules: Encoded URL: ' . $tempurl);
 
         $curl = new blccurl_helper();
         $curl->set_header('Content-Type: application/json; charset=utf-8');
@@ -1186,19 +1183,17 @@ class blcservice extends external_api {
         debugging('BLC Modules: Original SCORM URL: ' . $scormurl);
 
         $functionname = 'local_scormurl_get_tempdocurls';
-        $tempurl = urlencode($scormurl);
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
             'wsfunction' => $functionname,
             'apikey' => $apikey,
-            'scormurl' => $tempurl,
+            'scormurl' => $scormurl,
             'moodlewsrestformat' => 'json',
         ]);
 
         // Debug: Log the API request.
         debugging('BLC Modules: Calling API: ' . $functionname);
         debugging('BLC Modules: Original URL: ' . $scormurl);
-        debugging('BLC Modules: Encoded URL: ' . $tempurl);
 
         $curl = new blccurl_helper();
         $curl->set_header('Content-Type: application/json; charset=utf-8');
@@ -1334,13 +1329,12 @@ class blcservice extends external_api {
         string $token,
         string $domainname
     ): void {
-        $tempurl = urlencode($url);
         $functionname = 'local_scormurl_get_deletetempscormurls';
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
             'wsfunction' => $functionname,
             'apikey' => $apikey,
-            'scormurl' => $tempurl,
+            'scormurl' => $url,
             'moodlewsrestformat' => 'json',
         ]);
 
@@ -1358,13 +1352,12 @@ class blcservice extends external_api {
         string $token,
         string $domainname
     ): void {
-        $tempurl = urlencode($url);
         $functionname = 'local_scormurl_get_deletetempdocurls';
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
             'wsfunction' => $functionname,
             'apikey' => $apikey,
-            'scormurl' => $tempurl,
+            'scormurl' => $url,
             'moodlewsrestformat' => 'json',
         ]);
 

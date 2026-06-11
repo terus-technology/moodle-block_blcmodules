@@ -4,6 +4,13 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
+## [4.5.16] — 2026-06-10
+
+### Fixed
+- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
+
+---
+
 ## [4.5.15] — 2026-06-09
 
 ### Fixed
@@ -217,20 +224,21 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
-[4.5.15]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.14...v4.5.15
-[4.5.14]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.13...v4.5.14
-[4.5.13]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.12...v4.5.13
-[4.5.12]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.11...v4.5.12
-[4.5.11]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.10...v4.5.11
-[4.5.10]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.9...v4.5.10
-[4.5.9]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.8...v4.5.9
-[4.5.8]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.7...v4.5.8
-[4.5.7]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.6...v4.5.7
-[4.5.6]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.5...v4.5.6
-[4.5.5]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.4...v4.5.5
-[4.5.4]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.3...v4.5.4
-[4.5.3]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.2...v4.5.3
-[4.5.2]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.1...v4.5.2
-[4.5.1]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v4.5.0...v4.5.1
-[4.5.0]: https://github.com/terus-technology/moodle-block_blc_modules/compare/v1.0.0...v4.5.0
+[4.5.16]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.15...v4.5.16
+[4.5.15]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.14...v4.5.15
+[4.5.14]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.13...v4.5.14
+[4.5.13]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.12...v4.5.13
+[4.5.12]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.11...v4.5.12
+[4.5.11]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.10...v4.5.11
+[4.5.10]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.9...v4.5.10
+[4.5.9]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.8...v4.5.9
+[4.5.8]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.7...v4.5.8
+[4.5.7]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.6...v4.5.7
+[4.5.6]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.5...v4.5.6
+[4.5.5]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.4...v4.5.5
+[4.5.4]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.3...v4.5.4
+[4.5.3]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.2...v4.5.3
+[4.5.2]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.1...v4.5.2
+[4.5.1]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v4.5.0...v4.5.1
+[4.5.0]: https://github.com/terus-technology/moodle-block_blcmodules/compare/v1.0.0...v4.5.0
 [1.0.0]: https://github.com/terus-technology/moodle-block_blc_modules/releases/tag/v1.0.0
