@@ -412,13 +412,12 @@ function perform_bulk_update() {
 
                 // Get temporary URL.
                 $url = $scormurl;
-                $tempurl = urlencode($url);
                 $functionname = 'local_scormurl_get_bulkuptempscormurls';
                 $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
                     'wstoken' => $token,
                     'wsfunction' => $functionname,
                     'apikey' => $apikey,
-                    'scormurl' => $tempurl,
+                    'scormurl' => $url,
                 ]);
 
                 add_progress_log("Requesting temp URL for: {$scormname}", 'info');
