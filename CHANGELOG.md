@@ -6,11 +6,11 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ## [5.0.1] — 2026-06-10
 
-### Fixed
-- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
-- Collapse/expand toggle button not responding on the SCORM load logs page.
-- Intermittent failure when downloading SCORM packages through the BLC selector.
-- Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
+### Added
+- CHANGELOG
+
+### Changed
+- README
 
 ---
 
@@ -32,6 +32,10 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ### Fixed
 - Stale variable reuse after sequential module loads.
+- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
+- Collapse/expand toggle button not responding on the SCORM load logs page.
+- Intermittent failure when downloading SCORM packages through the BLC selector.
+- Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
 
 ---
 
