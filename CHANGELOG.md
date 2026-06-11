@@ -1,58 +1,183 @@
-# Detailed Changes Compared to blocks/blc_modules
+# Changelog
 
-This document summarizes the detailed changes in the `blocks/blc_modules` directory.
-
----
-
-## 1. **CHANGELOG.md**
-- **New file**: Added a changelog file summarizing all major changes and improvements in the codebase.
-
-## 2. **add_doc.php**
-- **Namespace & Use**: Added `namespace block_blc_modules\helper;` and relevant `use` statements for better code organization and autoloading.
-- **SQL Improvements**: Changed SQL queries to use parameterized queries for better security and maintainability.
-- **Class Name Fix**: Fixed typo from `stdclass` to `stdClass`.
-
-## 3. **amd/build/module.min.js**
-- **Update**: Minified JS updated to reflect changes in the source, including new dependencies and logic improvements.
-- **Dependency**: Now includes `core/ajax` as a dependency.
-
-## 4. **scorm_report.php**
-- **Refactor**: Major refactor to use a renderer and a new output class `scorm_report_page` for rendering the report page, replacing direct HTML output and table generation.
-- **Template**: Now uses a Mustache template for rendering the report.
-
-## 5. **settings.php**
-- **Best Practice**: Replaced `new lang_string` with `get_string` for all admin setting labels and descriptions, following Moodle best practices.
-
-## 6. **templates/scorm_report_page.mustache**
-- **New file**: Added a Mustache template for rendering the SCORM report page, improving separation of logic and presentation.
-
-## 7. **templates/update_scorm_page.mustache**
-- **New file**: Added a Mustache template for the SCORM update results page, providing a modern and user-friendly UI for update feedback.
-
-## 8. **templates/validate_settings_page.mustache**
-- **New file**: Added a Mustache template for the BLC settings validation page, improving clarity and maintainability.
-
-## 9. **update_scorm.php**
-- **Refactor**: Major refactor to use a renderer and a new output class `update_scorm_page` for rendering the update results, replacing procedural logic and direct file operations.
-- **Security**: Added permission checks and parameter validation.
-- **UI**: Now uses a Mustache template for output.
-
-## 10. **validate_settings.php**
-- **Refactor**: Major refactor to use a renderer and a new output class `validate_settings_page` for rendering the validation results, replacing procedural logic and direct HTML output.
-- **UI**: Now uses a Mustache template for output.
-
-## 11. **version.php**
-- **Update**: Bumped plugin version from `2024071100` to `2024071119`.
-
-## 12. **version_check.php**
-- **Namespace & Use**: Added `namespace block_blc_modules\helper;` and `use stdClass;` for better code organization and autoloading.
+All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this file.
 
 ---
 
-## **Summary of Key Improvements**
-- **Modernization**: Migration to Mustache templates and output classes for all major UI, improving maintainability and separation of concerns.
-- **Security**: Improved SQL handling and added permission checks.
-- **Code Quality**: Adoption of namespaces, autoloading, and best practices for Moodle plugin development.
-- **User Experience**: Enhanced UI for reports, updates, and validation pages.
+## [5.0.1] — 2026-06-10
 
-For further details on any specific file or change, please request a focused explanation.
+### Fixed
+- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
+- Collapse/expand toggle button not responding on the SCORM load logs page.
+- Intermittent failure when downloading SCORM packages through the BLC selector.
+- Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
+
+---
+
+## [5.0.0] — 2025-10-29
+
+### Added
+- **Moodle 5.0 support** — initial release for Moodle 5.0 with Bootstrap 5 compatibility layer for modals, popovers, and tooltips.
+- Google Drive support for externally hosted SCORM packages.
+- `subject` field added to `block_blc_modules` database table with corresponding UI filters.
+
+### Changed
+- Upgrade process updated for Moodle 5.0 compatibility.
+- Subject extraction in `get_subjects()` rewritten to use a single SQL `DISTINCT` query.
+- Accessibility document fetching centralised through the BLC API.
+- Button styles unified under the `.btn-blc-modules` class.
+- AJAX timeout increased for long-running SCORM downloads.
+- SCORM package filename validation strengthened.
+- SCORM URL parameter type relaxed from `PARAM_URL` to `PARAM_TEXT`.
+
+### Fixed
+- Stale variable reuse after sequential module loads.
+
+---
+
+## [4.5.10] — 2025-09-30
+
+### Added
+- Comprehensive error handling for JSON API responses: `json_last_error()` checks and array-structure validation on every API call.
+- Database schema update to support enhanced SCORM data fields.
+
+### Changed
+- All SQL queries converted from positional (`?`) to named (`:param`) parameters for readability and maintainability.
+- Variable initialisation cleaned up across `blcservice` to prevent uninitialised-variable warnings.
+
+---
+
+## [4.5.9] — 2025-07-30
+
+### Added
+- New external API endpoints for SCORM operations: module loading (`load_scorm`), deletion (`load_scorm_delete`), subject listing (`load_scormsubject`), and URL retrieval (`load_scormurls`).
+- SCORM loading now supports fetching from external BLC URLs with AJAX-driven feedback.
+
+### Removed
+- Deprecated `load_scormurls.php` and `version_check.php` scripts replaced by the new external service layer.
+
+### Fixed
+- Removed stale debug statements and commented-out code in `blcservice`.
+
+---
+
+## [4.5.8] — 2025-07-25
+
+### Added
+- README section documenting how to continue using the legacy `master` branch for older Moodle installations.
+
+### Changed
+- SCORM report page template: consistent font-weight across all data cells.
+
+---
+
+## [4.5.7] — 2025-07-16
+
+### Added
+- **SCORM Report Page** — interactive chart and data tables showing module usage statistics per course, subject, and time period. Rendered via Mustache (`scorm_report_page.mustache`).
+- **SCORM Update Page** — refactored `update_scorm.php` to use the Mustache renderer (`update_scorm_page.mustache`) with structured output classes.
+- **Settings Validation Page** — refactored `validate_settings.php` to use the Mustache renderer (`validate_settings_page.mustache`).
+- External service definitions registered via `db/services.php` for the SCORM web-service API.
+
+### Changed
+- All core PHP files (`add_doc.php`, `validate_settings.php`, `update_scorm.php`, `scorm_report.php`, `version_check.php`) moved under the `block_blc_modules\helper` namespace with proper `use` statements.
+- SQL queries in `add_doc.php` and `load_scorm.php` converted to parameterised queries.
+- `settings.php` migrated from `new lang_string()` to `get_string()` for Moodle best-practice compliance.
+- SCORM filesize detection now uses a lightweight HTTP `HEAD` request instead of downloading the whole file.
+- Typo corrections: `stdclass` → `stdClass` throughout.
+
+### Fixed
+- Missing class name for the `load_scrom` event.
+- Font Awesome icons replaced with Moodle 4.5-compatible alternatives.
+
+---
+
+## [4.5.6] — 2023-09-26
+
+### Added
+- Search functionality inside the curriculum area dropdown for quicker navigation.
+
+### Changed
+- Curriculum area list re-alphabetised for consistency.
+
+### Fixed
+- Modal selection state now resets properly when reopening after being dismissed.
+- All relative URLs converted to absolute URLs (missing `https://` prefix could break navigation).
+
+---
+
+## [4.5.5] — 2023-08-10
+
+### Fixed
+- cURL certificate verification issue on Moodle 4.x when adding new BLC modules. Added fallback certificate bundle handling.
+
+---
+
+## [4.5.4] — 2022-05-18
+
+### Changed
+- Miscellaneous bug fixes and stability improvements.
+
+---
+
+## [4.5.3] — 2022-03-21
+
+### Changed
+- **AMD Module Migration**: JavaScript loading converted from legacy inline `<script>` tags to AMD modules (`amd/src/`), with proper `RequireJS` dependency management.
+- Helper functions extracted from the main block class into dedicated utility classes.
+- Removed unused legacy JS files.
+
+---
+
+## [4.5.2] — 2021-08-12
+
+### Changed
+- Module sorting order adjusted in the BLC selector.
+
+### Fixed
+- API key settings page now restricted to administrators only — non-admin users can no longer view or modify the API key.
+
+---
+
+## [4.5.1] — 2020-12-17
+
+### Added
+- `locallib.php` with shared helper functions.
+- Basic SCORM usage report page.
+
+### Fixed
+- "Empty SCORM package" issue when downloaded packages contained zero-byte files.
+
+---
+
+## [4.5.0] — 2020-07-17
+
+### Added
+- **BLC Modules Summer 2020 Update** — major feature release with bulk update capability, improved SCORM package handling, and updated README documentation.
+
+---
+
+## [1.0.0] — 2019-04-06
+
+### Added
+- Initial public release of `block_blc_modules` (post-beta).
+- Core functionality: browse and add SCORM packages from the Blended Learning Consortium repository into Moodle courses.
+- API key configuration and validation tools.
+- README with installation, update, and prerequisites documentation.
+
+---
+
+[5.0.1]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[5.0.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.10]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.9]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.8]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.7]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.6]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.5]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.4]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.3]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.2]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.1]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[4.5.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases
+[1.0.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases

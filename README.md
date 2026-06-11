@@ -1,44 +1,148 @@
-# Blended Learning Consortium Modules
+<p align="center">
+  <img src="https://img.shields.io/badge/version-5.0.1-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/moodle-5.0-orange.svg" alt="Moodle">
+  <img src="https://img.shields.io/badge/license-GPL%20v3-brown.svg" alt="License">
+  <img src="https://img.shields.io/badge/maturity-STABLE-green.svg" alt="Maturity">
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/phplint-%E2%9C%93_passed-brightgreen?style=flat-square" alt="PHPLint">
+  <img src="https://img.shields.io/badge/phpcs-%E2%9C%93_passed-brightgreen?style=flat-square" alt="PHPCS">
+  <img src="https://img.shields.io/badge/phpunit-%E2%9C%93_passed-brightgreen?style=flat-square" alt="PHPUnit">
+</p>
 
-This plugin serves as a tool to easily browse and add SCORM packages from the Blended Learning Consortium repository.
+# Block BLC Modules
 
-Please note this plugin requires a subscription to the blended learning consortium. 
+> Easily browse and add SCORM packages from the **Blended Learning Consortium** repository directly into your Moodle courses.
 
-Samples of BLC Modules can be found, and enquiries made through the BLC website: 
-http://blc-fe.org
+---
 
-# Before you get started
+## 📖 Table of Contents
 
-In order for this plugin to function, you will need to register to use the plugin with the BLC and go through an administration step. This involves registering your Moodle URL and receiving an API key for use when configuring the plugin. 
+- [Block BLC Modules](#block-blc-modules)
+  - [📖 Table of Contents](#-table-of-contents)
+  - [About](#about)
+  - [Requirements](#requirements)
+    - [Moodle Prerequisites](#moodle-prerequisites)
+  - [Installation](#installation)
+    - [Option 1 — Install via Moodle UI (recommended)](#option-1--install-via-moodle-ui-recommended)
+    - [Option 2 — Manual installation](#option-2--manual-installation)
+  - [Updating](#updating)
+    - [Option 1 — Via Moodle UI](#option-1--via-moodle-ui)
+    - [Option 2 — Manual update](#option-2--manual-update)
+  - [Configuration](#configuration)
+  - [Features](#features)
+  - [Changelog](#changelog)
+  - [Support](#support)
+  - [License](#license)
 
-There are video demonstrations and a instructions on administering the plugin available to registered users. 
+---
 
-A PDF/Video guide on using the plugin for teachers is also available via the BLC.
+## About
 
-# Prerequisites
+**Block BLC Modules** (`block_blc_modules`) is a Moodle block plugin that integrates with the [Blended Learning Consortium](http://blc-fe.org) API. It allows teachers and administrators to search, preview, and import SCORM packages into any course with just a few clicks.
 
-In order for the plugin to function properly, the SCORM setting 'Enable downloaded package type' (scorm | allowtypelocalsync)must be enabled. This setting can be found by searching site administration for 'downloadable' or navigating to the following settings page:
+> ⚠️ **A valid BLC subscription is required.**  
+> Samples and subscription enquiries can be made at [blc-fe.org](http://blc-fe.org).
 
-Site administration / Plugins / Activity modules / SCORM package
+---
 
-# Installation
+## Requirements
 
-This is a standard Moodle block, there are two options for installing:
+| Requirement  | Minimum                     |
+| ------------ | --------------------------- |
+| Moodle       | **5.0**                     |
+| PHP          | 8.2+                        |
+| SCORM module | `mod_scorm` ≥ 2025041400    |
+| BLC API Key  | Provided after registration |
 
-*Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at Site Administration / Plugins / Install Plugins.
+### Moodle Prerequisites
 
-*Option 2:* The plugin can also be installed manually by placing the (unzipped version) in the 'blocks' directory of your Moodle.
+The SCORM setting **"Enable downloaded package type"** (`scorm | allowtypelocalsync`) must be enabled:
 
-You will be prompted to enter your API key upon Installation. There is also a tool on the plugin settings page which allows you to check both your API key and URL.
+> _Site administration → Plugins → Activity modules → SCORM package → Allow downloaded package type_
 
-# Updating this plugin
+---
 
-The guidance for updating is similar to the guidance for installation. 
+## Installation
 
-*Option 1:* In more modern versions of Moodle, a site administrator can install this plugin using the tool at site administration / Plugins / Install Plugins.
+### Option 1 — Install via Moodle UI (recommended)
 
-*Option 2:* The plugin can also be installed manually by overwriting the existing plugin in the 'blocks' directory of your Moodle.
+1. Go to _Site administration → Plugins → Install plugins_.
+2. Upload the plugin ZIP file.
+3. Follow the on-screen prompts and enter your BLC API key when asked.
 
-# Using old version
+### Option 2 — Manual installation
 
-If you want to use the old version, please use the master branch.
+1. Download and unzip the plugin.
+2. Place the `blc_modules` folder inside your Moodle `blocks/` directory:
+   ```
+   moodle/
+   └── blocks/
+       └── blc_modules/
+   ```
+3. Visit _Site administration → Notifications_ to trigger the installation.
+4. Enter your BLC API key on the plugin settings page.
+
+---
+
+## Updating
+
+### Option 1 — Via Moodle UI
+
+Go to _Site administration → Plugins → Install plugins_ and upload the new version. Moodle will handle the upgrade automatically.
+
+### Option 2 — Manual update
+
+Overwrite the existing `blocks/blc_modules/` directory with the new version, then visit _Site administration → Notifications_.
+
+> 💡 **On Moodle 4.5?** Switch to the [`release/moodle45`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle45) branch.
+
+> 💡 **Want to use Older Version?** Use [`master`](https://github.com/terus-technology/moodle-block_blcmodules/tree/master) branch.
+---
+
+## Configuration
+
+After installation, configure the plugin at:
+
+> _Site administration → Plugins → Blocks → BLC Modules_
+
+| Setting               | Description                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **API Key**           | Your unique BLC API key (obtained after registration).                                 |
+| **Validate Settings** | Built-in tool to verify your API key and Moodle URL are correctly registered with BLC. |
+
+---
+
+## Features
+
+- 🔍 **Search & browse** SCORM packages by subject or keyword
+- 📥 **One-click import** directly into any Moodle course
+- 📊 **SCORM usage reports** with interactive charts and data tables
+- 🔄 **Bulk update** SCORM modules across courses with real-time progress tracking
+- 📝 **Load logging** to audit SCORM package imports
+- 🎨 **Bootstrap 5** — native Moodle 5.0 look and feel
+- 🔐 **Admin-only** API key management
+- 🌐 **Google Drive** support for externally hosted SCORM packages
+
+---
+
+## Changelog
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for a complete, version-by-version history of all notable changes.
+
+---
+
+## Support
+
+- 🌐 **BLC Website:** [blc-fe.org](http://blc-fe.org)
+- 🐛 **Issues:** [GitHub Issues](https://github.com/terus-technology/moodle-block_blc_modules/issues)
+
+---
+
+## License
+
+This plugin is licensed under the **GNU GPL v3** or later. See [`COPYING.txt`](../../COPYING.txt) for the full text.
+
+```
+Copyright © 2019–2026 Blended Learning Consortium
+```
