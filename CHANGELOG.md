@@ -4,6 +4,16 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
+## [4.5.17] — 2026-06-11
+
+### Changed
+- `ensure_api_key_mapping()` now calls the `local_scormurl_update_scorm_mapping` web service instead of writing directly to the `block_scorm_apikey` table. This also eliminates unnecessary missing-table error logs that appeared when the `block_scorm_apikey` table was absent.
+
+### Removed
+- Missing table warning alert from UI, which were only used by the old direct-DB access.
+
+---
+
 ## [4.5.16] — 2026-06-10
 
 ### Fixed
