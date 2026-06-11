@@ -345,7 +345,7 @@ switch ($action) {
             blcservice::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
             if (!empty($scormdata['scormid'])) {
-                blcservice::ensure_api_key_mapping($apikey, (int)$scormdata['scormid']);
+                blcservice::ensure_api_key_mapping($apikey, (int)$scormdata['scormid'], $token, $domainname);
             }
 
             blcservice::cleanup_temp_files($apikey, $url, $token, $domainname);

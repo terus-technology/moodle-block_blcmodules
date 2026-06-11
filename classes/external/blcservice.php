@@ -38,7 +38,6 @@ use core_external\external_value;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
-use core\notification;
 use Exception;
 use moodle_url;
 use stdClass;
@@ -55,13 +54,6 @@ require_once($CFG->dirroot.'/mod/resource/lib.php');
  * Class blcservice
  */
 class blcservice extends external_api {
-    /**
-     * Prevent duplicate dependency warnings in a single request.
-     *
-     * @var bool
-     */
-    private static $missingscormpackagenoticeshown = false;
-
     /**
      * Returns description of method parameters for check blc modules URLs.
      *
@@ -611,7 +603,7 @@ class blcservice extends external_api {
 
                     // Ensure this SCORM ID is mapped to the API key for future access.
                     if (!empty($scormdata['scormid'])) {
-                        self::ensure_api_key_mapping($params['apikey'], (int) $scormdata['scormid']);
+                        self::ensure_api_key_mapping($params['apikey'], (int) $scormdata['scormid'], $token, $domainname);
                     }
 
                     // Clean up temporary files.
@@ -944,102 +936,38 @@ class blcservice extends external_api {
     }
 
     /**
-     * Ensure SCORM ID is mapped to API key in block_scorm_apikey table.
+     * Ensure SCORM ID is mapped to API key via local_scormurl API.
      * This allows the SCORM package to be accessible via the API key.
      *
      * @param string $apikey API key
      * @param int $scormid SCORM package ID
+     * @param string $token Web service token
+     * @param string $domainname BLC domain name
      */
-    public static function ensure_api_key_mapping(string $apikey, int $scormid): void {
-        global $DB;
-
+    public static function ensure_api_key_mapping(string $apikey, int $scormid, string $token, string $domainname): void {
         if (empty($scormid) || empty($apikey)) {
             return;
         }
 
         try {
-            // TO DO: Pindahkan ke block_scorm_package dan buat API untuk mengelola mapping ini
-            // Check if mapping record exists for this API key.
-            $mapping = $DB->get_record('block_scorm_apikey', ['api_key' => $apikey]);
+            $functionname = 'local_scormurl_update_scorm_mapping';
+            $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
+                'wstoken' => $token,
+                'wsfunction' => $functionname,
+                'apikey' => $apikey,
+                'scormid' => $scormid,
+                'moodlewsrestformat' => 'json',
+            ]);
 
-            if ($mapping) {
-                // Parse existing SCORM IDs.
-                $existingids = !empty($mapping->scormids)
-                    ? array_map('intval', explode(',', $mapping->scormids))
-                    : [];
+            $curl = new blccurl_helper();
+            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
-                // Add new ID if not already present.
-                if (!in_array($scormid, $existingids)) {
-                    $existingids[] = $scormid;
-                    $mapping->scormids = implode(',', array_unique($existingids));
-                    $mapping->timemodified = time();
-                    $DB->update_record('block_scorm_apikey', $mapping);
-
-                    debugging('BLC Modules: Added SCORM ID ' . $scormid . ' to API key mapping');
-
-                    // Invalidate cache for this API key.
-                    if (class_exists('\local_scormurl\helpers\cache_manager')) {
-                        \local_scormurl\helpers\cache_manager::invalidate_api_key_mapping($apikey);
-                    }
-                }
-            } else {
-                // Create new mapping record.
-                $newmapping = new stdClass();
-                $newmapping->api_key = $apikey;
-                $newmapping->scormids = (string)$scormid;
-                $newmapping->timecreated = time();
-                $newmapping->timemodified = time();
-                $DB->insert_record('block_scorm_apikey', $newmapping);
-
-                debugging('BLC Modules: Created new API key mapping for SCORM ID ' . $scormid);
-            }
+            debugging('BLC Modules: Updated SCORM mapping via API for SCORM ID ' . $scormid);
         } catch (Throwable $e) {
-            if (self::is_missing_scorm_apikey_table_exception($e)) {
-                self::notify_missing_scorm_package_dependency();
-                return;
-            }
-
-            debugging('BLC Modules: Failed to update API key mapping: ' . $e->getMessage());
+            debugging('BLC Modules: Failed to update API key mapping via API: ' . $e->getMessage());
             // Don't throw exception - this is not critical for module creation.
         }
-    }
-
-    /**
-     * Show a clear non-critical warning when dependency table is unavailable.
-     */
-    private static function notify_missing_scorm_package_dependency(): void {
-        if (self::$missingscormpackagenoticeshown) {
-            return;
-        }
-
-        self::$missingscormpackagenoticeshown = true;
-        $message = get_string('missingscormpackagedependency', 'block_blc_modules', 'block_scorm_apikey');
-
-        if (!(defined('CLI_SCRIPT') && CLI_SCRIPT)) {
-            notification::warning($message);
-        }
-
-        debugging('BLC Modules: ' . $message, DEBUG_NORMAL);
-    }
-
-    /**
-     * Detect missing table exception for block_scorm_apikey.
-     *
-     * @param Throwable $exception
-     * @return bool
-     */
-    private static function is_missing_scorm_apikey_table_exception(Throwable $exception): bool {
-        $needle = 'block_scorm_apikey';
-
-        if (strpos(strtolower($exception->getMessage()), $needle) !== false) {
-            return true;
-        }
-
-        if (property_exists($exception, 'debuginfo') && !empty($exception->debuginfo)) {
-            return strpos(strtolower((string)$exception->debuginfo), $needle) !== false;
-        }
-
-        return false;
     }
 
     /**
