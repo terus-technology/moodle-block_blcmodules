@@ -27,6 +27,8 @@
  */
 
 use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\debug_helper;
+use block_blc_modules\helper\file_helper;
 use core\output\notification;
 use core_completion\api;
 
@@ -47,6 +49,8 @@ require_capability('moodle/site:config', context_system::instance());
 // Add confirmation step.
 $confirm = optional_param('confirm', 0, PARAM_INT);
 $sesskey = optional_param('sesskey', '', PARAM_RAW);
+
+$logger = new debug_helper();
 
 if (!$confirm || !confirm_sesskey($sesskey)) {
     // Show confirmation page.
@@ -104,11 +108,17 @@ $apikey = get_config('block_blc_modules', 'api_key');
 
 // Validate configuration exists.
 if (empty($token) || empty($domainname) || empty($apikey)) {
+    $logger->critical(
+        'BLC Modules configuration is incomplete.'
+    );
     throw new moodle_exception('missingconfig', 'block_blc_modules');
 }
 
 $resourcemodule = $DB->get_record('modules', ['name' => 'resource']);
 if (!$resourcemodule) {
+    $logger->critical(
+        'BLC Modules: Resource module not found.'
+    );
     throw new moodle_exception('resourcemodulenotfound', 'block_blc_modules');
 }
 $resourceid = $resourcemodule->id;
@@ -156,7 +166,9 @@ if ($blcmodules) {
             $coursemodules = $DB->get_record('course_modules', ['id' => $cmid, 'deletioninprogress' => 0]);
 
             if (!$coursemodules) {
-                debugging("BLC add_doc: Course module $cmid not found or being deleted. Skipping.", DEBUG_DEVELOPER);
+                $logger->info(
+                    "BLC add_doc: Course module $cmid not found or being deleted. Skipping."
+                );
                 continue;
             }
 
@@ -189,7 +201,9 @@ if ($blcmodules) {
             // Use API to fetch accessibility document data (consistent with blcservice.php)
             // This calls local_scormurl_get_tempdocurls on the API server.
 
-            debugging("BLC add_doc: Calling API to fetch document for module $blcmoduleid", DEBUG_DEVELOPER);
+            $logger->info(
+                "BLC add_doc: Processing module $blcmoduleid (course: $courseid, section: $section, cmid: $cmid)"
+            );
 
             $docdata = null;
 
@@ -204,28 +218,26 @@ if ($blcmodules) {
                     'moodlewsrestformat' => 'json',
                 ]);
 
-                debugging("BLC add_doc: API URL: $serverurl", DEBUG_DEVELOPER);
+                $logger->info("BLC add_doc: API URL: $serverurl");
 
                 $curl = new blccurl_helper();
                 $curl->set_header('Content-Type: application/json; charset=utf-8');
 
                 $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
 
-                debugging("BLC add_doc: API Response: " . substr($responses, 0, 200), DEBUG_DEVELOPER);
+                $logger->info("BLC add_doc: API Response: " . substr($responses, 0, 200));
 
                 $jsondata = json_decode($responses, true);
 
                 if (empty($jsondata)) {
-                    debugging("BLC add_doc: Empty or invalid JSON response from API for module $blcmoduleid", DEBUG_DEVELOPER);
+                    $logger->warning("BLC add_doc: Empty or invalid JSON response from API for module $blcmoduleid");
                 } else if (isset($jsondata['exception'])) {
-                    debugging(
-                        "BLC add_doc: API returned exception for module $blcmoduleid: " . $jsondata['message'],
-                        DEBUG_DEVELOPER
+                    $logger->warning(
+                        "BLC add_doc: API returned exception for module $blcmoduleid: " . $jsondata['message']
                     );
                 } else if (!isset($jsondata['docname']) || empty($jsondata['docname'])) {
-                    debugging(
-                        "BLC add_doc: API response missing docname or docname is empty for module $blcmoduleid",
-                        DEBUG_DEVELOPER
+                    $logger->warning(
+                        "BLC add_doc: API response missing docname or docname is empty for module $blcmoduleid"
                     );
                 } else {
                     // Success - we have valid document data.
@@ -244,23 +256,21 @@ if ($blcmodules) {
                             'docurl' => $downloadurl,
                         ];
 
-                        debugging(
+                        $logger->info(
                             "BLC add_doc: Successfully fetched document data from API for module $blcmoduleid: " .
-                            $docdata['docname'],
-                            DEBUG_DEVELOPER
+                            $docdata['docname']
                         );
                     } else {
-                        debugging("BLC add_doc: No valid URL in API response for module $blcmoduleid", DEBUG_DEVELOPER);
+                        $logger->info("BLC add_doc: No valid URL in API response for module $blcmoduleid");
                     }
                 }
             } catch (Exception $e) {
-                debugging("BLC add_doc: API call failed for module $blcmoduleid: " . $e->getMessage(), DEBUG_DEVELOPER);
+                $logger->error("BLC add_doc: API call failed for module $blcmoduleid: " . $e->getMessage());
             }
 
             if (!$docdata) {
-                debugging(
-                    "BLC add_doc: No accessibility document data available for module $blcmoduleid. Skipping.",
-                    DEBUG_DEVELOPER
+                $logger->info(
+                    "BLC add_doc: No accessibility document data available for module $blcmoduleid. Skipping."
                 );
                 continue;
             }
@@ -271,12 +281,12 @@ if ($blcmodules) {
             $docid = $docdata['docid'];
             $docurl = $docdata['docurl'];
 
-            debugging("BLC add_doc: Using document - Name: $docname, Version: $docversion, ID: $docid", DEBUG_DEVELOPER);
+            $logger->info("BLC add_doc: Using document - Name: $docname, Version: $docversion, ID: $docid");
 
             // Get section info.
             $scormsection = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $section]);
             if (!$scormsection) {
-                debugging("BLC add_doc: Section not found for module $blcmoduleid. Skipping.", DEBUG_DEVELOPER);
+                $logger->warning("BLC add_doc: Section not found for module $blcmoduleid. Skipping.");
                 $failcount++;
                 $errormessages[] = "Module $blcmoduleid: Section not found";
                 continue;
@@ -289,9 +299,8 @@ if ($blcmodules) {
             $existingtracking = $DB->get_records('block_blc_modules_doc', ['blcmoduleid' => $blcmoduleid]);
 
             if ($existingtracking) {
-                debugging(
-                    "BLC add_doc: Module $blcmoduleid already has tracking record. Skipping duplicate creation.",
-                    DEBUG_DEVELOPER
+                $logger->info(
+                    "BLC add_doc: Module $blcmoduleid already has tracking record. Skipping duplicate creation."
                 );
                 $successcount++;
                 continue;
@@ -360,10 +369,9 @@ if ($blcmodules) {
                         }
 
                         if ($ismatch) {
-                            debugging(
+                            $logger->info(
                                 "BLC add_doc: Found existing resource module '{$resource->name}' (cmid: {$resource->cmid}) " .
-                                "for blcmodule $blcmoduleid. Creating tracking record instead of duplicate.",
-                                DEBUG_DEVELOPER
+                                "for blcmodule $blcmoduleid. Creating tracking record instead of duplicate."
                             );
 
                             // Create tracking record for existing module.
@@ -380,10 +388,9 @@ if ($blcmodules) {
                             $tracking->timemodified = time();
 
                             $DB->insert_record('block_blc_modules_doc', $tracking);
-                            debugging(
+                            $logger->info(
                                 "BLC add_doc: Successfully created tracking record for existing module
-                                (blcmoduleid: $blcmoduleid, cmid: {$resource->cmid})",
-                                DEBUG_DEVELOPER
+                                (blcmoduleid: $blcmoduleid, cmid: {$resource->cmid})"
                             );
 
                             $successcount++;
@@ -394,10 +401,7 @@ if ($blcmodules) {
             }
 
             // If we reach here, no duplicate found - proceed with module creation.
-            debugging(
-                "BLC add_doc: No existing document found for module $blcmoduleid. Proceeding with creation.",
-                DEBUG_DEVELOPER
-            );
+            $logger->info("BLC add_doc: No existing document found for module $blcmoduleid. Proceeding with creation.");
 
             // END ENHANCED DUPLICATE CHECK.
 
@@ -418,7 +422,7 @@ if ($blcmodules) {
 
             $resourcecoursemodule = add_course_module($newcm);
             if (!$resourcecoursemodule) {
-                debugging("BLC add_doc: Failed to create course module for blcmodule $blcmoduleid", DEBUG_DEVELOPER);
+                $logger->error("BLC add_doc: Failed to create course module for blcmodule $blcmoduleid");
                 $failcount++;
                 $errormessages[] = "Module $blcmoduleid: Could not create course module";
                 continue;
@@ -477,20 +481,26 @@ if ($blcmodules) {
             try {
                 if (strpos($filepath, '/pluginfile.php/') !== false) {
                     // Use the file helper to create from pluginfile URL.
-                    debugging('BLC add_doc: Using pluginfile URL method for module ' . $blcmoduleid, DEBUG_DEVELOPER);
-                    $file = \block_blc_modules\helper\file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
+                    $logger->info(
+                        "BLC add_doc: Detected pluginfile URL for module $blcmoduleid. Using file_helper to create file."
+                    );
+                    $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
                 } else {
                     // For external URLs (including Google Drive), use the enhanced download method.
-                    debugging('BLC add_doc: Using external URL method for module ' . $blcmoduleid, DEBUG_DEVELOPER);
-                    $file = \block_blc_modules\helper\file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
+                    $logger->info(
+                        "BLC add_doc: Detected external URL for module $blcmoduleid. Using file_helper to create file."
+                    );
+                    $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
                 }
 
                 if (!$file) {
+                    $logger->error("BLC add_doc: file_helper failed to create file for module $blcmoduleid");
                     throw new Exception('File download failed - file_helper returned false');
                 }
-                debugging("BLC add_doc: Successfully downloaded file for module $blcmoduleid using file_helper", DEBUG_DEVELOPER);
+
+                $logger->info("BLC add_doc: Successfully downloaded file for module $blcmoduleid using file_helper");
             } catch (Exception $e) {
-                debugging("BLC add_doc: Failed to download file for module $blcmoduleid: " . $e->getMessage(), DEBUG_DEVELOPER);
+                $logger->error("BLC add_doc: Failed to download file for module $blcmoduleid: " . $e->getMessage());
                 // Continue - module created but file missing
                 // Admin can manually upload file later.
             }
@@ -515,20 +525,18 @@ if ($blcmodules) {
                 foreach ($existingdocs as $doc) {
                     if (in_array($doc->cmid, $modules)) {
                         $existingdoccmids[] = $doc->cmid;
-                        debugging(
+                        $logger->info(
                             "BLC add_doc: Found existing document module
-                            (cmid: {$doc->cmid}) in section for blcmodule $blcmoduleid",
-                            DEBUG_DEVELOPER
+                            (cmid: {$doc->cmid}) in section for blcmodule $blcmoduleid"
                         );
                     }
                 }
 
                 // If document already exists in sequence, skip adding new one.
                 if (!empty($existingdoccmids)) {
-                    debugging(
+                    $logger->info(
                         "BLC add_doc: Document already exists in section for blcmodule $blcmoduleid.
-                        Skipping sequence update to prevent duplication.",
-                        DEBUG_DEVELOPER
+                        Skipping sequence update to prevent duplication."
                     );
 
                     // Clean up the newly created module since we don't need it
@@ -541,7 +549,7 @@ if ($blcmodules) {
                         $file->delete();
                     }
 
-                    debugging("BLC add_doc: Cleaned up duplicate module for blcmoduleid $blcmoduleid", DEBUG_DEVELOPER);
+                    $logger->info("BLC add_doc: Cleaned up duplicate module for blcmoduleid $blcmoduleid");
 
                     // Update the tracking record to use existing cmid.
                     $firstexistingcmid = reset($existingdoccmids);
@@ -565,13 +573,12 @@ if ($blcmodules) {
 
                     if (!$existingrecord) {
                         $DB->insert_record('block_blc_modules_doc', $resourcerecord);
-                        debugging(
+                        $logger->info(
                             "BLC add_doc: Created tracking record for existing module
-                            (blcmoduleid: $blcmoduleid, cmid: $firstexistingcmid)",
-                            DEBUG_DEVELOPER
+                            (blcmoduleid: $blcmoduleid, cmid: $firstexistingcmid)"
                         );
                     } else {
-                        debugging("BLC add_doc: Tracking record already exists for blcmoduleid $blcmoduleid", DEBUG_DEVELOPER);
+                        $logger->info("BLC add_doc: Tracking record already exists for blcmoduleid $blcmoduleid");
                     }
 
                     $successcount++;
@@ -625,23 +632,21 @@ if ($blcmodules) {
                 $cleanupcurl->set_header('Content-Type: application/json; charset=utf-8');
                 $cleanupcurl->post($cleanupurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
-                debugging("BLC add_doc: Cleaned up temporary files for module $blcmoduleid", DEBUG_DEVELOPER);
+                $logger->info("BLC add_doc: Cleaned up temporary files for module $blcmoduleid");
             } catch (Exception $e) {
-                debugging(
-                    "BLC add_doc: Failed to cleanup temporary files for module $blcmoduleid: " . $e->getMessage(),
-                    DEBUG_DEVELOPER
+                $logger->error(
+                    "BLC add_doc: Failed to cleanup temporary files for module $blcmoduleid: " . $e->getMessage()
                 );
                 // Continue - cleanup failure is not critical.
             }
 
             $successcount++;
-            debugging("BLC add_doc: Successfully processed module $blcmoduleid", DEBUG_DEVELOPER);
+            $logger->info("BLC add_doc: Successfully processed module $blcmoduleid");
         } catch (Exception $e) {
             $failcount++;
             $errormessages[] = "Module " . $blcmodule->id . ": " . $e->getMessage();
-            debugging(
-                "BLC add_doc: Unexpected error processing module " . $blcmodule->id . ": " . $e->getMessage(),
-                DEBUG_DEVELOPER
+            $logger->error(
+                "BLC add_doc: Unexpected error processing module " . $blcmodule->id . ": " . $e->getMessage()
             );
             continue;
         }
@@ -682,13 +687,13 @@ if ($totalcount == 0) {
 }
 
 // Log summary.
-debugging(
+$logger->info(
     "BLC add_doc: Batch processing completed.
-    Total: $totalcount, Success: $successcount, Failed: $failcount, Skipped (no doc): $skippednodoc",
-    DEBUG_DEVELOPER
+    Total: $totalcount, Success: $successcount, Failed: $failcount, Skipped (no doc): $skippednodoc"
 );
+
 if (!empty($errormessages)) {
-    debugging("BLC add_doc: Errors: " . implode('; ', array_slice($errormessages, 0, 10)), DEBUG_DEVELOPER);
+    $logger->error("BLC add_doc: Errors: " . implode('; ', array_slice($errormessages, 0, 10)));
 }
 
 redirect($redirect, $message, null, $notifytype);
