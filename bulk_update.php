@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use block_blc_modules\helper\debug_helper;
 use block_blc_modules\output\bulk_update_progress_page;
 use core\output\notification;
 
@@ -61,6 +62,8 @@ $PAGE->set_heading($heading);
 $PAGE->set_cacheable(false);
 $PAGE->requires->jquery();
 $PAGE->requires->js_call_amd('block_blc_modules/module', 'bulkUpdateInit');
+
+$logger = new debug_helper();
 
 if ($action == 'continue') {
     // Initialize session for progress tracking.
@@ -112,7 +115,7 @@ if ($action == 'continue') {
         echo $OUTPUT->footer();
 
         // Log the error for administrators.
-        debugging('Bulk update page rendering error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $logger->error('Bulk update page rendering error: ' . $e->getMessage());
     }
     exit;
 } else {

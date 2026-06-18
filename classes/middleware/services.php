@@ -31,6 +31,7 @@ require_once(dirname(__FILE__) . '/../../../../config.php');
 require_login();
 require_once("$CFG->libdir/accesslib.php");
 
+use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use context;
 use context_module;
@@ -49,7 +50,8 @@ class services {
      * Constructor for services class.
      */
     public function __construct() {
-        debugging('Initialized instance of ' . __CLASS__, DEBUG_DEVELOPER);
+        $debug = new debug_helper();
+        $debug->info('Initialized instance of ' . __CLASS__);
     }
 
     /**
@@ -98,7 +100,8 @@ class services {
         $record->reference = $scorm->packageurl;
 
         // Debug: Check if packageurl is being set correctly.
-        debugging('Setting SCORM reference to: ' . $scorm->packageurl, DEBUG_DEVELOPER);
+        $debug = new debug_helper();
+        $debug->info('Setting SCORM reference to: ' . $scorm->packageurl);
 
         // Save reference.
         $DB->update_record('scorm', $record);
@@ -128,6 +131,8 @@ class services {
     public static function blcscorm_parse($scorm) {
         global $DB;
 
+        $debug = new debug_helper();
+
         $cfgscorm = get_config('scorm');
 
         if (!isset($scorm->cmid)) {
@@ -151,11 +156,11 @@ class services {
 
         // Check if reference URL is set.
         if (empty($scorm->reference)) {
-            debugging('SCORM reference URL is empty in blcscorm_parse. Cannot proceed.', DEBUG_DEVELOPER);
+            $debug->error('SCORM reference URL is empty in blcscorm_parse. Cannot proceed.');
             return;
         }
 
-        debugging('Attempting to download SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
+        $debug->info('Attempting to download SCORM package from: ' . $scorm->reference);
 
         // Prepare file record for the SCORM package.
         $filerecord = [
@@ -177,18 +182,18 @@ class services {
 
             // CRITICAL: Validate filename is not empty after cleaning.
             if (empty($cleanfilename)) {
-                debugging('Extracted filename is empty after cleaning. URL: ' . $scorm->reference, DEBUG_DEVELOPER);
-                debugging('This usually means the URL has no filename or ends with a slash.', DEBUG_DEVELOPER);
+                $debug->error('Extracted filename is empty after cleaning. URL: ' . $scorm->reference);
+                $debug->error('This usually means the URL has no filename or ends with a slash.');
                 return;
             }
 
             $filerecord['filename'] = $cleanfilename;
-            debugging('Extracted filename: ' . $cleanfilename, DEBUG_DEVELOPER);
+            $debug->info('Extracted filename: ' . $cleanfilename);
         }
 
         // Additional safety check: Ensure filename is set and not empty.
         if (empty($filerecord['filename'])) {
-            debugging('File record filename is empty. Cannot create file.', DEBUG_DEVELOPER);
+            $debug->error('File record filename is empty. Cannot create file.');
             return;
         }
 
@@ -201,7 +206,7 @@ class services {
         // Note: URL may be from local_scormurl service (temporary URL) or direct URL.
         // Google Drive downloads are handled server-side by local_scormurl service.
         if (!empty($scorm->reference)) {
-            debugging('Downloading SCORM package from: ' . $scorm->reference, DEBUG_DEVELOPER);
+            $debug->info('Downloading SCORM package from: ' . $scorm->reference);
 
             try {
                 // Set longer timeout for large files.
@@ -211,23 +216,20 @@ class services {
 
                 if ($packagefile) {
                     $newhash = $packagefile->get_contenthash();
-                    debugging('Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes', DEBUG_DEVELOPER);
+                    $debug->info('Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes');
                 } else {
                     $newhash = null;
-                    debugging('Failed to download or create SCORM package file from: ' . $scorm->reference, DEBUG_DEVELOPER);
-                    throw new \moodle_exception('errorpackage', 'scorm', '', 'Failed to download SCORM package from: ' . $scorm->reference);
+                    $debug->error('Failed to download or create SCORM package file from: ' . $scorm->reference);
+                    exit();
                 }
-            } catch (\moodle_exception $e) {
-                // Re-throw moodle_exceptions as-is (including our own from above).
-                throw $e;
             } catch (Exception $e) {
                 $newhash = null;
-                debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                throw new \moodle_exception('errorpackage', 'scorm', '', 'Exception downloading SCORM package: ' . $e->getMessage());
+                $debug->error('Exception downloading SCORM package: ' . $e->getMessage());
+                exit();
             }
         } else {
             $newhash = null;
-            debugging('No reference URL provided for SCORM package', DEBUG_DEVELOPER);
+            $debug->warning('No reference URL provided for SCORM package');
         }
 
         // Update SCORM record with new hash.
@@ -381,6 +383,8 @@ class services {
         global $CFG, $DB;
         $cfgscorm = get_config('scorm');
 
+        $debug = new debug_helper();
+
         if (!isset($scorm->cmid)) {
             $cm = get_coursemodule_from_instance('scorm', $scorm->id);
             $scorm->cmid = $cm->id;
@@ -399,7 +403,7 @@ class services {
         }
 
         if ($scorm->reference !== '') {
-            debugging('SCORM reference URL found in scorm_parse: ' . $scorm->reference, DEBUG_DEVELOPER);
+            $debug->info('SCORM reference URL found in scorm_parse: ' . $scorm->reference);
 
             $fs->delete_area_files($context->id, 'mod_scorm', 'package');
 
@@ -422,7 +426,7 @@ class services {
 
                 if (!empty($cleanfilename) && preg_match('/\.zip$/i', $cleanfilename)) {
                     $filerecord['filename'] = $cleanfilename;
-                    debugging('Using filename from URL: ' . $cleanfilename, DEBUG_DEVELOPER);
+                    $debug->info('Using filename from URL: ' . $cleanfilename);
                 }
             }
 
@@ -430,7 +434,7 @@ class services {
 
             // Download file from reference URL.
             // URL from local_scormurl service already handles Google Drive downloads server-side.
-            debugging('Downloading SCORM package from URL: ' . $scorm->reference, DEBUG_DEVELOPER);
+            $debug->info('Downloading SCORM package from URL: ' . $scorm->reference);
 
             try {
                 core_php_time_limit::raise(1800); // 30 minutes for large files.
@@ -444,24 +448,23 @@ class services {
 
                     if ($packagefile) {
                         $newhash = $packagefile->get_contenthash();
-                        debugging(
-                            'Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes',
-                            DEBUG_DEVELOPER
+                        $debug->info(
+                            'Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes'
                         );
                     } else {
                         $newhash = null;
-                        debugging('Failed to create SCORM package file from content', DEBUG_DEVELOPER);
+                        $debug->error('Failed to create SCORM package file from content');
                     }
                 } else {
                     $newhash = null;
-                    debugging('Failed to download SCORM package content from: ' . $scorm->reference, DEBUG_DEVELOPER);
+                    $debug->error('Failed to download SCORM package content from: ' . $scorm->reference);
                 }
             } catch (Exception $e) {
                 $newhash = null;
-                debugging('Exception downloading SCORM package: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                $debug->error('Exception downloading SCORM package: ' . $e->getMessage());
             }
         } else {
-            debugging('SCORM reference URL is empty in scorm_parse. Scorm object: ' . json_encode($scorm), DEBUG_DEVELOPER);
+            $debug->error('SCORM reference URL is empty in scorm_parse. Scorm object: ' . json_encode($scorm));
             return;
         }
 

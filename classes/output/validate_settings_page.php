@@ -21,6 +21,7 @@ use core\output\renderer_base;
 use core\output\templatable;
 use stdClass;
 use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\debug_helper;
 use Exception;
 use moodle_url;
 
@@ -85,6 +86,8 @@ class validate_settings_page implements renderable, templatable {
     private function get_data() {
         global $CFG;
 
+        $logger = new debug_helper();
+
         $apikey = get_config('block_blc_modules', 'api_key');
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
@@ -118,7 +121,7 @@ class validate_settings_page implements renderable, templatable {
 
             // Check if response is a string (double-encoded JSON).
             if (is_string($jsonresponse)) {
-                debugging('BLC validate_settings: Response is double-encoded, decoding again', DEBUG_DEVELOPER);
+                $logger->info('BLC validate_settings: Response is double-encoded, decoding again');
                 $jsonresponse = json_decode($jsonresponse, true);
             }
 
@@ -133,8 +136,8 @@ class validate_settings_page implements renderable, templatable {
                         $validationresults['module_count'] = $jsonresponse['ModuleCount'];
                     }
 
-                    debugging('BLC validate_settings: Validation SUCCESS - ModuleCount: ' .
-                    ($jsonresponse['ModuleCount'] ?? 'N/A'), DEBUG_DEVELOPER);
+                    $logger->info('BLC validate_settings: Validation SUCCESS - ModuleCount: ' .
+                    ($jsonresponse['ModuleCount'] ?? 'N/A'));
                 } else {
                     // Authentication failed - both invalid
                     // Note: Current check_scormurls function validates both together,
@@ -147,20 +150,20 @@ class validate_settings_page implements renderable, templatable {
                         $validationresults['api_error'] = $jsonresponse['error'];
                     }
 
-                    debugging('BLC validate_settings: Validation FAILED - Status: ' .
-                    ($jsonresponse['Status'] ?? 'Unknown'), DEBUG_DEVELOPER);
+                    $logger->error('BLC validate_settings: Validation FAILED - Status: ' .
+                    ($jsonresponse['Status'] ?? 'Unknown'));
                 }
             } else {
                 // Invalid response format.
                 $urlokay = 'false';
                 $apiokay = 'false';
-                debugging('BLC validate_settings: Invalid JSON response: ' . $responses, DEBUG_DEVELOPER);
+                $logger->error('BLC validate_settings: Invalid JSON response: ' . $responses);
             }
         } catch (Exception $e) {
             // Handle connection errors.
             $validationresults['connection_error'] = true;
             $validationresults['error_message'] = $e->getMessage();
-            debugging('BLC validate_settings: Connection error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger->error('BLC validate_settings: Connection error: ' . $e->getMessage());
         }
 
         // Prepare alert messages.
