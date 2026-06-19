@@ -25,6 +25,7 @@
 
 namespace block_blc_modules;
 
+use block_blc_modules\helper\debug_helper;
 use Exception;
 use stdClass;
 
@@ -90,7 +91,8 @@ class logger {
             return $DB->insert_record('block_blc_modules_log', $record);
         } catch (Exception $e) {
             // Log to Moodle error log instead of failing.
-            debugging('Failed to log SCORM load event: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger = new debug_helper();
+            $logger->error('Failed to log SCORM load event: ' . $e->getMessage());
             return false;
         }
     }
@@ -284,7 +286,8 @@ class logger {
         try {
             return $DB->delete_records_select('block_blc_modules_log', 'timecreated < ?', [$cutoff]);
         } catch (Exception $e) {
-            debugging('Failed to cleanup old logs: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger = new debug_helper();
+            $logger->error('Failed to cleanup old logs: ' . $e->getMessage());
             return 0;
         }
     }

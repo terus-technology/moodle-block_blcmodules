@@ -28,6 +28,7 @@ namespace block_blc_modules\external;
 defined('MOODLE_INTERNAL') || die();
 
 use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use block_blc_modules\middleware\services;
 use context_course;
@@ -482,6 +483,8 @@ class blcservice extends external_api {
     ): array {
         global $DB;
 
+        $debug = new debug_helper();
+
         try {
             $params = self::validate_parameters(self::load_scorm_modules_parameters(), [
                 'courseid' => $courseid,
@@ -513,7 +516,7 @@ class blcservice extends external_api {
                 require_capability('moodle/course:manageactivities', $coursecontext);
                 require_capability('mod/scorm:addinstance', $coursecontext);
             } catch (Exception $e) {
-                debugging('BLC Modules: Capability check failed: ' . $e->getMessage());
+                $debug->error('Capability check failed: ' . $e->getMessage());
                 throw $e;
             }
 
@@ -567,7 +570,9 @@ class blcservice extends external_api {
                             continue;
                         }
                     } catch (Exception $e) {
-                        debugging('BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage());
+                        $debug->error(
+                            'BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage()
+                        );
                         $results['failed']++;
                         $results['messages'][] = "SCORM file validation failed: " . $scormdata['scormname'] .
                         ' - ' . $e->getMessage();
@@ -636,9 +641,10 @@ class blcservice extends external_api {
 
             return $results;
         } catch (Exception $e) {
-            debugging('BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage());
-            debugging('BLC Modules: Stack trace: ' . $e->getTraceAsString());
-            debugging('BLC Modules: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            $debug = new debug_helper();
+            $debug->critical('BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage());
+            $debug->critical('BLC Modules: Stack trace: ' . $e->getTraceAsString());
+            $debug->critical('BLC Modules: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
 
             // Return error response that JavaScript can handle.
             return [
@@ -656,6 +662,8 @@ class blcservice extends external_api {
      * Helper method to fetch SCORM data from external service
      */
     public static function fetch_scorm_data(string $apikey, string $url, string $token, string $domainname): ?array {
+        $debug = new debug_helper();
+
         $functionname = 'local_scormurl_get_tempscormurls';
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
@@ -666,8 +674,8 @@ class blcservice extends external_api {
         ]);
 
         // Debug: Log the API request.
-        debugging('BLC Modules: Calling API: ' . $functionname);
-        debugging('BLC Modules: Original URL: ' . $url);
+        $debug->info('BLC Modules: Calling API: ' . $functionname);
+        $debug->info('BLC Modules: Original URL: ' . $url);
 
         $curl = new blccurl_helper();
         $curl->set_header('Content-Type: application/json; charset=utf-8');
@@ -680,44 +688,44 @@ class blcservice extends external_api {
         ]);
 
         if ($responses === false) {
-            debugging('BLC Modules: ERROR - cURL request failed completely for URL: ' . $url);
+            $debug->error('BLC Modules: ERROR - cURL request failed completely for URL: ' . $url);
             return null;
         }
 
         // Debug: Log raw response.
-        debugging('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
+        $debug->info('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
 
         $jsondata = json_decode($responses, true);
 
         if (empty($jsondata)) {
-            debugging('BLC Modules: ERROR - Empty or invalid JSON response from API');
-            debugging('BLC Modules: Response was: ' . $responses);
+            $debug->error('BLC Modules: ERROR - Empty or invalid JSON response from API');
+            $debug->error('BLC Modules: Response was: ' . $responses);
             return null;
         }
 
         if (!isset($jsondata['scormname'])) {
-            debugging('BLC Modules: ERROR - Response missing scormname field');
-            debugging('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
-            debugging('BLC Modules: Full response: ' . json_encode($jsondata));
+            $debug->error('BLC Modules: ERROR - Response missing scormname field');
+            $debug->error('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
+            $debug->error('BLC Modules: Full response: ' . json_encode($jsondata));
             return null;
         }
 
         $scormobject = (object) $jsondata;
 
         // Debug: Log what we got.
-        debugging('BLC Modules: SCORM Name: ' . ($scormobject->scormname ?? 'N/A'));
-        debugging('BLC Modules: Temp SCORM URL (raw): ' . ($scormobject->tempscormurl ?? 'N/A'));
+        $debug->info('BLC Modules: SCORM Name: ' . ($scormobject->scormname ?? 'N/A'));
+        $debug->info('BLC Modules: Temp SCORM URL (raw): ' . ($scormobject->tempscormurl ?? 'N/A'));
 
         // Process and validate tempscormurl.
         $tempscormurl = str_replace("ppp", ",", $scormobject->tempscormurl ?? '');
 
-        debugging('BLC Modules: Temp SCORM URL (processed): ' . $tempscormurl);
+        $debug->info('BLC Modules: Temp SCORM URL (processed): ' . $tempscormurl);
 
         // CRITICAL: Validate URL is not empty.
         if (empty($tempscormurl)) {
-            debugging('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . ($scormobject->scormname ?? 'unknown'));
-            debugging('BLC Modules: Original URL requested: ' . $url);
-            debugging('BLC Modules: Check if local_scormurl plugin is working correctly');
+            $debug->error('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . ($scormobject->scormname ?? 'unknown'));
+            $debug->error('BLC Modules: Original URL requested: ' . $url);
+            $debug->error('BLC Modules: Check if local_scormurl plugin is working correctly');
             return null;
         }
 
@@ -725,16 +733,16 @@ class blcservice extends external_api {
         $urlparts = explode('/', trim($tempscormurl, '/'));
         $urlfilename = end($urlparts);
 
-        debugging('BLC Modules: Extracted filename: ' . $urlfilename);
+        $debug->info('BLC Modules: Extracted filename: ' . $urlfilename);
 
         if (empty($urlfilename)) {
-            debugging('BLC Modules: ERROR - No filename in URL: ' . $tempscormurl);
+            $debug->error('BLC Modules: ERROR - No filename in URL: ' . $tempscormurl);
             return null;
         }
 
         // Check if filename has extension (basic validation).
         if (strpos($urlfilename, '.') === false) {
-            debugging('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $tempscormurl . ')');
+            $debug->warning('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $tempscormurl . ')');
             // Continue anyway as some valid files might not have extensions in URL.
         }
 
@@ -747,9 +755,9 @@ class blcservice extends external_api {
             'scormurl' => $tempscormurl,
         ];
 
-        debugging('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
-        debugging('BLC Modules: SCORM package ID: ' . $result['scormid']);
-        debugging('BLC Modules: Temp SCORM URL: ' . $tempscormurl);
+        $debug->info('BLC Modules: Successfully prepared SCORM data for: ' . $result['scormname']);
+        $debug->info('BLC Modules: SCORM package ID: ' . $result['scormid']);
+        $debug->info('BLC Modules: Temp SCORM URL: ' . $tempscormurl);
 
         // Note: URL validation is handled server-side by local_scormurl service.
         // Temp URLs are only created for valid, accessible files.
@@ -768,17 +776,19 @@ class blcservice extends external_api {
      * @return bool True if URL format is valid, false otherwise
      */
     public static function validate_scorm_url(string $scormurl): bool {
+        $debug = new debug_helper();
+
         // Basic URL format validation.
         if (empty($scormurl)) {
-            debugging('Empty SCORM URL provided');
+            $debug->error('Empty SCORM URL provided');
             return false;
         }
 
-        debugging('Validating SCORM URL format: ' . substr($scormurl, 0, 100));
+        $debug->info('Validating SCORM URL format: ' . substr($scormurl, 0, 100));
 
         // For pluginfile.php URLs from temp_scorm - these are validated server-side.
         if (strpos($scormurl, 'pluginfile.php') !== false && strpos($scormurl, 'temp_scorm') !== false) {
-            debugging('Temporary pluginfile URL (validated server-side)');
+            $debug->info('Temporary pluginfile URL (validated server-side)');
             return true; // Server already validated when creating temp URL.
         }
 
@@ -799,6 +809,8 @@ class blcservice extends external_api {
         int $completion
     ): int {
         global $DB, $CFG;
+
+        $debug = new debug_helper();
 
         $scormsection = $DB->get_record('course_sections', ['course' => $course->id, 'section' => $sectionnumber]);
 
@@ -876,7 +888,7 @@ class blcservice extends external_api {
         // Validate filename has extension (basic sanity check).
         $filename = basename($urlparts['path']);
         if (strpos($filename, '.') === false) {
-            debugging('Package URL filename has no extension: ' . $filename . ' - this may cause issues');
+            $debug->warning('Package URL filename has no extension: ' . $filename . ' - this may cause issues', true);
         }
 
         if ($completion == 2) {
@@ -960,9 +972,11 @@ class blcservice extends external_api {
             $curl->set_header('Content-Type: application/json; charset=utf-8');
             $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
-            debugging('BLC Modules: Updated SCORM mapping via API for SCORM ID ' . $scormid);
+            $debug = new debug_helper();
+            $debug->info('BLC Modules: Updated SCORM mapping via API for SCORM ID ' . $scormid);
         } catch (Throwable $e) {
-            debugging('BLC Modules: Failed to update API key mapping via API: ' . $e->getMessage());
+            $debug = new debug_helper();
+            $debug->warning('BLC Modules: Failed to update API key mapping via API: ' . $e->getMessage());
             // Don't throw exception - this is not critical for module creation.
         }
     }
@@ -983,18 +997,19 @@ class blcservice extends external_api {
     ): ?int {
         global $DB, $USER;
 
-        debugging('BLC Modules: Attempting to create accessibility document');
-        debugging('BLC Modules: Original URL for doc lookup: ' . $originalurl);
+        $debug = new debug_helper();
+        $debug->info('BLC Modules: Attempting to create accessibility document');
+        $debug->info('BLC Modules: Original URL for doc lookup: ' . $originalurl);
 
         // Try to fetch accessibility document data - use original URL.
         $docdata = self::fetch_accessibility_document($apikey, $originalurl, $token, $domainname);
 
         if (!$docdata) {
-            debugging('BLC Modules: No accessibility document data returned from API');
+            $debug->warning('BLC Modules: No accessibility document data returned from API');
             return null; // No accessibility document available.
         }
 
-        debugging('BLC Modules: Accessibility document data received: ' . json_encode($docdata));
+        $debug->info('BLC Modules: Accessibility document data received: ' . json_encode($docdata));
 
         $scormsection = $DB->get_record('course_sections', [
             'course' => $course->id,
@@ -1058,11 +1073,11 @@ class blcservice extends external_api {
         // Try to create the file from the document URL.
         try {
             self::create_resource_file($resourcecoursemodule, $docdata);
-            debugging('BLC Modules: Accessibility document file created successfully');
+            $debug->info('BLC Modules: Accessibility document file created successfully');
         } catch (Exception $e) {
             // Continue even if file creation fails.
-            debugging('BLC Modules: Failed to create accessibility document file: ' . $e->getMessage());
-            debugging("Failed to create accessibility document file: " . $e->getMessage());
+            $debug->warning('BLC Modules: Failed to create accessibility document file: ' . $e->getMessage());
+            $debug->warning("Failed to create accessibility document file: " . $e->getMessage());
         }
 
         // Record the resource in block_blc_modules_doc table
@@ -1088,7 +1103,7 @@ class blcservice extends external_api {
             $resourcerecord->timemodified = time();
 
             $DB->insert_record('block_blc_modules_doc', $resourcerecord);
-            debugging('BLC Modules: Resource record saved to block_blc_modules_doc');
+            $debug->info('BLC Modules: Resource record saved to block_blc_modules_doc');
         }
 
         // Cleanup temporary document files on BLC server - use original URL.
@@ -1107,8 +1122,9 @@ class blcservice extends external_api {
         string $token,
         string $domainname
     ): ?array {
-        debugging('BLC Modules: fetch_accessibility_document called (Using API - Consistent with SCORM)');
-        debugging('BLC Modules: Original SCORM URL: ' . $scormurl);
+        $debug = new debug_helper();
+        $debug->info('BLC Modules: fetch_accessibility_document called (Using API - Consistent with SCORM)');
+        $debug->info('BLC Modules: Original SCORM URL: ' . $scormurl);
 
         $functionname = 'local_scormurl_get_tempdocurls';
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
@@ -1120,37 +1136,37 @@ class blcservice extends external_api {
         ]);
 
         // Debug: Log the API request.
-        debugging('BLC Modules: Calling API: ' . $functionname);
-        debugging('BLC Modules: Original URL: ' . $scormurl);
+        $debug->info('BLC Modules: Calling API: ' . $functionname);
+        $debug->info('BLC Modules: Original URL: ' . $scormurl);
 
         $curl = new blccurl_helper();
         $curl->set_header('Content-Type: application/json; charset=utf-8');
         $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // Debug: Log raw response.
-        debugging('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
+        $debug->info('BLC Modules: Raw API Response: ' . substr($responses, 0, 500));
 
         $jsondata = json_decode($responses, true);
 
         if (empty($jsondata)) {
-            debugging('BLC Modules: ERROR - Empty or invalid JSON response from API');
-            debugging('BLC Modules: Response was: ' . $responses);
+            $debug->error('BLC Modules: ERROR - Empty or invalid JSON response from API');
+            $debug->error('BLC Modules: Response was: ' . $responses);
             return null;
         }
 
         if (!isset($jsondata['docname'])) {
-            debugging('BLC Modules: ERROR - Response missing docname field');
-            debugging('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
-            debugging('BLC Modules: Full response: ' . json_encode($jsondata));
+            $debug->error('BLC Modules: ERROR - Response missing docname field');
+            $debug->error('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
+            $debug->error('BLC Modules: Full response: ' . json_encode($jsondata));
             return null;
         }
 
         $docobject = (object) $jsondata;
 
         // Debug: Log what we got.
-        debugging('BLC Modules: Document Name: ' . ($docobject->docname ?? 'N/A'));
-        debugging('BLC Modules: Temp Doc URL (raw): ' . ($docobject->tempdocurl ?? 'N/A'));
-        debugging('BLC Modules: Doc URL Plus (raw): ' . ($docobject->docurlplus ?? 'N/A'));
+        $debug->info('BLC Modules: Document Name: ' . ($docobject->docname ?? 'N/A'));
+        $debug->info('BLC Modules: Temp Doc URL (raw): ' . ($docobject->tempdocurl ?? 'N/A'));
+        $debug->info('BLC Modules: Doc URL Plus (raw): ' . ($docobject->docurlplus ?? 'N/A'));
 
         // Process and validate tempdocurl.
         $tempdocurl = str_replace("ppp", ",", $docobject->tempdocurl ?? '');
@@ -1159,14 +1175,14 @@ class blcservice extends external_api {
         // tempdocurl is from temp_doc which may be cross-site and not accessible.
         $downloadurl = !empty($docobject->docurlplus) ? $docobject->docurlplus : $tempdocurl;
 
-        debugging('BLC Modules: Temp Doc URL (processed): ' . $tempdocurl);
-        debugging('BLC Modules: Download URL (selected): ' . $downloadurl);
+        $debug->info('BLC Modules: Temp Doc URL (processed): ' . $tempdocurl);
+        $debug->info('BLC Modules: Download URL (selected): ' . $downloadurl);
 
         // CRITICAL: Validate URL is not empty.
         if (empty($downloadurl)) {
-            debugging('BLC Modules: ERROR - download URL is empty for Document: ' . ($docobject->docname ?? 'unknown'));
-            debugging('BLC Modules: Original URL requested: ' . $scormurl);
-            debugging('BLC Modules: Check if local_scormurl plugin is working correctly');
+            $debug->error('BLC Modules: ERROR - download URL is empty for Document: ' . ($docobject->docname ?? 'unknown'));
+            $debug->error('BLC Modules: Original URL requested: ' . $scormurl);
+            $debug->error('BLC Modules: Check if local_scormurl plugin is working correctly');
             return null;
         }
 
@@ -1174,16 +1190,16 @@ class blcservice extends external_api {
         $urlparts = explode('/', trim($downloadurl, '/'));
         $urlfilename = end($urlparts);
 
-        debugging('BLC Modules: Extracted filename: ' . $urlfilename);
+        $debug->info('BLC Modules: Extracted filename: ' . $urlfilename);
 
         if (empty($urlfilename)) {
-            debugging('BLC Modules: ERROR - No filename in URL: ' . $downloadurl);
+            $debug->error('BLC Modules: ERROR - No filename in URL: ' . $downloadurl);
             return null;
         }
 
         // Check if filename has extension (basic validation).
         if (strpos($urlfilename, '.') === false) {
-            debugging('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $downloadurl . ')');
+            $debug->warning('BLC Modules: WARNING - Filename has no extension: ' . $urlfilename . ' (URL: ' . $downloadurl . ')');
             // Continue anyway as some valid files might not have extensions in URL.
         }
 
@@ -1194,9 +1210,9 @@ class blcservice extends external_api {
             'docurl' => $downloadurl, // Use docurlplus if available, fallback to tempdocurl.
         ];
 
-        debugging('BLC Modules: Successfully prepared accessibility document data for: ' . $result['docname']);
-        debugging('BLC Modules: Document ID: ' . $result['docid']);
-        debugging('BLC Modules: Download URL: ' . $downloadurl);
+        $debug->info('BLC Modules: Successfully prepared accessibility document data for: ' . $result['docname']);
+        $debug->info('BLC Modules: Document ID: ' . $result['docid']);
+        $debug->info('BLC Modules: Download URL: ' . $downloadurl);
 
         return $result;
     }
@@ -1223,29 +1239,30 @@ class blcservice extends external_api {
 
         $filepath = $docdata['docurl'];
 
-        debugging('BLC Modules: Creating accessibility document file: ' . $filename);
-        debugging('BLC Modules: Document URL: ' . $filepath);
+        $debug = new debug_helper();
+        $debug->info('BLC Modules: Creating accessibility document file: ' . $filename);
+        $debug->info('BLC Modules: Document URL: ' . $filepath);
 
         // Check if this is a pluginfile URL and handle it differently.
         if (strpos($filepath, '/pluginfile.php/') !== false) {
             // Use the file helper to create from pluginfile URL.
-            debugging('BLC Modules: Using pluginfile URL method');
+            $debug->info('BLC Modules: Using pluginfile URL method');
             $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
             if (!$file) {
-                debugging('BLC Modules: ERROR - Failed to create file from pluginfile URL');
+                $debug->error('BLC Modules: ERROR - Failed to create file from pluginfile URL');
                 throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         } else {
             // For external URLs, use the enhanced download method.
-            debugging('BLC Modules: Using external URL method');
+            $debug->info('BLC Modules: Using external URL method');
             $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
             if (!$file) {
-                debugging('BLC Modules: ERROR - Failed to create file from external URL');
+                $debug->error('BLC Modules: ERROR - Failed to create file from external URL');
                 throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         }
 
-        debugging('BLC Modules: Created accessibility document: ' . $filename);
+        $debug->info('BLC Modules: Created accessibility document: ' . $filename);
     }
 
     /**
@@ -1293,7 +1310,8 @@ class blcservice extends external_api {
         $curl->set_header('Content-Type: application/json; charset=utf-8');
         $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
-        debugging('BLC Modules: Temporary document files cleaned up on BLC server');
+        $debug = new debug_helper();
+        $debug->info('BLC Modules: Temporary document files cleaned up on BLC server');
     }
 
     /**
@@ -1303,15 +1321,17 @@ class blcservice extends external_api {
      * @return bool True if URL format is valid
      */
     private static function basic_url_validation(string $url): bool {
+        $debug = new debug_helper();
+
         // Basic validation - check if URL is not empty and has proper format.
         if (empty($url)) {
-            debugging('BLC Modules: URL validation failed - empty URL');
+            $debug->warning('BLC Modules: URL validation failed - empty URL');
             return false;
         }
 
         // Check if it's a valid URL format.
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            debugging('BLC Modules: URL validation failed - invalid URL format: ' . $url);
+            $debug->warning('BLC Modules: URL validation failed - invalid URL format: ' . $url);
             return false;
         }
 
@@ -1323,13 +1343,13 @@ class blcservice extends external_api {
         // For other URLs, do basic checks.
         $parsed = parse_url($url);
         if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
-            debugging('BLC Modules: URL validation failed - missing scheme or host: ' . $url);
+            $debug->warning('BLC Modules: URL validation failed - missing scheme or host: ' . $url);
             return false;
         }
 
         // Allow http and https.
         if (!in_array($parsed['scheme'], ['http', 'https'])) {
-            debugging('BLC Modules: URL validation failed - unsupported scheme: ' . $parsed['scheme']);
+            $debug->warning('BLC Modules: URL validation failed - unsupported scheme: ' . $parsed['scheme']);
             return false;
         }
 

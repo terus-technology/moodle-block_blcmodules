@@ -31,6 +31,7 @@ require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
 use block_blc_modules\helper\blccurl_helper;
+use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 
 require_login(null, false);
@@ -107,6 +108,8 @@ function get_progress() {
     return $progress;
 }
 
+$logger = new debug_helper();
+
 // Handle different actions.
 switch ($action) {
     case 'start':
@@ -162,7 +165,7 @@ switch ($action) {
                 'success' => false,
                 'message' => $e->getMessage(),
             ]);
-            debugging('Bulk update fatal error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger->critical('Bulk update fatal error: ' . $e->getMessage());
         }
         break;
 
@@ -178,7 +181,7 @@ switch ($action) {
 
     default:
         // Log invalid action for debugging.
-        debugging('Invalid action received: ' . $action, DEBUG_DEVELOPER);
+        $logger->error('Invalid action received: ' . $action);
         echo json_encode([
             'success' => false,
             'message' => 'Invalid action: ' . $action,
@@ -190,6 +193,8 @@ switch ($action) {
  */
 function perform_bulk_update() {
     global $DB, $CFG;
+
+    $logger = new debug_helper();
 
     try {
         $starttime = microtime(true);
@@ -204,6 +209,7 @@ function perform_bulk_update() {
 
         // Validate configuration.
         if (empty($token) || empty($domainname) || empty($apikey)) {
+            $logger->critical('BLC configuration is incomplete. Please check plugin settings.');
             throw new Exception('BLC configuration is incomplete. Please check plugin settings.');
         }
 
@@ -227,12 +233,14 @@ function perform_bulk_update() {
             $requesttime = round(microtime(true) - $requeststart, 2);
             add_progress_log("BLC server responded in {$requesttime}s", 'success');
         } catch (Exception $e) {
+            $logger->error('Error connecting to BLC server: ' . $e->getMessage());
             add_progress_log('Error connecting to BLC server: ' . $e->getMessage(), 'error');
             update_progress(['complete' => true, 'status' => 'Failed to connect']);
             throw new Exception('Failed to connect to BLC server: ' . $e->getMessage());
         }
 
         if (empty($responses)) {
+            $logger->error('Empty response from BLC server');
             add_progress_log('Empty response from BLC server', 'error');
             update_progress(['complete' => true, 'status' => 'No data received']);
             throw new Exception('Empty response from BLC server');
@@ -425,10 +433,12 @@ function perform_bulk_update() {
                 try {
                     $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
                 } catch (Exception $e) {
+                    $logger->error('Failed to get temp URL: ' . $e->getMessage());
                     throw new Exception('Failed to get temp URL: ' . $e->getMessage());
                 }
 
                 if (empty($responses)) {
+                    $logger->error('Empty response getting temp URL');
                     throw new Exception('Empty response getting temp URL');
                 }
 
@@ -436,13 +446,14 @@ function perform_bulk_update() {
                 $tempscormurl = parse_temp_url_response($responses);
 
                 if (empty($tempscormurl)) {
-                    debugging('Temp URL response: ' . substr($responses, 0, 500), DEBUG_DEVELOPER);
+                    $logger->error('Temp URL response: ' . substr($responses, 0, 500));
                     throw new Exception('Failed to parse temp URL from response');
                 }
 
                 // Get course module.
                 $scormcm = $DB->get_record('course_modules', ['id' => $coursemodule]);
                 if (!$scormcm) {
+                    $logger->error('Course module not found: ' . $coursemodule);
                     throw new Exception('Course module not found');
                 }
 
@@ -453,6 +464,7 @@ function perform_bulk_update() {
                     $successcount++;
                     add_progress_log("✓ Successfully updated: {$scormname}", 'success');
                 } else {
+                    $logger->error('Update function returned false for module: ' . $coursemodule);
                     throw new Exception('Update function returned false');
                 }
             } catch (Exception $e) {
@@ -460,7 +472,7 @@ function perform_bulk_update() {
                 $errormsg = "Module {$coursemodule}: " . $e->getMessage();
                 $errors[] = $errormsg;
                 add_progress_log("✗ Failed: " . $errormsg, 'error');
-                debugging("BLC Bulk Update Error for CM {$coursemodule}: " . $e->getMessage(), DEBUG_DEVELOPER);
+                $logger->error("BLC Bulk Update Error for CM {$coursemodule}: " . $e->getMessage());
             }
 
             // Update progress.
@@ -541,7 +553,7 @@ function perform_bulk_update() {
             'complete' => true,
             'status' => 'Failed: ' . $e->getMessage(),
         ]);
-        debugging('Bulk update critical error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $logger->critical('Bulk update critical error: ' . $e->getMessage());
         return false;
     }
 }
@@ -595,6 +607,8 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
     global $DB, $CFG;
 
     require_once($CFG->libdir . '/filelib.php');
+
+    $logger = new debug_helper();
 
     $zipfilepath = null;
     $extractdir = null;
@@ -725,18 +739,18 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
             $transaction->rollback($e);
         }
 
-        debugging('SCORM update error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $logger->error('SCORM update error: ' . $e->getMessage());
         throw $e;
     } finally {
         // CRITICAL: Always cleanup temporary files with error handling.
         if (isset($zipfilepath) && file_exists($zipfilepath)) {
             if (!@unlink($zipfilepath)) {
-                debugging('Failed to cleanup temporary zip file: ' . $zipfilepath, DEBUG_DEVELOPER);
+                $logger->error('Failed to cleanup temporary zip file: ' . $zipfilepath);
             }
         }
         if (isset($extractdir) && is_dir($extractdir)) {
             if (!remove_dir($extractdir)) {
-                debugging('Failed to cleanup temporary extract directory: ' . $extractdir, DEBUG_DEVELOPER);
+                $logger->error('Failed to cleanup temporary extract directory: ' . $extractdir);
             }
         }
 
