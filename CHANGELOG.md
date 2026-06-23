@@ -4,6 +4,29 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ---
 
+## [5.0.3] — 2026-06-23
+
+### Added
+- **Severity-aware logging** via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
+- Debug output now respects Moodle's `debug` setting — only critical/error messages appear in `DEBUG_MINIMAL`, warnings appear in `DEBUG_NORMAL`, and full detail (including `info`) appears in `DEBUG_DEVELOPER`.
+
+### Changed
+- Replaced all raw `debugging()` calls across the entire plugin (`add_doc.php`, `bulk_update.php`, `bulk_update_processor.php`, `blcservice.php`, `blccurl_helper.php`, `file_helper.php`, `services.php`, `logger.php`, `validate_settings_page.php`) with severity-aware `debug_helper` calls.
+- Non-critical failures (e.g., API key mapping, temp file cleanup) are now logged at `warning` or `info` level instead of being indistinguishable from blocking errors.
+- Critical errors (e.g., incomplete configuration, module creation failures) are explicitly tagged with `Core functionality affected` in log output.
+
+---
+
+## [5.0.2] — 2026-06-22
+
+### Changed
+- `ensure_api_key_mapping()` now calls the `local_scormurl_update_scorm_mapping` web service instead of writing directly to the `block_scorm_apikey` table. This also eliminates unnecessary missing-table error logs that appeared when the `block_scorm_apikey` table was absent.
+
+### Removed
+- Missing table warning alert from UI, which were only used by the old direct-DB access.
+
+---
+
 ## [5.0.1] — 2026-06-10
 
 ### Added
@@ -168,20 +191,3 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 - Core functionality: browse and add SCORM packages from the Blended Learning Consortium repository into Moodle courses.
 - API key configuration and validation tools.
 - README with installation, update, and prerequisites documentation.
-
----
-
-[5.0.1]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[5.0.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.10]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.9]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.8]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.7]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.6]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.5]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.4]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.3]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.2]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.1]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[4.5.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases
-[1.0.0]: https://github.com/terus-technology/moodle-block_blcmodules/releases

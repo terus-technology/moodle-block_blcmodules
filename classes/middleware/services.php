@@ -39,6 +39,7 @@ use core_completion\api;
 use core_php_time_limit;
 use Exception;
 use file_storage;
+use moodle_exception;
 use stdClass;
 use stored_file;
 
@@ -458,10 +459,12 @@ class services {
                 } else {
                     $newhash = null;
                     $debug->error('Failed to download SCORM package content from: ' . $scorm->reference);
+                    throw new moodle_exception('errorpackage', 'scorm', '', 'Failed to download SCORM package from: ' . $scorm->reference);
                 }
-            } catch (Exception $e) {
+            } catch (moodle_exception $e) {
                 $newhash = null;
                 $debug->error('Exception downloading SCORM package: ' . $e->getMessage());
+                throw new moodle_exception('errorpackage', 'scorm', '', 'Exception downloading SCORM package: ' . $e->getMessage());
             }
         } else {
             $debug->error('SCORM reference URL is empty in scorm_parse. Scorm object: ' . json_encode($scorm));
