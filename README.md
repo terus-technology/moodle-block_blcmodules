@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.0.1-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-5.0.3-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/moodle-5.0-orange.svg" alt="Moodle">
   <img src="https://img.shields.io/badge/license-GPL%20v3-brown.svg" alt="License">
   <img src="https://img.shields.io/badge/maturity-STABLE-green.svg" alt="Maturity">
