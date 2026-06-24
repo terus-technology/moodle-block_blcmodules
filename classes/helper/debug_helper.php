@@ -89,16 +89,28 @@ class debug_helper {
     }
 
     /**
-     * Output message at minimal level (fatal errors only).
+     * Output message at minimal level (fatal errors only) with probable causes and resolution steps.
      *
-     * @param string $message The message to output
-     * @param bool $affectscore Whether the error affects the score
+     * @param string $message User-friendly error message
+     * @param array $causes Possible causes
+     * @param array $actions Resolution steps
+     * @param string $technicaldetails Technical details
+     * @param bool $affectscore Whether core functionality is affected
      */
-    public function error($message, bool $affectscore = false) {
+    public function error(
+        string $message,
+        array $causes,
+        array $actions,
+        string $technicaldetails = '',
+        bool $affectscore = true
+    ): void {
         $this->log(
             $message,
             self::SEVERITY_ERROR,
-            $affectscore
+            $affectscore,
+            $causes,
+            $actions,
+            $technicaldetails
         );
     }
 
@@ -130,15 +142,26 @@ class debug_helper {
     }
 
     /**
-     * Output message at developer level (critical errors only).
+     * Output message at developer level (critical errors only) with probable causes and resolution steps.
      *
-     * @param string $message The message to output
+     * @param string $message User-friendly error message
+     * @param array $causes Possible causes
+     * @param array $actions Resolution steps
+     * @param string $technicaldetails Technical details
      */
-    public function critical(string $message) {
+    public function critical(
+        string $message,
+        array $causes,
+        array $actions,
+        string $technicaldetails = ''
+    ): void {
         $this->log(
             $message,
-            self::SEVERITY_CRITICAL,
-            true
+            self::SEVERITY_ERROR,
+            true,
+            $causes,
+            $actions,
+            $technicaldetails
         );
     }
 
@@ -170,45 +193,72 @@ class debug_helper {
     }
 
     /**
-     * Log a message with severity level and optional impact indication.
+     * Log a message with severity level and optional troubleshooting guidance.
      *
-     * @param string $message The message to output
-     * @param string $severity The severity level (SEVERITY_CRITICAL, SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO)
-     * @param bool $affectscore Whether this affects core functionality
+     * @param string $message User-friendly error message
+     * @param string $severity Severity level
+     * @param bool $affectscore Whether core functionality is affected
+     * @param array $probablecauses Possible causes of the issue
+     * @param array $actions Recommended actions to resolve the issue
+     * @param string $technicaldetails Technical details for developers
      */
-    public function log(
+    protected function log(
         string $message,
         string $severity = self::SEVERITY_INFO,
-        bool $affectscore = false
+        bool $affectscore = false,
+        array $probablecauses = [],
+        array $actions = [],
+        string $technicaldetails = ''
     ): void {
-        $prefix = strtoupper($severity);
+        $output = '[' . strtoupper($severity) . '] ' . $message . PHP_EOL . PHP_EOL;
+
+        if (!empty($probablecauses)) {
+            $output .= 'PROBABLE CAUSE:' . PHP_EOL;
+
+            foreach ($probablecauses as $cause) {
+                $output .= '- ' . $cause . PHP_EOL;
+            }
+
+            $output .= PHP_EOL;
+        }
+
+        if (!empty($actions)) {
+            $output .= 'ACTION:' . PHP_EOL;
+
+            foreach ($actions as $index => $action) {
+                $output .= ($index + 1) . '. ' . $action . PHP_EOL;
+            }
+
+            $output .= PHP_EOL;
+        }
 
         $impact = $affectscore
-            ? '. Core functionality affected.'
-            : '. Core functionality remains available.';
+            ? 'Core functionality is affected.'
+            : 'Core functionality remains available.';
 
-        $formatted = sprintf(
-            '[%s] %s %s',
-            $prefix,
-            $message,
-            $impact
-        );
+        $output .= 'IMPACT: ' . $impact . PHP_EOL;
+
+        if ($technicaldetails && $this->is_developer_mode()) {
+            $output .= PHP_EOL;
+            $output .= 'TECHNICAL DETAILS:' . PHP_EOL;
+            $output .= $technicaldetails . PHP_EOL;
+        }
 
         switch ($severity) {
             case self::SEVERITY_CRITICAL:
             case self::SEVERITY_ERROR:
-                debugging($formatted);
+                debugging($output);
                 break;
 
             case self::SEVERITY_WARNING:
                 if (!$this->is_minimal_mode()) {
-                    debugging($formatted);
+                    debugging($output);
                 }
                 break;
 
             case self::SEVERITY_INFO:
                 if ($this->is_developer_mode()) {
-                    debugging($formatted);
+                    debugging($output);
                 }
                 break;
         }
