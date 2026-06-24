@@ -165,7 +165,21 @@ switch ($action) {
                 'success' => false,
                 'message' => $e->getMessage(),
             ]);
-            $logger->critical('Bulk update fatal error: ' . $e->getMessage());
+            $logger->error(
+                'The bulk update process terminated unexpectedly.',
+                [
+                    'A system error occurred.',
+                    'The BLC service could not be reached.',
+                    'A database or file operation failed.',
+                ],
+                [
+                    'Review the technical details below.',
+                    'Correct any configuration issues.',
+                    'Retry the bulk update.',
+                    'Contact support if the issue persists.',
+                ],
+                $e->getMessage()
+            );
         }
         break;
 
@@ -181,7 +195,21 @@ switch ($action) {
 
     default:
         // Log invalid action for debugging.
-        $logger->error('Invalid action received: ' . $action);
+        $logger->error(
+            'BLC bulk_update_processor: An unsupported action was requested.',
+            [
+                'The request contains an invalid action parameter.',
+                'The request URL is incorrect.',
+                'A client-side script sent an unexpected value.',
+            ],
+            [
+                'Verify the request URL is correct.',
+                'Check that the action parameter matches a supported action.',
+                'Refresh the page and try again.',
+            ],
+            "action={$action}",
+            false
+        );
         echo json_encode([
             'success' => false,
             'message' => 'Invalid action: ' . $action,
@@ -209,7 +237,25 @@ function perform_bulk_update() {
 
         // Validate configuration.
         if (empty($token) || empty($domainname) || empty($apikey)) {
-            $logger->critical('BLC configuration is incomplete. Please check plugin settings.');
+            $logger->critical(
+                'BLC configuration is incomplete.',
+                [
+                    'The API token is missing.',
+                    'The API key is missing.',
+                    'The BLC server domain name is missing.',
+                ],
+                [
+                    'Open the BLC Modules plugin settings.',
+                    'Verify the API Token, API Key, and Domain Name values.',
+                    'Save the settings and try again.',
+                ],
+                sprintf(
+                    'token=%s, domainname=%s, apikey=%s',
+                    empty($token) ? 'missing' : 'set',
+                    empty($domainname) ? 'missing' : 'set',
+                    empty($apikey) ? 'missing' : 'set'
+                )
+            );
             throw new Exception('BLC configuration is incomplete. Please check plugin settings.');
         }
 
@@ -233,14 +279,42 @@ function perform_bulk_update() {
             $requesttime = round(microtime(true) - $requeststart, 2);
             add_progress_log("BLC server responded in {$requesttime}s", 'success');
         } catch (Exception $e) {
-            $logger->error('Error connecting to BLC server: ' . $e->getMessage());
+            $logger->error(
+                'BLC bulk_update_processor: Unable to connect to the BLC server.',
+                [
+                    'The BLC server is unavailable.',
+                    'Network connectivity has been interrupted.',
+                    'The configured domain name is incorrect.',
+                    'The API service is temporarily unavailable.',
+                ],
+                [
+                    'Verify the BLC server is online.',
+                    'Check the configured domain name.',
+                    'Confirm network connectivity.',
+                    'Retry the bulk update later.',
+                ],
+                $e->getMessage()
+            );
             add_progress_log('Error connecting to BLC server: ' . $e->getMessage(), 'error');
             update_progress(['complete' => true, 'status' => 'Failed to connect']);
             throw new Exception('Failed to connect to BLC server: ' . $e->getMessage());
         }
 
         if (empty($responses)) {
-            $logger->error('Empty response from BLC server');
+            $logger->error(
+                'BLC bulk_update_processor: The BLC server returned no data.',
+                [
+                    'The server encountered an internal error.',
+                    'The API request was not processed correctly.',
+                    'No module data is available.',
+                ],
+                [
+                    'Verify the BLC service is functioning correctly.',
+                    'Check the API configuration.',
+                    'Retry the request later.',
+                ],
+                'Empty HTTP response body received.'
+            );
             add_progress_log('Empty response from BLC server', 'error');
             update_progress(['complete' => true, 'status' => 'No data received']);
             throw new Exception('Empty response from BLC server');
@@ -433,12 +507,39 @@ function perform_bulk_update() {
                 try {
                     $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
                 } catch (Exception $e) {
-                    $logger->error('Failed to get temp URL: ' . $e->getMessage());
+                    $logger->error(
+                        'BLC bulk_update_processor: Unable to retrieve a temporary download URL for the SCORM package.',
+                        [
+                            'The BLC service could not generate a temporary URL.',
+                            'The SCORM package no longer exists.',
+                            'The API request failed.',
+                        ],
+                        [
+                            'Verify the SCORM package exists on the BLC server.',
+                            'Check the BLC API configuration.',
+                            'Retry the update process.',
+                        ],
+                        $e->getMessage(),
+                        false
+                    );
                     throw new Exception('Failed to get temp URL: ' . $e->getMessage());
                 }
 
                 if (empty($responses)) {
-                    $logger->error('Empty response getting temp URL');
+                    $logger->error(
+                        'BLC bulk_update_processor: The BLC server returned an empty temporary URL response.',
+                        [
+                            'The requested SCORM package could not be located.',
+                            'The API service returned incomplete data.',
+                            'A server-side error occurred.',
+                        ],
+                        [
+                            'Verify the SCORM package exists.',
+                            'Check the BLC server logs.',
+                            'Retry the update process.',
+                        ],
+                        'No response content received.'
+                    );
                     throw new Exception('Empty response getting temp URL');
                 }
 
@@ -446,14 +547,40 @@ function perform_bulk_update() {
                 $tempscormurl = parse_temp_url_response($responses);
 
                 if (empty($tempscormurl)) {
-                    $logger->error('Temp URL response: ' . substr($responses, 0, 500));
+                    $logger->error(
+                        'BLC bulk_update_processor: The temporary download URL could not be extracted from the API response.',
+                        [
+                            'The API response format has changed.',
+                            'The response contains invalid JSON or XML.',
+                            'The BLC service returned unexpected data.',
+                        ],
+                        [
+                            'Verify the API response format.',
+                            'Check the BLC server logs.',
+                            'Review the web service configuration.',
+                        ],
+                        substr($responses, 0, 500)
+                    );
                     throw new Exception('Failed to parse temp URL from response');
                 }
 
                 // Get course module.
                 $scormcm = $DB->get_record('course_modules', ['id' => $coursemodule]);
                 if (!$scormcm) {
-                    $logger->error('Course module not found: ' . $coursemodule);
+                    $logger->error(
+                        'BLC bulk_update_processor: The SCORM activity could not be found.',
+                        [
+                            'The activity was deleted.',
+                            'The course module ID is invalid.',
+                            'The course has been modified during processing.',
+                        ],
+                        [
+                            'Verify the SCORM activity still exists.',
+                            'Confirm the course module ID is valid.',
+                            'Retry the bulk update.',
+                        ],
+                        "coursemodule={$coursemodule}"
+                    );
                     throw new Exception('Course module not found');
                 }
 
@@ -464,7 +591,20 @@ function perform_bulk_update() {
                     $successcount++;
                     add_progress_log("✓ Successfully updated: {$scormname}", 'success');
                 } else {
-                    $logger->error('Update function returned false for module: ' . $coursemodule);
+                    $logger->error(
+                        'BLC bulk_update_processor: The SCORM package update could not be completed.',
+                        [
+                            'The package contents are invalid.',
+                            'The update process encountered an internal error.',
+                            'Required files could not be stored.',
+                        ],
+                        [
+                            'Verify the SCORM package is valid.',
+                            'Review the technical details below.',
+                            'Retry the update process.',
+                        ],
+                        "coursemodule={$coursemodule}"
+                    );
                     throw new Exception('Update function returned false');
                 }
             } catch (Exception $e) {
@@ -472,7 +612,20 @@ function perform_bulk_update() {
                 $errormsg = "Module {$coursemodule}: " . $e->getMessage();
                 $errors[] = $errormsg;
                 add_progress_log("✗ Failed: " . $errormsg, 'error');
-                $logger->error("BLC Bulk Update Error for CM {$coursemodule}: " . $e->getMessage());
+                $logger->error(
+                    "BLC bulk_update_processor: Failed to update SCORM activity {$coursemodule}.",
+                    [
+                        'The SCORM package could not be downloaded.',
+                        'The activity no longer exists.',
+                        'A file storage or database error occurred.',
+                    ],
+                    [
+                        'Review the technical details below.',
+                        'Verify the SCORM activity still exists.',
+                        'Retry the bulk update process.',
+                    ],
+                    $e->getMessage()
+                );
             }
 
             // Update progress.
@@ -553,7 +706,21 @@ function perform_bulk_update() {
             'complete' => true,
             'status' => 'Failed: ' . $e->getMessage(),
         ]);
-        $logger->critical('Bulk update critical error: ' . $e->getMessage());
+        $logger->critical(
+            'The bulk update process terminated unexpectedly.',
+            [
+                'A system error occurred.',
+                'The BLC service could not be reached.',
+                'A database or file operation failed.',
+            ],
+            [
+                'Review the technical details below.',
+                'Correct any configuration issues.',
+                'Retry the bulk update.',
+                'Contact support if the issue persists.',
+            ],
+            $e->getMessage()
+        );
         return false;
     }
 }
@@ -739,18 +906,41 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
             $transaction->rollback($e);
         }
 
-        $logger->error('SCORM update error: ' . $e->getMessage());
         throw $e;
     } finally {
         // CRITICAL: Always cleanup temporary files with error handling.
         if (isset($zipfilepath) && file_exists($zipfilepath)) {
             if (!@unlink($zipfilepath)) {
-                $logger->error('Failed to cleanup temporary zip file: ' . $zipfilepath);
+                $logger->error(
+                    'BLC bulk_update_processor: A temporary download file could not be removed.',
+                    [
+                        'The file is locked by another process.',
+                        'The web server does not have delete permissions.',
+                    ],
+                    [
+                        'Verify file permissions on the Moodle temp directory.',
+                        'Remove the file manually if necessary.',
+                    ],
+                    $zipfilepath,
+                    false
+                );
             }
         }
         if (isset($extractdir) && is_dir($extractdir)) {
             if (!remove_dir($extractdir)) {
-                $logger->error('Failed to cleanup temporary extract directory: ' . $extractdir);
+                $logger->error(
+                    'BLC bulk_update_processor: A temporary extraction directory could not be removed.',
+                    [
+                        'Files are still in use.',
+                        'The web server lacks delete permissions.',
+                    ],
+                    [
+                        'Verify directory permissions.',
+                        'Remove the temporary directory manually if necessary.',
+                    ],
+                    $extractdir,
+                    false
+                );
             }
         }
 

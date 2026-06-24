@@ -380,7 +380,27 @@ class blccurl_helper {
             $logger->info('cURL Info: ' . json_encode($this->info));
             echo '<h1>Error</h1>';
             if (!empty($this->error)) {
-                $logger->error('cURL Error: ' . $this->error);
+                $logger->error(
+                    'BLC blccurl_helper: Unable to connect to the remote service.',
+                    [
+                        'The remote server is unavailable.',
+                        'The request URL is incorrect.',
+                        'A network connectivity issue occurred.',
+                        'The remote service rejected the connection.',
+                    ],
+                    [
+                        'Verify the remote service is online.',
+                        'Check the configured URL.',
+                        'Confirm network connectivity from the Moodle server.',
+                        'Review the technical details below.',
+                    ],
+                    sprintf(
+                        'url=%s, curl_error=%s',
+                        $url,
+                        $this->error
+                    ),
+                    false
+                );
             }
         }
 

@@ -149,20 +149,66 @@ class validate_settings_page implements renderable, templatable {
                         $validationresults['api_error'] = $jsonresponse['error'];
                     }
 
-                    $logger->error('BLC validate_settings: Validation FAILED - Status: ' .
-                    ($jsonresponse['Status'] ?? 'Unknown'));
+                    $logger->error(
+                        'BLC validate_settings_page: The BLC configuration could not be validated.',
+                        [
+                            'The API credentials are invalid.',
+                            'The configured BLC server URL is incorrect.',
+                            'The BLC service rejected the validation request.',
+                        ],
+                        [
+                            'Verify the API Token and API Key settings.',
+                            'Confirm the configured BLC server URL is correct.',
+                            'Retry the validation after updating the settings.',
+                        ],
+                        sprintf(
+                            'Status=%s',
+                            $jsonresponse['Status'] ?? 'Unknown'
+                        ),
+                        false
+                    );
                 }
             } else {
                 // Invalid response format.
                 $urlokay = 'false';
                 $apiokay = 'false';
-                $logger->error('BLC validate_settings: Invalid JSON response: ' . $responses);
+                $logger->error(
+                    ' BLC validate_settings_page: The BLC server returned an invalid response.',
+                    [
+                        'The BLC service returned malformed data.',
+                        'The server response format has changed.',
+                        'A proxy or network device modified the response.',
+                    ],
+                    [
+                        'Verify that the BLC service is operating correctly.',
+                        'Check for recent API changes.',
+                        'Review the technical details below.',
+                    ],
+                    substr($responses, 0, 500),
+                    false
+                );
             }
         } catch (Exception $e) {
             // Handle connection errors.
             $validationresults['connection_error'] = true;
             $validationresults['error_message'] = $e->getMessage();
-            $logger->error('BLC validate_settings: Connection error: ' . $e->getMessage());
+            $logger->error(
+                'BLC validate_settings_page: Unable to connect to the BLC service.',
+                [
+                    'The BLC server is unavailable.',
+                    'The configured server URL is incorrect.',
+                    'A network connectivity issue occurred.',
+                    'The remote service is temporarily unavailable.',
+                ],
+                [
+                    'Verify the BLC server is online.',
+                    'Check the configured server URL.',
+                    'Confirm network connectivity from the Moodle server.',
+                    'Retry the validation later.',
+                ],
+                $e->getMessage(),
+                false
+            );
         }
 
         // Prepare alert messages.

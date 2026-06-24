@@ -92,7 +92,22 @@ class logger {
         } catch (Exception $e) {
             // Log to Moodle error log instead of failing.
             $logger = new debug_helper();
-            $logger->error('Failed to log SCORM load event: ' . $e->getMessage());
+            $logger->error(
+                'BLC logger: A SCORM activity event could not be recorded in the BLC log table.',
+                [
+                    'The BLC log table is missing or unavailable.',
+                    'A database write operation failed.',
+                    'The log record contains invalid data.',
+                ],
+                [
+                    'Verify that the BLC plugin database tables exist.',
+                    'Check Moodle database connectivity.',
+                    'Review the technical details below.',
+                    'Run the plugin upgrade if database changes are pending.',
+                ],
+                $e->getMessage(),
+                false
+            );
             return false;
         }
     }
@@ -287,7 +302,26 @@ class logger {
             return $DB->delete_records_select('block_blc_modules_log', 'timecreated < ?', [$cutoff]);
         } catch (Exception $e) {
             $logger = new debug_helper();
-            $logger->error('Failed to cleanup old logs: ' . $e->getMessage());
+            $logger->error(
+                'BLC logger: Old BLC log records could not be removed.',
+                [
+                    'The database is unavailable.',
+                    'The log table does not exist.',
+                    'The database user does not have permission to delete records.',
+                ],
+                [
+                    'Verify Moodle database connectivity.',
+                    'Check that the BLC log table exists.',
+                    'Review database permissions for the Moodle user.',
+                    'Run the cleanup task again after correcting the issue.',
+                ],
+                sprintf(
+                    'cutoff=%s, error=%s',
+                    userdate($cutoff),
+                    $e->getMessage()
+                ),
+                false
+            );
             return 0;
         }
     }
