@@ -115,7 +115,21 @@ if ($action == 'continue') {
         echo $OUTPUT->footer();
 
         // Log the error for administrators.
-        $logger->error('Bulk update page rendering error: ' . $e->getMessage());
+        $logger->error(
+            'BLC bulk_update: The bulk update page could not be displayed.',
+            [
+                'A template rendering error occurred.',
+                'Required page data is missing.',
+                'A plugin component returned invalid data.',
+            ],
+            [
+                'Refresh the page and try again.',
+                'Verify the BLC Modules plugin is up to date.',
+                'Review the technical details below.',
+                'Contact support if the issue persists.',
+            ],
+            $e->getMessage()
+        );
     }
     exit;
 } else {

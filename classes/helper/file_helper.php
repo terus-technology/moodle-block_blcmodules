@@ -60,7 +60,21 @@ class file_helper {
         $parts = explode('/', $path);
 
         if (count($parts) < 5) {
-            $logger->error('BLC file_helper: Invalid pluginfile URL format: ' . $pluginfileurl);
+            $logger->error(
+                'BLC file_helper: The source file URL is not in a valid Moodle pluginfile format.',
+                [
+                    'The file URL is incomplete.',
+                    'The source file URL was generated incorrectly.',
+                    'The referenced file no longer exists.',
+                ],
+                [
+                    'Verify the source file exists.',
+                    'Check that the pluginfile URL is generated correctly.',
+                    'Retry the operation after correcting the file reference.',
+                ],
+                $pluginfileurl,
+                false
+            );
             return false;
         }
 
@@ -89,7 +103,21 @@ class file_helper {
         );
 
         if (!$sourcefile || $sourcefile->is_directory()) {
-            $logger->error('BLC file_helper: Source file not found or is directory: ' . $pluginfileurl);
+            $logger->error(
+                'BLC file_helper: The source file could not be located.',
+                [
+                    'The file has been deleted.',
+                    'The file reference is invalid.',
+                    'The referenced item is a directory rather than a file.',
+                ],
+                [
+                    'Verify the source file still exists.',
+                    'Check that the file reference is correct.',
+                    'Retry the operation after restoring the file.',
+                ],
+                $pluginfileurl,
+                false
+            );
             return false;
         }
 
@@ -99,7 +127,21 @@ class file_helper {
             $logger->info('BLC file_helper: Successfully created file from pluginfile: ' . $filerecord['filename']);
             return $newfile;
         } catch (Exception $e) {
-            $logger->error('BLC file_helper: Exception creating file from pluginfile: ' . $e->getMessage());
+            $logger->error(
+                'BLC file_helper: The file could not be copied into Moodle storage.',
+                [
+                    'The destination file record is invalid.',
+                    'The Moodle file storage system encountered an error.',
+                    'A database or file permission issue occurred.',
+                ],
+                [
+                    'Verify Moodle file storage permissions.',
+                    'Check available disk space.',
+                    'Review the technical details below.',
+                ],
+                $e->getMessage(),
+                false
+            );
             return false;
         }
     }
@@ -125,8 +167,27 @@ class file_helper {
         $content = download_file_content($downloadurl, null, null, false, 300, 20, true);
 
         if ($content === false || empty($content)) {
-            $logger->error("BLC file_helper: Failed to download content from URL: " . $downloadurl);
-            $logger->error("BLC file_helper: Content is " . ($content === false ? "FALSE" : "EMPTY"));
+            $logger->error(
+                'BLC file_helper: The file could not be downloaded from the external source.',
+                [
+                    'The download URL is invalid.',
+                    'The remote server is unavailable.',
+                    'The file no longer exists.',
+                    'Access to the file is restricted.',
+                ],
+                [
+                    'Verify the file URL is accessible.',
+                    'Check that the file exists on the remote server.',
+                    'Confirm the file can be downloaded without authentication issues.',
+                    'Retry the operation.',
+                ],
+                sprintf(
+                    'url=%s, content=%s',
+                    $downloadurl,
+                    $content === false ? 'FALSE' : 'EMPTY'
+                ),
+                false
+            );
             return false;
         }
 
@@ -139,7 +200,22 @@ class file_helper {
             $logger->info("BLC file_helper: File created successfully: " . $newfile->get_filename());
             return $newfile;
         } catch (Exception $e) {
-            $logger->error("BLC file_helper: Exception creating file: " . $e->getMessage());
+            $logger->error(
+                'BLC file_helper: The downloaded file could not be saved into Moodle storage.',
+                [
+                    'The downloaded content is invalid.',
+                    'The file storage system encountered an error.',
+                    'A database or file permission issue occurred.',
+                ],
+                [
+                    'Verify Moodle file storage permissions.',
+                    'Check available disk space.',
+                    'Review the technical details below.',
+                    'Retry the operation.',
+                ],
+                $e->getMessage(),
+                false
+            );
             return false;
         }
     }

@@ -4,10 +4,25 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
+## [4.5.19] — 2026-06-23
+
+### Added
+- Error logs now support dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections.
+
+### Changed
+- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, and related helpers) to use actionable error messages instead of generic failure logs.
+- Replaced technical-only error messages with administrator-friendly descriptions where possible.
+
+### Fixed
+- Administrators can now identify common causes of failures and recommended remediation steps directly from Moodle logs without requiring source code analysis or support intervention.
+- Reduced ambiguous error messages that previously only described what failed without explaining how to resolve the issue.
+
+---
+
 ## [4.5.18] — 2026-06-18
 
 ### Added
-- **Severity-aware logging** via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
+- Severity-aware logging via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
 - Debug output now respects Moodle's `debug` setting — only critical/error messages appear in `DEBUG_MINIMAL`, warnings appear in `DEBUG_NORMAL`, and full detail (including `info`) appears in `DEBUG_DEVELOPER`.
 
 ### Changed

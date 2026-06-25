@@ -109,7 +109,22 @@ $apikey = get_config('block_blc_modules', 'api_key');
 // Validate configuration exists.
 if (empty($token) || empty($domainname) || empty($apikey)) {
     $logger->critical(
-        'BLC Modules configuration is incomplete.'
+        'BLC add_doc: BLC Modules configuration is incomplete.',
+        [
+            'One or more required plugin settings are missing.',
+            'The API token, API key, or domain name has not been configured.',
+        ],
+        [
+            'Go to Site administration > Plugins > Blocks > BLC Modules.',
+            'Verify the API Token, API Key, and Domain Name settings.',
+            'Save the configuration and run the process again.',
+        ],
+        sprintf(
+            'token=%s, domainname=%s, apikey=%s',
+            empty($token) ? 'missing' : 'set',
+            empty($domainname) ? 'missing' : 'set',
+            empty($apikey) ? 'missing' : 'set'
+        )
     );
     throw new moodle_exception('missingconfig', 'block_blc_modules');
 }
@@ -117,7 +132,18 @@ if (empty($token) || empty($domainname) || empty($apikey)) {
 $resourcemodule = $DB->get_record('modules', ['name' => 'resource']);
 if (!$resourcemodule) {
     $logger->critical(
-        'BLC Modules: Resource module not found.'
+        'BLC add_doc: The Moodle Resource activity module could not be found.',
+        [
+            'The Resource plugin is disabled.',
+            'The Resource plugin installation is incomplete.',
+            'The Moodle database is missing the Resource module record.',
+        ],
+        [
+            'Verify that the Resource activity module is installed.',
+            'Check Site administration > Plugins > Activity modules.',
+            'Run Moodle upgrade if the installation is incomplete.',
+        ],
+        'Module lookup failed for name=resource'
     );
     throw new moodle_exception('resourcemodulenotfound', 'block_blc_modules');
 }
@@ -265,7 +291,23 @@ if ($blcmodules) {
                     }
                 }
             } catch (Exception $e) {
-                $logger->error("BLC add_doc: API call failed for module $blcmoduleid: " . $e->getMessage());
+                $logger->error(
+                    "BLC add_doc: Unable to retrieve accessibility document information for module {$blcmoduleid}.",
+                    [
+                        'The BLC server is unavailable.',
+                        'The API credentials are invalid.',
+                        'The SCORM URL is not recognised by the BLC server.',
+                        'A network connectivity issue occurred.',
+                    ],
+                    [
+                        'Verify the BLC server is online.',
+                        'Check the API Token and API Key configuration.',
+                        'Confirm the SCORM URL plugin exists in the BLC server.',
+                        'Retry the process later.',
+                    ],
+                    $e->getMessage(),
+                    false
+                );
             }
 
             if (!$docdata) {
@@ -422,7 +464,20 @@ if ($blcmodules) {
 
             $resourcecoursemodule = add_course_module($newcm);
             if (!$resourcecoursemodule) {
-                $logger->error("BLC add_doc: Failed to create course module for blcmodule $blcmoduleid");
+                $logger->error(
+                    "BLC add_doc: Unable to create the accessibility document activity for module {$blcmoduleid}.",
+                    [
+                        'The course section no longer exists.',
+                        'The module data is invalid.',
+                        'A database operation failed.',
+                    ],
+                    [
+                        'Verify that the course and section still exist.',
+                        'Check that the SCORM activity has not been deleted.',
+                        'Review Moodle server logs for database errors.',
+                    ],
+                    "blcmoduleid={$blcmoduleid}"
+                );
                 $failcount++;
                 $errormessages[] = "Module $blcmoduleid: Could not create course module";
                 continue;
@@ -494,13 +549,42 @@ if ($blcmodules) {
                 }
 
                 if (!$file) {
-                    $logger->error("BLC add_doc: file_helper failed to create file for module $blcmoduleid");
+                    $logger->error(
+                        "BLC add_doc: Unable to create the accessibility document file for module {$blcmoduleid}.",
+                        [
+                            'The document URL is invalid or inaccessible.',
+                            'The remote server did not return a valid file.',
+                            'The Moodle file storage system rejected the file.',
+                        ],
+                        [
+                            'Verify that the document URL is accessible.',
+                            'Check that the document exists on the remote server.',
+                            'Review Moodle file storage and permissions.',
+                            'Retry the batch process.',
+                        ],
+                        "file_helper returned false for module {$blcmoduleid}",
+                        false
+                    );
                     throw new Exception('File download failed - file_helper returned false');
                 }
 
                 $logger->info("BLC add_doc: Successfully downloaded file for module $blcmoduleid using file_helper");
             } catch (Exception $e) {
-                $logger->error("BLC add_doc: Failed to download file for module $blcmoduleid: " . $e->getMessage());
+                $logger->error(
+                    "BLC add_doc: The accessibility document could not be downloaded for module {$blcmoduleid}.",
+                    [
+                        'The document URL is no longer available.',
+                        'The remote file server is unavailable.',
+                        'The document permissions prevent access.',
+                    ],
+                    [
+                        'Verify the accessibility document exists.',
+                        'Check that the document URL is accessible.',
+                        'Retry the process after confirming file availability.',
+                    ],
+                    $e->getMessage(),
+                    false
+                );
                 // Continue - module created but file missing
                 // Admin can manually upload file later.
             }
@@ -635,7 +719,19 @@ if ($blcmodules) {
                 $logger->info("BLC add_doc: Cleaned up temporary files for module $blcmoduleid");
             } catch (Exception $e) {
                 $logger->error(
-                    "BLC add_doc: Failed to cleanup temporary files for module $blcmoduleid: " . $e->getMessage()
+                    "BLC add_doc: Temporary document files could not be removed for module {$blcmoduleid}.",
+                    [
+                        'The BLC cleanup service is unavailable.',
+                        'The temporary files have already been removed.',
+                        'A network issue interrupted the cleanup request.',
+                    ],
+                    [
+                        'Retry the cleanup process later.',
+                        'Verify the BLC service is accessible.',
+                        'Review the BLC server logs if the issue persists.',
+                    ],
+                    $e->getMessage(),
+                    false
                 );
                 // Continue - cleanup failure is not critical.
             }
@@ -646,7 +742,19 @@ if ($blcmodules) {
             $failcount++;
             $errormessages[] = "Module " . $blcmodule->id . ": " . $e->getMessage();
             $logger->error(
-                "BLC add_doc: Unexpected error processing module " . $blcmodule->id . ": " . $e->getMessage()
+                "BLC add_doc: An unexpected error occurred while processing module {$blcmodule->id}.",
+                [
+                    'The module data is incomplete.',
+                    'A database operation failed.',
+                    'An unexpected system error occurred.',
+                ],
+                [
+                    'Review the technical details below.',
+                    'Verify the module still exists.',
+                    'Retry the batch process.',
+                    'Contact support if the issue continues.',
+                ],
+                $e->getMessage()
             );
             continue;
         }
@@ -693,7 +801,20 @@ $logger->info(
 );
 
 if (!empty($errormessages)) {
-    $logger->error("BLC add_doc: Errors: " . implode('; ', array_slice($errormessages, 0, 10)));
+    $logger->error(
+        'BLC add_doc: One or more modules could not be processed during the batch operation.',
+        [
+            'Some modules contain invalid data.',
+            'One or more API requests failed.',
+            'File creation or download operations failed.',
+        ],
+        [
+            'Review the failed modules listed in the technical details.',
+            'Correct any identified issues.',
+            'Run the batch process again.',
+        ],
+        implode('; ', array_slice($errormessages, 0, 10))
+    );
 }
 
 redirect($redirect, $message, null, $notifytype);
