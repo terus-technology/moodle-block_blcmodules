@@ -4,10 +4,25 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ---
 
+## [5.0.4] — 2026-06-29
+
+### Added
+- Error logs now support dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections.
+
+### Changed
+- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, and related helpers) to use actionable error messages instead of generic failure logs.
+- Replaced technical-only error messages with administrator-friendly descriptions where possible.
+
+### Fixed
+- Administrators can now identify common causes of failures and recommended remediation steps directly from Moodle logs without requiring source code analysis or support intervention.
+- Reduced ambiguous error messages that previously only described what failed without explaining how to resolve the issue.
+
+---
+
 ## [5.0.3] — 2026-06-23
 
 ### Added
-- **Severity-aware logging** via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
+- Severity-aware logging via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
 - Debug output now respects Moodle's `debug` setting — only critical/error messages appear in `DEBUG_MINIMAL`, warnings appear in `DEBUG_NORMAL`, and full detail (including `info`) appears in `DEBUG_DEVELOPER`.
 
 ### Changed
@@ -40,10 +55,9 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 ## [5.0.0] — 2025-10-29
 
 ### Added
-- **Moodle 5.0 support** — initial release for Moodle 5.0 with Bootstrap 5 compatibility layer for modals, popovers, and tooltips.
+- Moodle 5.0 support — initial release for Moodle 5.0 with Bootstrap 5 compatibility layer for modals, popovers, and tooltips.
 - Google Drive support for externally hosted SCORM packages.
 - `subject` field added to `block_blc_modules` database table with corresponding UI filters.
-
 ### Changed
 - Upgrade process updated for Moodle 5.0 compatibility.
 - Subject extraction in `get_subjects()` rewritten to use a single SQL `DISTINCT` query.
@@ -51,8 +65,7 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 - Button styles unified under the `.btn-blc-modules` class.
 - AJAX timeout increased for long-running SCORM downloads.
 - SCORM package filename validation strengthened.
-- SCORM URL parameter type relaxed from `PARAM_URL` to `PARAM_TEXT`.
-
+- SCORM URL parameter type relaxed from `PARAM_URL` to `PARAM_TEXT`
 ### Fixed
 - Stale variable reuse after sequential module loads.
 - Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
@@ -101,9 +114,9 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 ## [4.5.7] — 2025-07-16
 
 ### Added
-- **SCORM Report Page** — interactive chart and data tables showing module usage statistics per course, subject, and time period. Rendered via Mustache (`scorm_report_page.mustache`).
-- **SCORM Update Page** — refactored `update_scorm.php` to use the Mustache renderer (`update_scorm_page.mustache`) with structured output classes.
-- **Settings Validation Page** — refactored `validate_settings.php` to use the Mustache renderer (`validate_settings_page.mustache`).
+- SCORM Report Page — interactive chart and data tables showing module usage statistics per course, subject, and time period. Rendered via Mustache (`scorm_report_page.mustache`).
+- SCORM Update Page — refactored `update_scorm.php` to use the Mustache renderer (`update_scorm_page.mustache`) with structured output classes.
+- Settings Validation Page — refactored `validate_settings.php` to use the Mustache renderer (`validate_settings_page.mustache`).
 - External service definitions registered via `db/services.php` for the SCORM web-service API.
 
 ### Changed
@@ -150,7 +163,7 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 ## [4.5.3] — 2022-03-21
 
 ### Changed
-- **AMD Module Migration**: JavaScript loading converted from legacy inline `<script>` tags to AMD modules (`amd/src/`), with proper `RequireJS` dependency management.
+- AMD Module Migration: JavaScript loading converted from legacy inline `<script>` tags to AMD modules (`amd/src/`), with proper `RequireJS` dependency management.
 - Helper functions extracted from the main block class into dedicated utility classes.
 - Removed unused legacy JS files.
 
@@ -180,7 +193,7 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 ## [4.5.0] — 2020-07-17
 
 ### Added
-- **BLC Modules Summer 2020 Update** — major feature release with bulk update capability, improved SCORM package handling, and updated README documentation.
+- BLC Modules Summer 2020 Update — major feature release with bulk update capability, improved SCORM package handling, and updated README documentation.
 
 ---
 
