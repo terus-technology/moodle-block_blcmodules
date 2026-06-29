@@ -48,6 +48,8 @@ class file_helper {
      * @return stored_file|false The created file or false on failure
      */
     public static function create_file_from_pluginfile_url($fs, $filerecord, $pluginfileurl) {
+        $logger = new debug_helper();
+
         // Parse the pluginfile URL to extract file information
         // URL format: /pluginfile.php/{contextid}/{component}/{filearea}/{itemid}/{filepath}/{filename}.
         $urlparts = parse_url($pluginfileurl);
@@ -58,7 +60,7 @@ class file_helper {
         $parts = explode('/', $path);
 
         if (count($parts) < 5) {
-            debugging('BLC file_helper: Invalid pluginfile URL format: ' . $pluginfileurl, DEBUG_DEVELOPER);
+            $logger->error('BLC file_helper: Invalid pluginfile URL format: ' . $pluginfileurl);
             return false;
         }
 
@@ -87,17 +89,17 @@ class file_helper {
         );
 
         if (!$sourcefile || $sourcefile->is_directory()) {
-            debugging('BLC file_helper: Source file not found or is directory: ' . $pluginfileurl, DEBUG_DEVELOPER);
+            $logger->error('BLC file_helper: Source file not found or is directory: ' . $pluginfileurl);
             return false;
         }
 
         // Create the new file by copying content from the source file.
         try {
             $newfile = $fs->create_file_from_storedfile($filerecord, $sourcefile);
-            debugging('BLC file_helper: Successfully created file from pluginfile: ' . $filerecord['filename'], DEBUG_DEVELOPER);
+            $logger->info('BLC file_helper: Successfully created file from pluginfile: ' . $filerecord['filename']);
             return $newfile;
         } catch (Exception $e) {
-            debugging('BLC file_helper: Exception creating file from pluginfile: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger->error('BLC file_helper: Exception creating file from pluginfile: ' . $e->getMessage());
             return false;
         }
     }
@@ -111,31 +113,33 @@ class file_helper {
      * @return stored_file|false The created file or false on failure
      */
     public static function create_file_from_external_url($fs, $filerecord, $url) {
-        debugging("BLC file_helper: create_file_from_external_url called with URL: " . $url, DEBUG_DEVELOPER);
+        $logger = new debug_helper();
+
+        $logger->info("BLC file_helper: create_file_from_external_url called with URL: " . $url);
 
         // Convert Google Drive sharing URLs to direct download URLs.
         $downloadurl = self::convert_google_drive_url($url);
-        debugging("BLC file_helper: Converted URL: " . $downloadurl, DEBUG_DEVELOPER);
+        $logger->info("BLC file_helper: Converted URL: " . $downloadurl);
 
         // Use Moodle's robust download_file_content function.
         $content = download_file_content($downloadurl, null, null, false, 300, 20, true);
 
         if ($content === false || empty($content)) {
-            debugging("BLC file_helper: Failed to download content from URL: " . $downloadurl, DEBUG_DEVELOPER);
-            debugging("BLC file_helper: Content is " . ($content === false ? "FALSE" : "EMPTY"), DEBUG_DEVELOPER);
+            $logger->error("BLC file_helper: Failed to download content from URL: " . $downloadurl);
+            $logger->error("BLC file_helper: Content is " . ($content === false ? "FALSE" : "EMPTY"));
             return false;
         }
 
-        debugging("BLC file_helper: Downloaded content size: " . strlen($content) . " bytes", DEBUG_DEVELOPER);
+        $logger->info("BLC file_helper: Downloaded content size: " . strlen($content) . " bytes");
 
         // Create file from the downloaded content.
         try {
-            debugging("BLC file_helper: Creating file: " . $filerecord['filename'], DEBUG_DEVELOPER);
+            $logger->info("BLC file_helper: Creating file: " . $filerecord['filename']);
             $newfile = $fs->create_file_from_string($filerecord, $content);
-            debugging("BLC file_helper: File created successfully: " . $newfile->get_filename(), DEBUG_DEVELOPER);
+            $logger->info("BLC file_helper: File created successfully: " . $newfile->get_filename());
             return $newfile;
         } catch (Exception $e) {
-            debugging("BLC file_helper: Exception creating file: " . $e->getMessage(), DEBUG_DEVELOPER);
+            $logger->error("BLC file_helper: Exception creating file: " . $e->getMessage());
             return false;
         }
     }
@@ -151,7 +155,8 @@ class file_helper {
         if (preg_match('/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/', $url, $matches)) {
             $fileid = $matches[1];
             // Convert to direct download URL.
-            debugging("BLC file_helper: Converting Google Drive URL, file ID: " . $fileid, DEBUG_DEVELOPER);
+            $logger = new debug_helper();
+            $logger->info("BLC file_helper: Converting Google Drive URL, file ID: " . $fileid);
             return "https://drive.google.com/uc?export=download&id=" . $fileid;
         }
 

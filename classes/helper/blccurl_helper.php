@@ -232,6 +232,8 @@ class blccurl_helper {
      * @return object The curl handle
      */
     private function apply_opt($curl, $options) {
+        $logger = new debug_helper();
+
         // Clean up.
         $this->cleanopt();
 
@@ -265,9 +267,9 @@ class blccurl_helper {
 
         if ($this->debug) {
             echo '<h1>Options</h1>';
-            debugging('cURL Options: ' . json_encode($this->options), DEBUG_DEVELOPER);
+            $logger->info('cURL Options: ' . json_encode($this->options));
             echo '<h1>Header</h1>';
-            debugging('cURL Header: ' . json_encode($this->header), DEBUG_DEVELOPER);
+            $logger->info('cURL Header: ' . json_encode($this->header));
         }
 
         // Set options.
@@ -351,10 +353,14 @@ class blccurl_helper {
      * @return bool
      */
     protected function request($url, $options = []) {
+        $logger = new debug_helper();
+
         // Create curl instance.
         $curl = curl_init($url);
         $options['url'] = $url;
+
         $this->apply_opt($curl, $options);
+
         if ($this->cache && $ret = $this->cache->get($this->options)) {
             return $ret;
         } else {
@@ -369,12 +375,12 @@ class blccurl_helper {
 
         if ($this->debug) {
             echo '<h1>Return Data</h1>';
-            debugging('cURL Response: ' . substr($ret, 0, 500), DEBUG_DEVELOPER);
+            $logger->info('cURL Response: ' . substr($ret, 0, 500));
             echo '<h1>Info</h1>';
-            debugging('cURL Info: ' . json_encode($this->info), DEBUG_DEVELOPER);
+            $logger->info('cURL Info: ' . json_encode($this->info));
             echo '<h1>Error</h1>';
             if (!empty($this->error)) {
-                debugging('cURL Error: ' . $this->error, DEBUG_DEVELOPER);
+                $logger->error('cURL Error: ' . $this->error);
             }
         }
 
