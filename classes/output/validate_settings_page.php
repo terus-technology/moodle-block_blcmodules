@@ -92,9 +92,8 @@ class validate_settings_page implements renderable, templatable {
         $token = get_config('block_blc_modules', 'token');
         $domainname = get_config('block_blc_modules', 'domainname');
         $requesturi = $CFG->wwwroot;
-
-        // FIXED: Use correct web service function name.
         $functionname = 'local_scormurl_check_scormurls';
+
         $serverurl = new moodle_url($domainname . '/webservice/rest/server.php', [
             'wstoken' => $token,
             'wsfunction' => $functionname,

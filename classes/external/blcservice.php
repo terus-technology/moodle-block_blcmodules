@@ -516,7 +516,16 @@ class blcservice extends external_api {
                 require_capability('moodle/course:manageactivities', $coursecontext);
                 require_capability('mod/scorm:addinstance', $coursecontext);
             } catch (Exception $e) {
-                $debug->error('Capability check failed: ' . $e->getMessage());
+                $debug->error(
+                    'Capability check failed: ' . $e->getMessage(),
+                    [
+                        'Insufficient permissions or invalid course context',
+                    ],
+                    [
+                        'Ensure the user has moodle/course:manageactivities and mod/scorm:addinstance capabilities',
+                    ],
+                    $e->getTraceAsString()
+                );
                 throw $e;
             }
 
@@ -564,14 +573,17 @@ class blcservice extends external_api {
                     // Pass Drive ID if available for proper validation.
                     $driveid = !empty($scormdata['driveid']) ? $scormdata['driveid'] : null;
                     try {
-                        if (!self::validate_scorm_url($scormdata['scormurl'], $driveid)) {
+                        if (!self::validate_scorm_url($scormdata['scormurl'])) {
                             $results['failed']++;
                             $results['messages'][] = "SCORM file not accessible: " . $scormdata['scormname'];
                             continue;
                         }
                     } catch (Exception $e) {
                         $debug->error(
-                            'BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage()
+                            'BLC Modules: File validation failed for ' . $scormdata['scormname'] . ': ' . $e->getMessage(),
+                            ['The SCORM file may be inaccessible, corrupted, or the URL is invalid'],
+                            ['Check that the SCORM URL is accessible from the server', 'Verify the file exists on Google Drive'],
+                            $e->getTraceAsString()
                         );
                         $results['failed']++;
                         $results['messages'][] = "SCORM file validation failed: " . $scormdata['scormname'] .
@@ -642,9 +654,19 @@ class blcservice extends external_api {
             return $results;
         } catch (Exception $e) {
             $debug = new debug_helper();
-            $debug->critical('BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage());
-            $debug->critical('BLC Modules: Stack trace: ' . $e->getTraceAsString());
-            $debug->critical('BLC Modules: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            $debug->critical(
+                'BLC Modules: CRITICAL ERROR in load_scorm_modules: ' . $e->getMessage(),
+                [
+                    'An unexpected exception occurred during SCORM module loading process',
+                    'This could be due to invalid data, API failure, or database error',
+                ],
+                [
+                    'Check the exception details in the technical details below',
+                    'Verify the SCORM URLs and course data are valid',
+                    'Check Moodle error logs for more details',
+                ],
+                'File: ' . $e->getFile() . ' (Line: ' . $e->getLine() . ')' . "\nStack trace:\n" . $e->getTraceAsString()
+            );
 
             // Return error response that JavaScript can handle.
             return [
@@ -688,7 +710,19 @@ class blcservice extends external_api {
         ]);
 
         if ($responses === false) {
-            $debug->error('BLC Modules: ERROR - cURL request failed completely for URL: ' . $url);
+            $debug->error(
+                'BLC Modules: ERROR - cURL request failed completely for URL: ' . $url,
+                [
+                    'The local_scormurl API server may be down',
+                    'Network connectivity issue',
+                    'Invalid API endpoint URL',
+                ],
+                [
+                    'Verify the domainname configuration in plugin settings',
+                    'Check network connectivity to the API server',
+                    'Ensure the local_scormurl web service is enabled',
+                ]
+            );
             return null;
         }
 
@@ -698,15 +732,29 @@ class blcservice extends external_api {
         $jsondata = json_decode($responses, true);
 
         if (empty($jsondata)) {
-            $debug->error('BLC Modules: ERROR - Empty or invalid JSON response from API');
-            $debug->error('BLC Modules: Response was: ' . $responses);
+            $debug->error(
+                'BLC Modules: ERROR - Empty or invalid JSON response from API',
+                [
+                    'The API returned an empty response or invalid JSON',
+                    'The local_scormurl service may have encountered an error',
+                ],
+                [
+                    'Check the API server error logs',
+                    'Verify the token and apikey parameters',
+                    'Ensure the service function local_scormurl_get_tempscormurls exists',
+                ],
+                'Response was: ' . $responses
+            );
             return null;
         }
 
         if (!isset($jsondata['scormname'])) {
-            $debug->error('BLC Modules: ERROR - Response missing scormname field');
-            $debug->error('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
-            $debug->error('BLC Modules: Full response: ' . json_encode($jsondata));
+            $debug->error(
+                'BLC Modules: ERROR - Response missing scormname field',
+                ['The API response format may have changed', 'The SCORM data may be incomplete'],
+                ['Verify the local_scormurl plugin version matches', 'Check the API response structure'],
+                'Available fields: ' . implode(', ', array_keys($jsondata)) . "\nFull response: " . json_encode($jsondata)
+            );
             return null;
         }
 
@@ -723,9 +771,19 @@ class blcservice extends external_api {
 
         // CRITICAL: Validate URL is not empty.
         if (empty($tempscormurl)) {
-            $debug->error('BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . ($scormobject->scormname ?? 'unknown'));
-            $debug->error('BLC Modules: Original URL requested: ' . $url);
-            $debug->error('BLC Modules: Check if local_scormurl plugin is working correctly');
+            $debug->error(
+                'BLC Modules: ERROR - tempscormurl is empty for SCORM: ' . ($scormobject->scormname ?? 'unknown'),
+                [
+                    'The local_scormurl plugin failed to create a temporary URL',
+                    'The file may not exist or is inaccessible on Google Drive',
+                ],
+                [
+                    'Check if local_scormurl plugin is working correctly',
+                    'Verify the original URL: ' . $url,
+                    'Check the API server error logs',
+                ],
+                'Original URL requested: ' . $url
+            );
             return null;
         }
 
@@ -736,7 +794,16 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Extracted filename: ' . $urlfilename);
 
         if (empty($urlfilename)) {
-            $debug->error('BLC Modules: ERROR - No filename in URL: ' . $tempscormurl);
+            $debug->error(
+                'BLC Modules: ERROR - No filename in URL: ' . $tempscormurl,
+                [
+                    'The URL returned by local_scormurl has an invalid format with no filename',
+                ],
+                [
+                    'Check the local_scormurl plugin file handling logic',
+                    'Verify the source file exists with a proper name on Google Drive',
+                ]
+            );
             return null;
         }
 
@@ -780,7 +847,16 @@ class blcservice extends external_api {
 
         // Basic URL format validation.
         if (empty($scormurl)) {
-            $debug->error('Empty SCORM URL provided');
+            $debug->error(
+                'Empty SCORM URL provided',
+                [
+                    'The SCORM package URL from the API response is empty',
+                ],
+                [
+                    'Check the local_scormurl API response for scormurl field',
+                    'Verify the source SCORM package exists',
+                ]
+            );
             return false;
         }
 
@@ -1149,15 +1225,33 @@ class blcservice extends external_api {
         $jsondata = json_decode($responses, true);
 
         if (empty($jsondata)) {
-            $debug->error('BLC Modules: ERROR - Empty or invalid JSON response from API');
-            $debug->error('BLC Modules: Response was: ' . $responses);
+            $debug->error(
+                'BLC Modules: ERROR - Empty or invalid JSON response from API',
+                [
+                    'The API returned an empty response or invalid JSON for document',
+                    'The local_scormurl service may have encountered an error',
+                ],
+                [
+                    'Check the API server error logs',
+                    'Verify the token and apikey parameters',
+                    'Ensure the service function local_scormurl_get_tempdocurls exists',
+                ],
+                'Response was: ' . $responses
+            );
             return null;
         }
 
         if (!isset($jsondata['docname'])) {
-            $debug->error('BLC Modules: ERROR - Response missing docname field');
-            $debug->error('BLC Modules: Available fields: ' . implode(', ', array_keys($jsondata)));
-            $debug->error('BLC Modules: Full response: ' . json_encode($jsondata));
+            $debug->error(
+                'BLC Modules: ERROR - Response missing docname field',
+                [
+                    'The API response format may have changed', 'The accessibility document data may be incomplete',
+                ],
+                [
+                    'Verify the local_scormurl plugin version matches', 'Check the API response structure',
+                ],
+                'Available fields: ' . implode(', ', array_keys($jsondata)) . "\nFull response: " . json_encode($jsondata)
+            );
             return null;
         }
 
@@ -1180,9 +1274,19 @@ class blcservice extends external_api {
 
         // CRITICAL: Validate URL is not empty.
         if (empty($downloadurl)) {
-            $debug->error('BLC Modules: ERROR - download URL is empty for Document: ' . ($docobject->docname ?? 'unknown'));
-            $debug->error('BLC Modules: Original URL requested: ' . $scormurl);
-            $debug->error('BLC Modules: Check if local_scormurl plugin is working correctly');
+            $debug->error(
+                'BLC Modules: ERROR - download URL is empty for Document: ' . ($docobject->docname ?? 'unknown'),
+                [
+                    'The local_scormurl plugin failed to create a temporary document URL',
+                    'The document file may not exist or is inaccessible on Google Drive',
+                ],
+                [
+                    'Check if local_scormurl plugin is working correctly',
+                    'Verify the original URL requested: ' . $scormurl,
+                    'Check the API server error logs',
+                ],
+                'Original URL requested: ' . $scormurl
+            );
             return null;
         }
 
@@ -1193,7 +1297,16 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Extracted filename: ' . $urlfilename);
 
         if (empty($urlfilename)) {
-            $debug->error('BLC Modules: ERROR - No filename in URL: ' . $downloadurl);
+            $debug->error(
+                'BLC Modules: ERROR - No filename in URL: ' . $downloadurl,
+                [
+                    'The URL returned by local_scormurl for the document has an invalid format with no filename',
+                ],
+                [
+                    'Check the local_scormurl plugin file handling logic for documents',
+                    'Verify the source document file exists with a proper name on Google Drive',
+                ]
+            );
             return null;
         }
 
@@ -1249,7 +1362,17 @@ class blcservice extends external_api {
             $debug->info('BLC Modules: Using pluginfile URL method');
             $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
             if (!$file) {
-                $debug->error('BLC Modules: ERROR - Failed to create file from pluginfile URL');
+                $debug->error(
+                    'BLC Modules: ERROR - Failed to create file from pluginfile URL: ' . $filename,
+                    [
+                        'The pluginfile URL may be invalid or the file is no longer accessible',
+                        'The temporary file may have expired',
+                    ],
+                    [
+                        'Check the document URL accessibility',
+                        'Verify the local_scormurl temp document is still valid',
+                    ]
+                );
                 throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         } else {
@@ -1257,7 +1380,18 @@ class blcservice extends external_api {
             $debug->info('BLC Modules: Using external URL method');
             $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
             if (!$file) {
-                $debug->error('BLC Modules: ERROR - Failed to create file from external URL');
+                $debug->error(
+                    'BLC Modules: ERROR - Failed to create file from external URL: ' . $filename,
+                    [
+                        'The external URL may be inaccessible or the download failed',
+                        'Network connectivity issue to the file server',
+                    ],
+                    [
+                        'Check the download URL accessibility',
+                        'Verify the server can reach the external URL',
+                        'Check firewall or proxy settings',
+                    ]
+                );
                 throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
             }
         }
