@@ -10,7 +10,7 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 - Error logs now support dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections.
 
 ### Changed
-- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, and related helpers) to use actionable error messages instead of generic failure logs.
+- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, `services.php`, `blcservice.php`, and related helpers) to use actionable error messages instead of generic failure logs.
 - Replaced technical-only error messages with administrator-friendly descriptions where possible.
 
 ### Fixed
