@@ -156,7 +156,17 @@ class services {
 
         // Check if reference URL is set.
         if (empty($scorm->reference)) {
-            $debug->error('SCORM reference URL is empty in blcscorm_parse. Cannot proceed.');
+            $debug->error(
+                'SCORM reference URL is empty in blcscorm_parse. Cannot proceed.',
+                [
+                    'The SCORM module was created without a valid package URL',
+                    'The reference field in the scorm table is empty',
+                ],
+                [
+                    'Re-create the SCORM module with a valid package URL',
+                    'Check if the local_scormurl service returned a valid temporary URL',
+                ]
+            );
             return;
         }
 
@@ -182,8 +192,18 @@ class services {
 
             // CRITICAL: Validate filename is not empty after cleaning.
             if (empty($cleanfilename)) {
-                $debug->error('Extracted filename is empty after cleaning. URL: ' . $scorm->reference);
-                $debug->error('This usually means the URL has no filename or ends with a slash.');
+                $debug->error(
+                    'Extracted filename is empty after cleaning. URL: ' . $scorm->reference,
+                    [
+                        'The URL has no filename or ends with a slash',
+                        'The URL format may be invalid',
+                    ],
+                    [
+                        'Verify the SCORM package URL is correct',
+                        'Check the local_scormurl temporary URL generation',
+                    ],
+                    'This usually means the URL has no filename or ends with a slash.'
+                );
                 return;
             }
 
@@ -193,7 +213,16 @@ class services {
 
         // Additional safety check: Ensure filename is set and not empty.
         if (empty($filerecord['filename'])) {
-            $debug->error('File record filename is empty. Cannot create file.');
+            $debug->error(
+                'File record filename is empty. Cannot create file.',
+                [
+                    'Filename extraction from URL failed or produced an empty result',
+                ],
+                [
+                    'Verify the SCORM package URL contains a valid filename',
+                    'Check the URL format from local_scormurl service',
+                ]
+            );
             return;
         }
 
@@ -219,12 +248,36 @@ class services {
                     $debug->info('Successfully downloaded SCORM package: ' . $packagefile->get_filesize() . ' bytes');
                 } else {
                     $newhash = null;
-                    $debug->error('Failed to download or create SCORM package file from: ' . $scorm->reference);
+                    $debug->error(
+                        'Failed to download or create SCORM package file from: ' . $scorm->reference,
+                        [
+                            'The URL may be inaccessible or the server cannot reach the file',
+                            'The temporary URL may have expired',
+                            'The file server may be down or returning an error',
+                        ],
+                        [
+                            'Check network connectivity to the URL',
+                            'Verify the temporary URL is still valid',
+                            'Check firewall or proxy settings',
+                        ]
+                    );
                     exit();
                 }
             } catch (Exception $e) {
                 $newhash = null;
-                $debug->error('Exception downloading SCORM package: ' . $e->getMessage());
+                $debug->error(
+                    'Exception downloading SCORM package: ' . $e->getMessage(),
+                    [
+                        'An unexpected PHP exception occurred during file download',
+                        'This could be due to a timeout, memory limit, or file system error',
+                    ],
+                    [
+                        'Check the exception message for details',
+                        'Increase PHP execution time/memory limits if needed',
+                        'Check Moodle error logs for stack trace',
+                    ],
+                    'Exception caught in blcscorm_parse while downloading from URL: ' . $scorm->reference
+                );
                 exit();
             }
         } else {
