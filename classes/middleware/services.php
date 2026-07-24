@@ -27,10 +27,6 @@ namespace block_blc_modules\middleware;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(dirname(__FILE__) . '/../../../../config.php');
-require_login();
-require_once("$CFG->libdir/accesslib.php");
-
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use context;
