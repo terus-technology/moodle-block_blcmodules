@@ -1,6 +1,20 @@
 # Changelog
 
-All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this file.
+All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this file.
+
+---
+
+## [5.1.1] — 2026-07-24
+
+### Fixed
+- **GDPR compliance**: Replaced `null_provider` with full privacy provider implementation covering all three database tables (`block_blc_modules`, `block_blc_modules_doc`, `block_blc_modules_log`). The plugin now properly supports `export_user_data()`, `delete_data_for_user()`, `delete_data_for_all_users_in_context()`, `get_users_in_context()`, and `delete_data_for_users()`. Previously the plugin falsely claimed it stored no personal data despite all tables containing `userid` fields and the log table also storing `ip_address` and `user_agent`.
+- **Security**: Removed unnecessary `require_once(config.php)` and `require_once(accesslib.php)` from `services.php`. These are redundant in Moodle's autoloaded class files — `config.php` is loaded at the entry point, and no functions from `accesslib.php` are used in this class.
+
+### Added
+- `privacy:metadata` language strings for all three database tables with field-level descriptions (39 strings total), enabling accurate display in the Moodle privacy registry (`/admin/tool/dataprivacy/dataregistry.php`).
+
+### Changed
+- Privacy provider now implements `\core_privacy\local\metadata\provider`, `\core_privacy\local\request\plugin\provider`, and `\core_privacy\local\request\core_userlist_provider` instead of `null_provider`.
 
 ---
 
