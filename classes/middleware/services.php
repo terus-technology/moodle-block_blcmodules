@@ -39,7 +39,6 @@ use core_completion\api;
 use core_php_time_limit;
 use Exception;
 use file_storage;
-use moodle_exception;
 use stdClass;
 use stored_file;
 
@@ -537,7 +536,7 @@ class services {
                         ]
                     );
                 }
-            } catch (moodle_exception $e) {
+            } catch (Exception $e) {
                 $newhash = null;
                 $debug->error(
                     'Exception downloading SCORM package: ' . $e->getMessage(),
