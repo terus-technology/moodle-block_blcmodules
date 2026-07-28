@@ -502,18 +502,66 @@ class services {
                         );
                     } else {
                         $newhash = null;
-                        $debug->error('Failed to create SCORM package file from content');
+                        $debug->error(
+                            'Failed to create SCORM package file from content',
+                            [
+                                'The file storage may be misconfigured',
+                                'There may be insufficient permissions to write to the file area',
+                                'The downloaded content may be empty or invalid',
+                            ],
+                            [
+                                'Check Moodle file storage configuration',
+                                'Ensure the web server has write permissions to the Moodle data directory',
+                                'Verify the downloaded content is valid and not empty',
+                            ]
+                        );
                     }
                 } else {
                     $newhash = null;
-                    $debug->error('Failed to download SCORM package content from: ' . $scorm->reference);
+                    $debug->error(
+                        'Failed to download SCORM package content from: ' . $scorm->reference,
+                        [
+                            'The URL may be inaccessible or the server cannot reach the file',
+                            'The temporary URL may have expired',
+                            'The file server may be down or returning an error',
+                        ],
+                        [
+                            'Check network connectivity to the URL',
+                            'Verify the temporary URL is still valid',
+                            'Check firewall or proxy settings',
+                        ]
+                    );
                 }
             } catch (Exception $e) {
                 $newhash = null;
-                $debug->error('Exception downloading SCORM package: ' . $e->getMessage());
+                $debug->error(
+                    'Exception downloading SCORM package: ' . $e->getMessage(),
+                    [
+                        'The URL may be inaccessible or the server cannot reach the file',
+                        'The temporary URL may have expired',
+                        'The file server may be down or returning an error',
+                    ],
+                    [
+                        'Check network connectivity to the URL',
+                        'Verify the temporary URL is still valid',
+                        'Check firewall or proxy settings',
+                    ]
+                );
             }
         } else {
-            $debug->error('SCORM reference URL is empty in scorm_parse. Scorm object: ' . json_encode($scorm));
+            $debug->error(
+                'SCORM reference URL is empty in scorm_parse. Scorm object: ' . json_encode($scorm),
+                [
+                    'The SCORM module was created without a valid package URL',
+                    'The reference field in the scorm table is empty',
+                    'The local_scormurl service did not return a valid temporary URL',
+                ],
+                [
+                    'Re-create the SCORM module with a valid package URL',
+                    'Ensure the reference field is populated correctly in the scorm table',
+                    'Check if the local_scormurl service returned a valid temporary URL',
+                ]
+            );
             return;
         }
 

@@ -18,6 +18,13 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.0.5] — 2026-07-27
+
+### Changed
+- Enhanced error messages in `scorm_parse()` (services.php) with dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections, consistent with the 5.0.4 error-handling refactor.
+
+---
+
 ## [5.0.4] — 2026-06-29
 
 ### Added
@@ -86,6 +93,137 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 - Collapse/expand toggle button not responding on the SCORM load logs page.
 - Intermittent failure when downloading SCORM packages through the BLC selector.
 - Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
+
+---
+
+## [4.5.20] — 2026-07-27
+
+### Changed
+- Enhanced error messages in `scorm_parse()` (services.php) with dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections, consistent with the 4.5.19 error-handling refactor.
+
+---
+
+## [4.5.19] — 2026-06-23
+
+### Added
+- Error logs now support dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections.
+
+### Changed
+- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, `services.php`, `blcservice.php`, and related helpers) to use actionable error messages instead of generic failure logs.
+- Replaced technical-only error messages with administrator-friendly descriptions where possible.
+
+### Fixed
+- Administrators can now identify common causes of failures and recommended remediation steps directly from Moodle logs without requiring source code analysis or support intervention.
+- Reduced ambiguous error messages that previously only described what failed without explaining how to resolve the issue.
+
+---
+
+## [4.5.18] — 2026-06-18
+
+### Added
+- Severity-aware logging via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
+- Debug output now respects Moodle's `debug` setting — only critical/error messages appear in `DEBUG_MINIMAL`, warnings appear in `DEBUG_NORMAL`, and full detail (including `info`) appears in `DEBUG_DEVELOPER`.
+
+### Changed
+- Replaced all raw `debugging()` calls across the entire plugin (`add_doc.php`, `bulk_update.php`, `bulk_update_processor.php`, `blcservice.php`, `blccurl_helper.php`, `file_helper.php`, `services.php`, `logger.php`, `validate_settings_page.php`) with severity-aware `debug_helper` calls.
+- Non-critical failures (e.g., API key mapping, temp file cleanup) are now logged at `warning` or `info` level instead of being indistinguishable from blocking errors.
+- Critical errors (e.g., incomplete configuration, module creation failures) are explicitly tagged with `Core functionality affected` in log output.
+
+## [4.5.17] — 2026-06-11
+
+### Changed
+- `ensure_api_key_mapping()` now calls the `local_scormurl_update_scorm_mapping` web service instead of writing directly to the `block_scorm_apikey` table. This also eliminates unnecessary missing-table error logs that appeared when the `block_scorm_apikey` table was absent.
+
+### Removed
+- Missing table warning alert from UI, which were only used by the old direct-DB access.
+
+---
+
+## [4.5.16] — 2026-06-10
+
+### Fixed
+- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
+
+---
+
+## [4.5.15] — 2026-06-09
+
+### Fixed
+- Collapse/expand toggle button not responding on the SCORM load logs page.
+- Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
+- Intermittent failure when downloading SCORM packages through the BLC selector.
+
+### Removed
+- Deprecated `curl.php` helper in favour of Moodle core cURL handling.
+
+---
+
+## [4.5.14] — 2026-03-06
+
+### Added
+- Clear, actionable error messages when the `block_scorm_apikey` dependency table is missing. A one-time admin notification is shown instead of a fatal error.
+- Header docblocks, `MOODLE_INTERNAL` guards, and modern array syntax across `blcservice`.
+
+### Changed
+- Refactored `blcservice` error handling: replaced `error_log` with `debugging()`, added JSON decode guards, and allowed partial-success responses.
+- Extracted reusable helpers (`fetch_scorm_data`, `fetch_accessibility_document`, `validate_scorm_url`).
+- Tightened parameter validation using `self::validate_parameters` instead of ad-hoc handling.
+
+### Fixed
+- PHP 8 compatibility issues (string+int concatenation) in the API layer.
+
+---
+
+## [4.5.13] — 2025-12-01
+
+### Added
+- SCORM load logging page with dedicated logger class and database schema (`scorm_load_log` table).
+- New `scorm_load_processor.php` for real-time log tracking.
+
+### Changed
+- SCORM modules are now sorted alphabetically by `scormname` in the selector for easier browsing.
+- Course ID retrieval on `section.php` views now uses the body CSS class for reliability.
+
+### Fixed
+- Resolved stale-variable bugs when loading multiple SCORM modules in quick succession.
+
+---
+
+## [4.5.12] — 2025-11-06
+
+### Added
+- Real-time AJAX progress bar and spinner when loading SCORM modules, with per-module status messages.
+- Bulk update process now shows live progress statistics (success / failure / skipped counts) rendered via a Mustache template.
+- Database indexes on bulk-update lookup columns for faster processing on large Moodle instances.
+
+### Changed
+- Bulk update processor rewritten with memory management (`gc_collect_cycles`), batched SQL, and performance optimisations for sites with hundreds of SCORM modules.
+- Modal dialog behaviour: backdrop click and ESC key no longer dismiss the modal; close requires an explicit button click.
+- Subject dropdown now shows a loading spinner and caches results in the JavaScript layer for snappier re-opens.
+
+### Fixed
+- Duplicate SCORM detection strengthened — previously stale data could cause false-positive "already exists" rejections.
+- Google Drive helper class removed; download methods unified under the standard cURL-based approach.
+
+---
+
+## [4.5.11] — 2025-10-29
+
+### Added
+- Google Drive support: SCORM packages hosted on Google Drive can now be streamed directly into Moodle with improved filename detection and error handling.
+- `subject` field added to `block_blc_modules` database table with corresponding UI filters.
+- Bootstrap 5 compatibility layer for Moodle 5.0+ — modals, popovers, and tooltips updated from Bootstrap 4 data attributes.
+
+### Changed
+- Subject extraction in `get_subjects()` rewritten to use a single SQL `DISTINCT` query instead of a PHP loop, dramatically improving performance on large datasets.
+- Accessibility document fetching centralised through the BLC API rather than ad-hoc HTTP calls.
+- Button styles unified under the `.btn-blc-modules` class with consistent hover effects across all module action buttons.
+- AJAX timeout increased for long-running SCORM downloads; detailed success/failure logging added to every AJAX call.
+- SCORM package filename validation strengthened to reject malformed or empty names before download begins.
+- SCORM URL parameter type relaxed from `PARAM_URL` to `PARAM_TEXT` for broader compatibility.
+
+### Fixed
+- Stale variable reuse after sequential module loads no longer causes incorrect data to carry over.
 
 ---
 
@@ -207,7 +345,7 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 ## [4.5.0] — 2020-07-17
 
 ### Added
-- BLC Modules Summer 2020 Update — major feature release with bulk update capability, improved SCORM package handling, and updated README documentation.
+- BLC Modules update for Moodle 4.5.
 
 ---
 
