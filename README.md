@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.0.4-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-5.0.5-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/moodle-5.0-orange.svg" alt="Moodle">
   <img src="https://img.shields.io/badge/license-GPL%20v3-brown.svg" alt="License">
   <img src="https://img.shields.io/badge/maturity-STABLE-green.svg" alt="Maturity">
@@ -48,12 +48,12 @@
 
 ## Requirements
 
-| Requirement  | Minimum                     |
-| ------------ | --------------------------- |
-| Moodle       | **5.0**                     |
-| PHP          | 8.3+                        |
-| SCORM module | `mod_scorm` ≥ 2025041400    |
-| BLC API Key  | Provided after registration |
+| Requirement | Minimum |
+|---|---|
+| Moodle | **5.0** |
+| PHP | 8.3+ |
+| SCORM module | `mod_scorm` ≥ 2025041400 |
+| BLC API Key | Provided after registration |
 
 ### Moodle Prerequisites
 
@@ -97,6 +97,8 @@ Overwrite the existing `blocks/blc_modules/` directory with the new version, the
 
 > 💡 **On Moodle 4.5?** Switch to the [`release/moodle45`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle45) branch.
 
+> 💡 **On Moodle 5.1?** Switch to the [`release/moodle51`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle51) branch.
+
 > 💡 **Want to use Older Version?** Use [`master`](https://github.com/terus-technology/moodle-block_blcmodules/tree/master) branch.
 ---
 
@@ -106,9 +108,9 @@ After installation, configure the plugin at:
 
 > _Site administration → Plugins → Blocks → BLC Modules_
 
-| Setting               | Description                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------- |
-| **API Key**           | Your unique BLC API key (obtained after registration).                                 |
+| Setting | Description |
+|---|---|
+| **API Key** | Your unique BLC API key (obtained after registration). |
 | **Validate Settings** | Built-in tool to verify your API key and Moodle URL are correctly registered with BLC. |
 
 ---
