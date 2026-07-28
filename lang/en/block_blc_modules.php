@@ -27,7 +27,50 @@
 
 $string['blc_modules:addinstance'] = 'Add a new BLC Moodle block';
 $string['pluginname'] = 'BLC Modules';
-$string['privacy:metadata'] = 'The scorm block only shows data stored in other locations.';
+
+// Privacy API.
+$string['privacy:metadata'] = 'The BLC Modules block stores user data including user IDs, course IDs, SCORM module URLs and associated metadata.';
+$string['privacy:metadata:block_blc_modules'] = 'Information about BLC Modules that have been added to courses.';
+$string['privacy:metadata:block_blc_modules:userid'] = 'The ID of the user who added the BLC Module.';
+$string['privacy:metadata:block_blc_modules:courseid'] = 'The ID of the course the module belongs to.';
+$string['privacy:metadata:block_blc_modules:sectionid'] = 'The ID of the course section.';
+$string['privacy:metadata:block_blc_modules:cmid'] = 'The course module ID.';
+$string['privacy:metadata:block_blc_modules:scormid'] = 'The SCORM activity instance ID.';
+$string['privacy:metadata:block_blc_modules:scormurl'] = 'The URL of the SCORM package.';
+$string['privacy:metadata:block_blc_modules:subject'] = 'The subject name associated with the module.';
+$string['privacy:metadata:block_blc_modules:version'] = 'The version of the SCORM package.';
+$string['privacy:metadata:block_blc_modules:timecreated'] = 'The time the record was created.';
+$string['privacy:metadata:block_blc_modules:timemodified'] = 'The time the record was last modified.';
+$string['privacy:metadata:block_blc_modules_doc'] = 'Information about accessibility documents added to BLC Modules.';
+$string['privacy:metadata:block_blc_modules_doc:userid'] = 'The ID of the user who added the accessibility document.';
+$string['privacy:metadata:block_blc_modules_doc:courseid'] = 'The ID of the course.';
+$string['privacy:metadata:block_blc_modules_doc:blcmoduleid'] = 'The ID of the BLC module.';
+$string['privacy:metadata:block_blc_modules_doc:sectionid'] = 'The ID of the course section.';
+$string['privacy:metadata:block_blc_modules_doc:cmid'] = 'The course module ID.';
+$string['privacy:metadata:block_blc_modules_doc:scormid'] = 'The SCORM activity instance ID.';
+$string['privacy:metadata:block_blc_modules_doc:scormurl'] = 'The URL of the SCORM package.';
+$string['privacy:metadata:block_blc_modules_doc:version'] = 'The version of the document.';
+$string['privacy:metadata:block_blc_modules_doc:timecreated'] = 'The time the record was created.';
+$string['privacy:metadata:block_blc_modules_doc:timemodified'] = 'The time the record was last modified.';
+$string['privacy:metadata:block_blc_modules_log'] = 'Logs of SCORM loading and processing operations.';
+$string['privacy:metadata:block_blc_modules_log:userid'] = 'The ID of the user who triggered the operation.';
+$string['privacy:metadata:block_blc_modules_log:courseid'] = 'The ID of the course.';
+$string['privacy:metadata:block_blc_modules_log:sectionnumber'] = 'The course section number.';
+$string['privacy:metadata:block_blc_modules_log:process_type'] = 'The type of process (e.g. scorm_load, bulk_update).';
+$string['privacy:metadata:block_blc_modules_log:process_status'] = 'The status of the process (started, processing, completed, failed).';
+$string['privacy:metadata:block_blc_modules_log:session_id'] = 'The PHP session ID that grouped the operation.';
+$string['privacy:metadata:block_blc_modules_log:parameters'] = 'JSON-encoded process parameters.';
+$string['privacy:metadata:block_blc_modules_log:scormurl'] = 'The SCORM package URL being processed.';
+$string['privacy:metadata:block_blc_modules_log:scormname'] = 'The name of the SCORM module.';
+$string['privacy:metadata:block_blc_modules_log:scormid'] = 'The SCORM instance ID.';
+$string['privacy:metadata:block_blc_modules_log:cmid'] = 'The course module ID.';
+$string['privacy:metadata:block_blc_modules_log:log_level'] = 'The severity level of the log entry.';
+$string['privacy:metadata:block_blc_modules_log:message'] = 'The log message.';
+$string['privacy:metadata:block_blc_modules_log:error_details'] = 'Detailed error information if applicable.';
+$string['privacy:metadata:block_blc_modules_log:ip_address'] = 'The IP address of the user who triggered the operation.';
+$string['privacy:metadata:block_blc_modules_log:user_agent'] = 'The browser user agent string.';
+$string['privacy:metadata:block_blc_modules_log:timecreated'] = 'The time the log entry was created.';
+
 $string['api_key'] = 'API Key';
 $string['api_key_desc'] = 'If you are unsure where to get this, please refer to the <a href="https://blc.howcollege.ac.uk/blocks/scorm_package/guide.php">BLC Plugin Guide</a>.<br/> You can also test that your block is properly configured using <a href="{$a->wwwroot}/blocks/blc_modules/validate_settings.php">this tool</a>.';
 $string['token'] = 'Token';

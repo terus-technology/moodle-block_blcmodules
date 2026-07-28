@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.0.4-blue.svg" alt="Version">
-  <img src="https://img.shields.io/badge/moodle-5.0-orange.svg" alt="Moodle">
+  <img src="https://img.shields.io/badge/version-5.1.1-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/moodle-5.1-orange.svg" alt="Moodle">
   <img src="https://img.shields.io/badge/license-GPL%20v3-brown.svg" alt="License">
   <img src="https://img.shields.io/badge/maturity-STABLE-green.svg" alt="Maturity">
 </p>
@@ -50,7 +50,7 @@
 
 | Requirement  | Minimum                     |
 | ------------ | --------------------------- |
-| Moodle       | **5.0**                     |
+| Moodle       | **5.1**                     |
 | PHP          | 8.3+                        |
 | SCORM module | `mod_scorm` ≥ 2025041400    |
 | BLC API Key  | Provided after registration |
@@ -96,6 +96,8 @@ Go to _Site administration → Plugins → Install plugins_ and upload the new v
 Overwrite the existing `blocks/blc_modules/` directory with the new version, then visit _Site administration → Notifications_.
 
 > 💡 **On Moodle 4.5?** Switch to the [`release/moodle45`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle45) branch.
+
+> 💡 **On Moodle 5.0?** Switch to the [`release/moodle50`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle50) branch.
 
 > 💡 **Want to use Older Version?** Use [`master`](https://github.com/terus-technology/moodle-block_blcmodules/tree/master) branch.
 ---
