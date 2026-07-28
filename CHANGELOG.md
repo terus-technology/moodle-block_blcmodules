@@ -4,7 +4,7 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
-## [4.5.20] — 2026-07-28
+## [4.5.20] — 2026-07-27
 
 ### Changed
 - Enhanced error messages in `scorm_parse()` (services.php) with dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections, consistent with the 4.5.19 error-handling refactor.
