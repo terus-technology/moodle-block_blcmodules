@@ -1,6 +1,84 @@
 # Changelog
 
-All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this file.
+All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this file.
+
+---
+
+## [5.0.5] — 2026-07-27
+
+### Changed
+- Enhanced error messages in `scorm_parse()` (services.php) with dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections, consistent with the 5.0.4 error-handling refactor.
+
+---
+
+## [5.0.4] — 2026-06-29
+
+### Added
+- Error logs now support dedicated PROBABLE CAUSE, ACTION, and TECHNICAL DETAILS sections.
+
+### Changed
+- Refactored error handling throughout the plugin (`add_doc.php`, `bulk_update.php`, `validate_settings.php`, `file_helper.php`, `logger.php`, `blccurl_helper.php`, `services.php`, `blcservice.php`, and related helpers) to use actionable error messages instead of generic failure logs.
+- Replaced technical-only error messages with administrator-friendly descriptions where possible.
+
+### Fixed
+- Administrators can now identify common causes of failures and recommended remediation steps directly from Moodle logs without requiring source code analysis or support intervention.
+- Reduced ambiguous error messages that previously only described what failed without explaining how to resolve the issue.
+
+---
+
+## [5.0.3] — 2026-06-23
+
+### Added
+- Severity-aware logging via new `debug_helper` class that categorizes all log messages as `info`, `warning`, `error`, or `critical`, each with an explicit indication of whether core functionality is affected.
+- Debug output now respects Moodle's `debug` setting — only critical/error messages appear in `DEBUG_MINIMAL`, warnings appear in `DEBUG_NORMAL`, and full detail (including `info`) appears in `DEBUG_DEVELOPER`.
+
+### Changed
+- Replaced all raw `debugging()` calls across the entire plugin (`add_doc.php`, `bulk_update.php`, `bulk_update_processor.php`, `blcservice.php`, `blccurl_helper.php`, `file_helper.php`, `services.php`, `logger.php`, `validate_settings_page.php`) with severity-aware `debug_helper` calls.
+- Non-critical failures (e.g., API key mapping, temp file cleanup) are now logged at `warning` or `info` level instead of being indistinguishable from blocking errors.
+- Critical errors (e.g., incomplete configuration, module creation failures) are explicitly tagged with `Core functionality affected` in log output.
+
+---
+
+## [5.0.2] — 2026-06-22
+
+### Changed
+- `ensure_api_key_mapping()` now calls the `local_scormurl_update_scorm_mapping` web service instead of writing directly to the `block_scorm_apikey` table. This also eliminates unnecessary missing-table error logs that appeared when the `block_scorm_apikey` table was absent.
+
+### Removed
+- Missing table warning alert from UI, which were only used by the old direct-DB access.
+
+---
+
+## [5.0.1] — 2026-06-10
+
+### Added
+- CHANGELOG
+
+### Changed
+- README
+
+---
+
+## [5.0.0] — 2025-10-29
+
+### Added
+- Moodle 5.0 support — initial release for Moodle 5.0 with Bootstrap 5 compatibility layer for modals, popovers, and tooltips.
+- Google Drive support for externally hosted SCORM packages.
+- `subject` field added to `block_blc_modules` database table with corresponding UI filters.
+### Changed
+- Upgrade process updated for Moodle 5.0 compatibility.
+- Subject extraction in `get_subjects()` rewritten to use a single SQL `DISTINCT` query.
+- Accessibility document fetching centralised through the BLC API.
+- Button styles unified under the `.btn-blc-modules` class.
+- AJAX timeout increased for long-running SCORM downloads.
+- SCORM package filename validation strengthened.
+- SCORM URL parameter type relaxed from `PARAM_URL` to `PARAM_TEXT`
+### Fixed
+- Stale variable reuse after sequential module loads.
+- Double URL encoding in API calls that pass `scormurl` through `moodle_url`, which could break communication with the BLC API server.
+- Collapse/expand toggle button not responding on the SCORM load logs page.
+- Intermittent failure when downloading SCORM packages through the BLC selector.
+- Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
 
 ---
 

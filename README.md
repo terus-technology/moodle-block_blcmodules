@@ -50,9 +50,9 @@
 
 | Requirement | Minimum |
 |---|---|
-| Moodle | **4.5** |
-| PHP | 8.0+ |
-| SCORM module | `mod_scorm` ≥ 2024100700 |
+| Moodle | **5.0** |
+| PHP | 8.3+ |
+| SCORM module | `mod_scorm` ≥ 2025041400 |
 | BLC API Key | Provided after registration |
 
 ### Moodle Prerequisites
