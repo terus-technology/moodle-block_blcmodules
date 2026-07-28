@@ -118,7 +118,7 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 ## [4.5.11] — 2025-10-29
 
 ### Added
-- **Google Drive support**: SCORM packages hosted on Google Drive can now be streamed directly into Moodle with improved filename detection and error handling.
+- Google Drive support: SCORM packages hosted on Google Drive can now be streamed directly into Moodle with improved filename detection and error handling.
 - `subject` field added to `block_blc_modules` database table with corresponding UI filters.
 - Bootstrap 5 compatibility layer for Moodle 5.0+ — modals, popovers, and tooltips updated from Bootstrap 4 data attributes.
 
@@ -174,9 +174,9 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 ## [4.5.7] — 2025-07-16
 
 ### Added
-- **SCORM Report Page** — interactive chart and data tables showing module usage statistics per course, subject, and time period. Rendered via Mustache (`scorm_report_page.mustache`).
-- **SCORM Update Page** — refactored `update_scorm.php` to use the Mustache renderer (`update_scorm_page.mustache`) with structured output classes.
-- **Settings Validation Page** — refactored `validate_settings.php` to use the Mustache renderer (`validate_settings_page.mustache`).
+- SCORM Report Page — interactive chart and data tables showing module usage statistics per course, subject, and time period. Rendered via Mustache (`scorm_report_page.mustache`).
+- SCORM Update Page — refactored `update_scorm.php` to use the Mustache renderer (`update_scorm_page.mustache`) with structured output classes.
+- Settings Validation Page — refactored `validate_settings.php` to use the Mustache renderer (`validate_settings_page.mustache`).
 - External service definitions registered via `db/services.php` for the SCORM web-service API.
 
 ### Changed
@@ -223,7 +223,7 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 ## [4.5.3] — 2022-03-21
 
 ### Changed
-- **AMD Module Migration**: JavaScript loading converted from legacy inline `<script>` tags to AMD modules (`amd/src/`), with proper `RequireJS` dependency management.
+- AMD Module Migration: JavaScript loading converted from legacy inline `<script>` tags to AMD modules (`amd/src/`), with proper `RequireJS` dependency management.
 - Helper functions extracted from the main block class into dedicated utility classes.
 - Removed unused legacy JS files.
 
@@ -253,7 +253,7 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 ## [4.5.0] — 2020-07-17
 
 ### Added
-- **BLC Modules Summer 2020 Update** — major feature release with bulk update capability, improved SCORM package handling, and updated README documentation.
+- BLC Modules update for Moodle 4.5.
 
 ---
 
