@@ -28,13 +28,14 @@ use block_blc_modules\output\bulk_update_progress_page;
 use core\output\notification;
 
 require_once(dirname(__FILE__).'/../../config.php');
+
+global $DB, $USER, $CFG, $PAGE, $OUTPUT, $SITE, $SESSION;
+
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
 require_login(null, false);
-
-global $DB, $USER, $CFG, $PAGE, $OUTPUT, $SITE;
 
 // Security: Require system config capability (admin only).
 require_capability('moodle/site:config', context_system::instance());
@@ -67,8 +68,8 @@ $logger = new debug_helper();
 
 if ($action == 'continue') {
     // Initialize session for progress tracking.
-    if (!isset($_SESSION['bulk_update_progress'])) {
-        $_SESSION['bulk_update_progress'] = [
+    if (!isset($SESSION->bulk_update_progress)) {
+        $SESSION->bulk_update_progress = [
             'status' => 'idle',
             'total' => 0,
             'processed' => 0,

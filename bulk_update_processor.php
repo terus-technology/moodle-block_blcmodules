@@ -26,6 +26,9 @@
 define('AJAX_SCRIPT', true);
 
 require_once(dirname(__FILE__).'/../../config.php');
+
+global $DB, $CFG, $SESSION;
+
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
@@ -49,8 +52,8 @@ if (!confirm_sesskey($sesskey)) {
 }
 
 // Progress data stored in session.
-if (!isset($_SESSION['bulk_update_progress'])) {
-    $_SESSION['bulk_update_progress'] = [
+if (!isset($SESSION->bulk_update_progress)) {
+    $SESSION->bulk_update_progress = [
         'status' => 'idle',
         'total' => 0,
         'processed' => 0,
@@ -70,19 +73,19 @@ if (!isset($_SESSION['bulk_update_progress'])) {
  * @param string $type Log type (info, success, warning, error)
  */
 function add_progress_log($message, $type = 'info') {
-    if (!isset($_SESSION['bulk_update_progress']['log'])) {
-        $_SESSION['bulk_update_progress']['log'] = [];
+    if (!isset($SESSION->bulk_update_progress['log'])) {
+        $SESSION->bulk_update_progress['log'] = [];
     }
 
-    $_SESSION['bulk_update_progress']['log'][] = [
+    $SESSION->bulk_update_progress['log'][] = [
         'message' => $message,
         'type' => $type,
         'time' => date('H:i:s'),
     ];
 
     // Keep only last 50 log entries.
-    if (count($_SESSION['bulk_update_progress']['log']) > 50) {
-        $_SESSION['bulk_update_progress']['log'] = array_slice($_SESSION['bulk_update_progress']['log'], -50);
+    if (count($SESSION->bulk_update_progress['log']) > 50) {
+        $SESSION->bulk_update_progress['log'] = array_slice($SESSION->bulk_update_progress['log'], -50);
     }
 }
 
@@ -93,7 +96,7 @@ function add_progress_log($message, $type = 'info') {
  */
 function update_progress($data) {
     foreach ($data as $key => $value) {
-        $_SESSION['bulk_update_progress'][$key] = $value;
+        $SESSION->bulk_update_progress[$key] = $value;
     }
 }
 
@@ -103,7 +106,7 @@ function update_progress($data) {
  * @return array Current progress data
  */
 function get_progress() {
-    $progress = $_SESSION['bulk_update_progress'];
+    $progress = $SESSION->bulk_update_progress;
     // Return only new log entries (implement read marker if needed).
     return $progress;
 }
@@ -116,7 +119,7 @@ switch ($action) {
         // Start the bulk update process.
         try {
             // Reset session for fresh start.
-            $_SESSION['bulk_update_progress'] = [
+            $SESSION->bulk_update_progress = [
                 'status' => 'idle',
                 'total' => 0,
                 'processed' => 0,
