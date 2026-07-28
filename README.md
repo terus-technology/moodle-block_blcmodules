@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.5.19-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-4.5.20-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/moodle-4.5-orange.svg" alt="Moodle">
   <img src="https://img.shields.io/badge/license-GPL%20v3-brown.svg" alt="License">
   <img src="https://img.shields.io/badge/maturity-STABLE-green.svg" alt="Maturity">
@@ -95,7 +95,9 @@ Go to _Site administration → Plugins → Install plugins_ and upload the new v
 
 Overwrite the existing `blocks/blc_modules/` directory with the new version, then visit _Site administration → Notifications_.
 
-> 💡 **On Moodle 5.0+?** Switch to the [`release/moodle50`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle50) branch.
+> 💡 **On Moodle 5.0?** Switch to the [`release/moodle50`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle50) branch.
+
+> 💡 **On Moodle 5.1?** Switch to the [`release/moodle51`](https://github.com/terus-technology/moodle-block_blcmodules/tree/release/moodle51) branch.
 
 > 💡 **Want to use Older Version?** Use [`master`](https://github.com/terus-technology/moodle-block_blcmodules/tree/master) branch.
 ---
