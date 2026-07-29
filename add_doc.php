@@ -26,7 +26,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use block_blc_modules\helper\blccurl_helper;
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use core\output\notification;
@@ -246,8 +245,8 @@ if ($blcmodules) {
 
                 $logger->info("BLC add_doc: API URL: $serverurl");
 
-                $curl = new blccurl_helper();
-                $curl->set_header('Content-Type: application/json; charset=utf-8');
+                $curl = new \curl(['ignoresecurity' => true]);
+                $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
                 $responses = $curl->post($serverurl, '', ['CURLOPT_FAILONERROR' => true]);
 
@@ -712,8 +711,8 @@ if ($blcmodules) {
                     'moodlewsrestformat' => 'json',
                 ]);
 
-                $cleanupcurl = new blccurl_helper();
-                $cleanupcurl->set_header('Content-Type: application/json; charset=utf-8');
+                $cleanupcurl = new \curl(['ignoresecurity' => true]);
+                $cleanupcurl->setHeader('Content-Type: application/json; charset=utf-8');
                 $cleanupcurl->post($cleanupurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
                 $logger->info("BLC add_doc: Cleaned up temporary files for module $blcmoduleid");

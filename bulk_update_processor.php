@@ -33,7 +33,6 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
-use block_blc_modules\helper\blccurl_helper;
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 
@@ -273,8 +272,8 @@ function perform_bulk_update() {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         try {
             $requeststart = microtime(true);
@@ -455,8 +454,8 @@ function perform_bulk_update() {
         $errors = [];
 
         // OPTIMIZATION: Reuse curl instance instead of creating new one each iteration.
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         foreach ($modulestoprocess as $coursemodule => $updateinfo) {
             try {
