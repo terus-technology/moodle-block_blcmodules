@@ -4,7 +4,18 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
-## [5.1.2] — 2026-07-29
+## [5.1.3] — 2026-07-29
+
+### Removed
+- `externallib.php` — unused external API definition file.
+
+### Fixed
+- Synced database index definitions between `install.xml` and `upgrade.php` — added `scormid_idx`, `cmid_idx`, and `scormid_version_idx` indexes to `install.xml` so fresh installations benefit from the same query performance optimizations previously only applied during upgrade.
+- Replaced `sql_compare_text()` with `sql_isnotempty()` in `get_subjects()` (`locallib.php`) for cross-DB compatibility when filtering non-empty `subject` values.
+
+---
+
+## [5.1.2] — 2026-07-28
 
 ### Changed
 - Refactored HTTP client: Replaced the custom `blccurl_helper` wrapper class with Moodle core's native `\curl` class across all 17 call sites (`add_doc.php`, `bulk_update_processor.php`, `blcservice.php`, `validate_settings_page.php`). This eliminates a ~200-line custom cURL wrapper and its `blccurlcache_helper` dependency, leveraging Moodle's built-in security helper, proxy auto-detection, and CA certificate management.
