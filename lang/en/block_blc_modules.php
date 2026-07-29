@@ -146,6 +146,7 @@ $string['missingscormpackagedependency'] = 'BLC Modules warning: Required databa
 $string['jsondecodeerror'] = 'Error decoding JSON response from BLC API: {$a}';
 $string['cannotaddcoursemodule'] = 'Cannot add course module';
 $string['invalidmodule'] = 'Invalid course module';
+$string['scormpackagedownloadfailed'] = 'Failed to download SCORM package from URL: {$a}. Please check the URL and ensure it is accessible.';
 
 // SCORM Load Log Viewer strings (NEW).
 $string['scormloadlog'] = '<h4>SCORM Load Logs</h4>Click <a href="{$a->wwwroot}/blocks/blc_modules/scorm_load_log.php">here</a> to view detailed logs of SCORM loading processes.<h4>Plugin Settings</h4><br/>';

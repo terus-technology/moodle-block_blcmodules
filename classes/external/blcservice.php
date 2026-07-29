@@ -27,7 +27,6 @@ namespace block_blc_modules\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-use block_blc_modules\helper\blccurl_helper;
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use block_blc_modules\middleware\services;
@@ -98,8 +97,8 @@ class blcservice extends external_api {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // Improved error handling and validation.
@@ -197,8 +196,8 @@ class blcservice extends external_api {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // FIX: Decode as array and add error checking.
@@ -308,8 +307,8 @@ class blcservice extends external_api {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // FIX: Decode as array and add error checking.
@@ -408,8 +407,8 @@ class blcservice extends external_api {
                 'scormurl' => $url,
             ]);
 
-            $curl = new blccurl_helper();
-            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $curl = new \curl(['ignoresecurity' => true]);
+            $curl->setHeader('Content-Type: application/json; charset=utf-8');
             $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
         }
 
@@ -699,8 +698,8 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Calling API: ' . $functionname);
         $debug->info('BLC Modules: Original URL: ' . $url);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
 
         // Increase timeout for large file operations.
         $responses = $curl->post($serverurl->out(false), '', [
@@ -1044,8 +1043,8 @@ class blcservice extends external_api {
                 'moodlewsrestformat' => 'json',
             ]);
 
-            $curl = new blccurl_helper();
-            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $curl = new \curl(['ignoresecurity' => true]);
+            $curl->setHeader('Content-Type: application/json; charset=utf-8');
             $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
             $debug = new debug_helper();
@@ -1215,8 +1214,8 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Calling API: ' . $functionname);
         $debug->info('BLC Modules: Original URL: ' . $scormurl);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         // Debug: Log raw response.
@@ -1417,8 +1416,8 @@ class blcservice extends external_api {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
     }
 
@@ -1440,8 +1439,8 @@ class blcservice extends external_api {
             'moodlewsrestformat' => 'json',
         ]);
 
-        $curl = new blccurl_helper();
-        $curl->set_header('Content-Type: application/json; charset=utf-8');
+        $curl = new \curl(['ignoresecurity' => true]);
+        $curl->setHeader('Content-Type: application/json; charset=utf-8');
         $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
         $debug = new debug_helper();

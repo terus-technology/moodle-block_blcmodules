@@ -20,7 +20,6 @@ use core\output\renderable;
 use core\output\renderer_base;
 use core\output\templatable;
 use stdClass;
-use block_blc_modules\helper\blccurl_helper;
 use block_blc_modules\helper\debug_helper;
 use Exception;
 use moodle_url;
@@ -109,8 +108,8 @@ class validate_settings_page implements renderable, templatable {
         $apiokay = 'false';
 
         try {
-            $curl = new blccurl_helper();
-            $curl->set_header('Content-Type: application/json; charset=utf-8');
+            $curl = new \curl(['ignoresecurity' => true]);
+            $curl->setHeader('Content-Type: application/json; charset=utf-8');
             $responses = $curl->post($serverurl->out(false), '', ['CURLOPT_FAILONERROR' => true]);
 
             // FIXED: Parse JSON response correctly instead of CSV

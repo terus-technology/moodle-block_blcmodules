@@ -35,6 +35,7 @@ use core_completion\api;
 use core_php_time_limit;
 use Exception;
 use file_storage;
+use moodle_exception;
 use stdClass;
 use stored_file;
 
@@ -257,7 +258,7 @@ class services {
                             'Check firewall or proxy settings',
                         ]
                     );
-                    exit();
+                    throw new moodle_exception('scormpackagedownloaderror', 'block_blc_modules', '', $scorm->reference);
                 }
             } catch (Exception $e) {
                 $newhash = null;
@@ -274,7 +275,7 @@ class services {
                     ],
                     'Exception caught in blcscorm_parse while downloading from URL: ' . $scorm->reference
                 );
-                exit();
+                throw new moodle_exception('scormpackagedownloaderror', 'block_blc_modules', '', $scorm->reference);
             }
         } else {
             $newhash = null;
