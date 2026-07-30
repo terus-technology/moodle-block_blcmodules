@@ -21,6 +21,11 @@
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="scormid_idx" UNIQUE="false" FIELDS="scormid"/>
+        <INDEX NAME="cmid_idx" UNIQUE="false" FIELDS="cmid"/>
+        <INDEX NAME="scormid_version_idx" UNIQUE="false" FIELDS="scormid, version"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="block_blc_modules_doc" COMMENT="Add doc block">
       <FIELDS>

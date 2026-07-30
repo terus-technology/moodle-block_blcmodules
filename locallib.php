@@ -44,8 +44,7 @@ function get_subjects(?int $courseid = null): array {
     $sql = "
         SELECT DISTINCT subject
         FROM {block_blc_modules}
-        WHERE subject IS NOT NULL AND " . $DB->sql_compare_text('subject') . " != ''
-    ";
+        WHERE " . $DB->sql_isnotempty('block_blc_modules', 'subject', true, true);
 
     // Add course filter if specified.
     if ($courseid !== null) {
