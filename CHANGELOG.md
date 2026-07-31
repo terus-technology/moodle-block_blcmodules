@@ -4,6 +4,16 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.4] — 2026-07-31
+
+### Removed
+- Deprecated `array_sort()` utility function from `locallib.php`.
+
+### Changed
+- Update `mod_scorm` version in plugin dependencies to 2025100601
+
+---
+
 ## [5.1.3] — 2026-07-29
 
 ### Removed
