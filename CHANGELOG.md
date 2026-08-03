@@ -4,6 +4,17 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.5] — 2026-08-03
+
+### Changed
+- Replaced raw `$_SERVER['REMOTE_ADDR']` with Moodle core's `getremoteaddr()` in the logger class for proper IP address resolution (respects reverse proxy / load balancer headers).
+- Replaced raw `$_SERVER['HTTP_USER_AGENT']` with `\core_useragent::get_user_agent_string()` in the logger class for consistent user-agent retrieval across Moodle.
+
+### Removed
+- jQuery dependency (`$PAGE->requires->jquery()`) from `block_blc_modules.php` and `bulk_update.php` — no longer needed in Moodle 5.1.
+
+---
+
 ## [5.1.4] — 2026-07-31
 
 ### Removed
