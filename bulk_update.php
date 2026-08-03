@@ -61,7 +61,6 @@ $PAGE->set_context(context_system::instance());
 $PAGE->set_title("Bulk Update");
 $PAGE->set_heading($heading);
 $PAGE->set_cacheable(false);
-$PAGE->requires->jquery();
 $PAGE->requires->js_call_amd('block_blc_modules/module', 'bulkUpdateInit');
 
 $logger = new debug_helper();

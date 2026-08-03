@@ -57,7 +57,6 @@ class block_blc_modules extends block_list {
 
         $course = $this->page->course;
 
-        $this->page->requires->jquery();
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/tippytheme.css'));
         $this->page->requires->css(new moodle_url($CFG->wwwroot . '/blocks/blc_modules/js/select2.css'));
 
