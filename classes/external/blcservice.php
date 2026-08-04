@@ -38,6 +38,7 @@ use core_external\external_value;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
+use core_php_time_limit;
 use Exception;
 use moodle_url;
 use stdClass;
@@ -487,6 +488,8 @@ class blcservice extends external_api {
         int $completion = 0
     ): array {
         global $DB;
+
+        core_php_time_limit::raise(1800); // Raise time limit to 30 minutes for large operations.
 
         $debug = new debug_helper();
 
