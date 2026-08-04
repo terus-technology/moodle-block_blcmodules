@@ -84,8 +84,8 @@ class logger {
             $record->log_level = $data['log_level'];
             $record->message = $data['message'];
             $record->error_details = $data['error_details'] ?? null;
-            $record->ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
-            $record->user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : null;
+            $record->ip_address = getremoteaddr();
+            $record->user_agent = \core_useragent::get_user_agent_string() ?? null;
             $record->timecreated = time();
 
             return $DB->insert_record('block_blc_modules_log', $record);
