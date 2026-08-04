@@ -355,6 +355,8 @@ class blcservice extends external_api {
     /**
      * Returns description of method parameters for delete scorm Module.
      *
+     * @deprecated This function is no longer used.
+     *
      * @return external_function_parameters
      */
     public static function get_blc_modules_scormdelete_parameters(): external_function_parameters {
@@ -369,6 +371,8 @@ class blcservice extends external_api {
 
     /**
      * Delete temporary SCORM URLs and update download tracking.
+     *
+     * @deprecated This function is no longer used.
      *
      * @param string $apikey API key for authentication
      * @param int $courseid Course ID
@@ -417,6 +421,8 @@ class blcservice extends external_api {
 
     /**
      * Returns description of method result value for get_blc_modules_scormdelete.
+     *
+     * @deprecated This function is no longer used.
      *
      * @return external_single_structure
      */
