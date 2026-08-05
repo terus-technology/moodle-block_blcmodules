@@ -30,6 +30,8 @@ defined('MOODLE_INTERNAL') || die();
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use block_blc_modules\middleware\services;
+use block_blc_modules\event\scorm_module_created;
+use block_blc_modules\event\accessibility_document_created;
 use context_course;
 use context_module;
 use core\exception\moodle_exception;
@@ -626,6 +628,22 @@ class blcservice extends external_api {
                     // Record the creation in block_blc_modules table.
                     self::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
+                    // Trigger event: SCORM module created.
+                    $scormevent = scorm_module_created::create([
+                        'context' => $coursecontext,
+                        'objectid' => $scormcm,
+                        'courseid' => $courseid,
+                        'other' => [
+                            'scormid' => (int) ($scormdata['scormid'] ?? 0),
+                            'scormname' => $scormdata['scormname'],
+                            'scormurl' => $url,
+                            'version' => (int) ($scormdata['scormversion'] ?? 0),
+                            'subject' => $scormdata['subject'] ?? '',
+                            'sectionid' => $sectionnumber,
+                        ],
+                    ]);
+                    $scormevent->trigger();
+
                     // Ensure this SCORM ID is mapped to the API key for future access.
                     if (!empty($scormdata['scormid'])) {
                         self::ensure_api_key_mapping($params['apikey'], (int) $scormdata['scormid'], $token, $domainname);
@@ -642,6 +660,19 @@ class blcservice extends external_api {
                     ];
 
                     if ($resourcecm) {
+                        // Trigger event: Accessibility document created.
+                        $docevent = accessibility_document_created::create([
+                            'context' => $coursecontext,
+                            'objectid' => $resourcecm,
+                            'courseid' => $courseid,
+                            'other' => [
+                                'scormid' => (int) ($scormdata['scormid'] ?? 0),
+                                'scormname' => $scormdata['scormname'],
+                                'resourcecmid' => $resourcecm,
+                            ],
+                        ]);
+                        $docevent->trigger();
+
                         $results['created_modules'][] = [
                             'cmid' => $resourcecm,
                             'name' => $scormdata['scormname'] . ' (Accessibility)',

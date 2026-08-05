@@ -4,6 +4,25 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.6] — 2026-08-05
+
+### Added
+- Custom Moodle events for key plugin operations to improve extensibility and enable integration with other Moodle components (e.g., event observers, reports, log stores):
+  - `scorm_module_created` — triggered when a SCORM module is successfully created in a course (via `load_scorm_modules` API or AJAX SCORM load).
+  - `scorm_module_updated` — triggered when a SCORM module's version is updated during a bulk update.
+  - `scorm_module_deleted` — event class defined and ready for SCORM module deletion (in `classes/event/scorm_module_deleted.php`).
+  - `accessibility_document_created` — triggered when an accessibility document (Word file) is created alongside a SCORM module.
+  - `bulk_update_started` — triggered at the start of a bulk SCORM update process.
+  - `bulk_update_completed` — triggered when a bulk SCORM update batch finishes, with success/failure counts and duration.
+  - `scorm_load_started` — triggered when a SCORM load process begins (AJAX-based).
+  - `scorm_load_completed` — triggered when a SCORM load process finishes, with success/failure counts.
+- Event language strings in `lang/en/block_blc_modules.php`.
+
+### Changed
+- `bulk_update_processor.php` — extended the `$updatescorm` comparison array with `oldversion` and `scormid` fields to support the `scorm_module_updated` event.
+
+---
+
 ## [5.1.5] — 2026-08-03
 
 ### Changed

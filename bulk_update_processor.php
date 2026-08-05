@@ -35,6 +35,9 @@ require_once($CFG->dirroot . '/course/modlib.php');
 
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
+use block_blc_modules\event\bulk_update_started;
+use block_blc_modules\event\bulk_update_completed;
+use block_blc_modules\event\scorm_module_updated;
 
 require_login(null, false);
 require_capability('moodle/site:config', context_system::instance());
@@ -72,6 +75,8 @@ if (!isset($SESSION->bulk_update_progress)) {
  * @param string $type Log type (info, success, warning, error)
  */
 function add_progress_log($message, $type = 'info') {
+    global $SESSION;
+
     if (!isset($SESSION->bulk_update_progress['log'])) {
         $SESSION->bulk_update_progress['log'] = [];
     }
@@ -94,6 +99,8 @@ function add_progress_log($message, $type = 'info') {
  * @param array $data Key-value pairs to update in progress
  */
 function update_progress($data) {
+    global $SESSION;
+
     foreach ($data as $key => $value) {
         $SESSION->bulk_update_progress[$key] = $value;
     }
@@ -105,6 +112,8 @@ function update_progress($data) {
  * @return array Current progress data
  */
 function get_progress() {
+    global $SESSION;
+
     $progress = $SESSION->bulk_update_progress;
     // Return only new log entries (implement read marker if needed).
     return $progress;
@@ -392,8 +401,10 @@ function perform_bulk_update() {
                     // Store both version AND record ID for update.
                     $updatescorm[$coursescorm->cmid] = [
                         'version' => $blcversion,
+                        'oldversion' => $coursescorm->version,
                         'record_id' => $coursescorm->id,
                         'scormname' => $scormname,
+                        'scormid' => $coursescorm->scormid,
                         'courseid' => $coursescorm->courseid,
                         'scormurl' => $coursescorm->scormurl,
                     ];
@@ -432,6 +443,18 @@ function perform_bulk_update() {
             'status' => "Processing $total modules" . ($remainingcount > 0 ? " ($remainingcount more available)" : ""),
         ]);
         add_progress_log("Found $totalavailable modules requiring updates", 'info');
+
+        // Trigger event: Bulk update started.
+        $startevent = bulk_update_started::create([
+            'context' => \context_system::instance(),
+            'objectid' => 0,
+            'courseid' => SITEID,
+            'other' => [
+                'totalavailable' => $totalavailable,
+                'batchsize' => $batchsize,
+            ],
+        ]);
+        $startevent->trigger();
 
         if ($total == 0) {
             update_progress(['complete' => true, 'status' => 'All modules up to date']);
@@ -593,6 +616,21 @@ function perform_bulk_update() {
                 if ($result) {
                     $successcount++;
                     add_progress_log("✓ Successfully updated: {$scormname}", 'success');
+
+                    // Trigger event: SCORM module updated.
+                    $scormevent = scorm_module_updated::create([
+                        'context' => \context_course::instance($courseid),
+                        'objectid' => $recordid,
+                        'courseid' => $courseid,
+                        'other' => [
+                            'scormid' => (int) ($updateinfo['scormid'] ?? 0),
+                            'scormname' => $scormname,
+                            'scormurl' => $scormurl,
+                            'oldversion' => (int) ($updateinfo['oldversion'] ?? 0),
+                            'newversion' => $version,
+                        ],
+                    ]);
+                    $scormevent->trigger();
                 } else {
                     $logger->error(
                         'BLC bulk_update_processor: The SCORM package update could not be completed.',
@@ -701,6 +739,20 @@ function perform_bulk_update() {
         } else {
             add_progress_log("All updates completed in {$totaltime}s: $successcount successful, $failedcount failed", 'success');
         }
+
+        // Trigger event: Bulk update completed.
+        $completeevent = bulk_update_completed::create([
+            'context' => \context_system::instance(),
+            'objectid' => 0,
+            'courseid' => SITEID,
+            'other' => [
+                'totalmodules' => $successcount + $failedcount,
+                'successful' => $successcount,
+                'failed' => $failedcount,
+                'duration' => $totaltime,
+            ],
+        ]);
+        $completeevent->trigger();
 
         return true;
     } catch (Exception $e) {
