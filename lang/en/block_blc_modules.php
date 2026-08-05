@@ -179,3 +179,13 @@ $string['warning'] = 'Warning';
 $string['error'] = 'Error';
 $string['all'] = 'All';
 $string['filter'] = 'Filter';
+
+// Event strings.
+$string['eventscormmodulecreated'] = 'SCORM module created';
+$string['eventscormmoduleupdated'] = 'SCORM module updated';
+$string['eventscormmoduledeleted'] = 'SCORM module deleted';
+$string['eventaccessibilitydocumentcreated'] = 'Accessibility document created';
+$string['eventbulkupdatestarted'] = 'Bulk update started';
+$string['eventbulkupdatecompleted'] = 'Bulk update completed';
+$string['eventscormloadstarted'] = 'SCORM load started';
+$string['eventscormloadcompleted'] = 'SCORM load completed';

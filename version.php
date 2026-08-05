@@ -25,11 +25,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026080300;
+$plugin->version   = 2026080400;
 $plugin->requires  = 2025041400;
 $plugin->component = 'block_blc_modules';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '5.1.5';
+$plugin->release = '5.1.6';
 $plugin->dependencies = [
     'mod_scorm' => 2025100601,
 ];

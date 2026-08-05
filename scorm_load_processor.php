@@ -28,6 +28,10 @@
  */
 
 use block_blc_modules\external\blcservice;
+use block_blc_modules\event\scorm_load_started;
+use block_blc_modules\event\scorm_load_completed;
+use block_blc_modules\event\scorm_module_created;
+use block_blc_modules\event\accessibility_document_created;
 use block_blc_modules\logger;
 
 define('AJAX_SCRIPT', true);
@@ -236,6 +240,18 @@ switch ($action) {
                 ],
             ]);
 
+            // Trigger event: SCORM load started.
+            $loadevent = scorm_load_started::create([
+                'context' => $coursecontext,
+                'objectid' => $courseid,
+                'courseid' => $courseid,
+                'other' => [
+                    'totalmodules' => count($scormurlsarray),
+                    'sectionnumber' => $sectionnumber,
+                ],
+            ]);
+            $loadevent->trigger();
+
             // CRITICAL: Flush session data to storage before the next AJAX call.
             // This ensures the 'process' action can read the task_data immediately.
             session_write_close();
@@ -274,6 +290,25 @@ switch ($action) {
                     'status' => 'completed',
                 ]);
                 add_load_log('All modules processed successfully', 'success');
+
+                // Trigger event: SCORM load completed.
+                $progressdata = get_load_progress();
+                $eventcourseid = $task['courseid'];
+                $eventsectionnumber = $task['sectionnumber'];
+                $coursecontext = context_course::instance($eventcourseid);
+                $completeevent = scorm_load_completed::create([
+                    'context' => $coursecontext,
+                    'objectid' => $eventcourseid,
+                    'courseid' => $eventcourseid,
+                    'other' => [
+                        'totalmodules' => $progressdata['total'],
+                        'successful' => $progressdata['success'],
+                        'failed' => $progressdata['failed'],
+                        'sectionnumber' => $eventsectionnumber,
+                    ],
+                ]);
+                $completeevent->trigger();
+
                 echo json_encode([
                     'success' => true,
                     'data' => get_load_progress(),
@@ -343,6 +378,23 @@ switch ($action) {
             );
 
             blcservice::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
+
+            // Trigger event: SCORM module created.
+            $coursecontext = context_course::instance($courseid);
+            $scormevent = scorm_module_created::create([
+                'context' => $coursecontext,
+                'objectid' => $scormcm,
+                'courseid' => $courseid,
+                'other' => [
+                    'scormid' => (int) ($scormdata['scormid'] ?? 0),
+                    'scormname' => $scormdata['scormname'],
+                    'scormurl' => $url,
+                    'version' => (int) ($scormdata['scormversion'] ?? 0),
+                    'subject' => $scormdata['subject'] ?? '',
+                    'sectionid' => $sectionnumber,
+                ],
+            ]);
+            $scormevent->trigger();
 
             if (!empty($scormdata['scormid'])) {
                 blcservice::ensure_api_key_mapping($apikey, (int)$scormdata['scormid'], $token, $domainname);

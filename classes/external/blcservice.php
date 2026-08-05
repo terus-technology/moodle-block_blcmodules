@@ -30,6 +30,8 @@ defined('MOODLE_INTERNAL') || die();
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
 use block_blc_modules\middleware\services;
+use block_blc_modules\event\scorm_module_created;
+use block_blc_modules\event\accessibility_document_created;
 use context_course;
 use context_module;
 use core\exception\moodle_exception;
@@ -38,6 +40,7 @@ use core_external\external_value;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_multiple_structure;
+use core_php_time_limit;
 use Exception;
 use moodle_url;
 use stdClass;
@@ -355,6 +358,8 @@ class blcservice extends external_api {
     /**
      * Returns description of method parameters for delete scorm Module.
      *
+     * @deprecated This function is no longer used.
+     *
      * @return external_function_parameters
      */
     public static function get_blc_modules_scormdelete_parameters(): external_function_parameters {
@@ -369,6 +374,8 @@ class blcservice extends external_api {
 
     /**
      * Delete temporary SCORM URLs and update download tracking.
+     *
+     * @deprecated This function is no longer used.
      *
      * @param string $apikey API key for authentication
      * @param int $courseid Course ID
@@ -417,6 +424,8 @@ class blcservice extends external_api {
 
     /**
      * Returns description of method result value for get_blc_modules_scormdelete.
+     *
+     * @deprecated This function is no longer used.
      *
      * @return external_single_structure
      */
@@ -481,6 +490,8 @@ class blcservice extends external_api {
         int $completion = 0
     ): array {
         global $DB;
+
+        core_php_time_limit::raise(1800); // Raise time limit to 30 minutes for large operations.
 
         $debug = new debug_helper();
 
@@ -617,6 +628,22 @@ class blcservice extends external_api {
                     // Record the creation in block_blc_modules table.
                     self::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
+                    // Trigger event: SCORM module created.
+                    $scormevent = scorm_module_created::create([
+                        'context' => $coursecontext,
+                        'objectid' => $scormcm,
+                        'courseid' => $courseid,
+                        'other' => [
+                            'scormid' => (int) ($scormdata['scormid'] ?? 0),
+                            'scormname' => $scormdata['scormname'],
+                            'scormurl' => $url,
+                            'version' => (int) ($scormdata['scormversion'] ?? 0),
+                            'subject' => $scormdata['subject'] ?? '',
+                            'sectionid' => $sectionnumber,
+                        ],
+                    ]);
+                    $scormevent->trigger();
+
                     // Ensure this SCORM ID is mapped to the API key for future access.
                     if (!empty($scormdata['scormid'])) {
                         self::ensure_api_key_mapping($params['apikey'], (int) $scormdata['scormid'], $token, $domainname);
@@ -633,6 +660,19 @@ class blcservice extends external_api {
                     ];
 
                     if ($resourcecm) {
+                        // Trigger event: Accessibility document created.
+                        $docevent = accessibility_document_created::create([
+                            'context' => $coursecontext,
+                            'objectid' => $resourcecm,
+                            'courseid' => $courseid,
+                            'other' => [
+                                'scormid' => (int) ($scormdata['scormid'] ?? 0),
+                                'scormname' => $scormdata['scormname'],
+                                'resourcecmid' => $resourcecm,
+                            ],
+                        ]);
+                        $docevent->trigger();
+
                         $results['created_modules'][] = [
                             'cmid' => $resourcecm,
                             'name' => $scormdata['scormname'] . ' (Accessibility)',
