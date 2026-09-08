@@ -422,7 +422,7 @@ function perform_bulk_update() {
         $totalavailable = count($updatescorm);
 
         // BATCH LIMITING: Use optimal batch size based on server capabilities.
-        $batchsize = file_helper::getoptimalbatchsize();
+        $batchsize = file_helper::get_optimal_batch_size();
         $modulestoprocess = $updatescorm;
         $remainingcount = 0;
 
@@ -463,7 +463,7 @@ function perform_bulk_update() {
         }
 
         // Check system resources before starting large file processing.
-        $resourcewarnings = file_helper::checksystemresources();
+        $resourcewarnings = file_helper::check_system_resources();
         if (!empty($resourcewarnings)) {
             foreach ($resourcewarnings as $warning) {
                 add_progress_log("Warning: {$warning}", 'warning');
@@ -852,7 +852,7 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
         curl_setopt($ch, CURLOPT_FILE, $fp);
 
         // Apply optimized curl options for large files.
-        $curloptions = file_helper::getdownloadcurloptions();
+        $curloptions = file_helper::get_download_curl_options();
         foreach ($curloptions as $option => $value) {
             curl_setopt($ch, $option, $value);
         }

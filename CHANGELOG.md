@@ -7,7 +7,11 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 ## [5.1.7] — 2026-09-08
 
 ### Fixed
-- `bulk_update_processor.php` — Fixed `call to undefined method` fatal error in 3 `file_helper` calls caused by naming convention mismatch (snake_case vs camelCase). Calls to `get_optimal_batch_size()`, `check_system_resources()`, and `get_download_curl_options()` were corrected to `getoptimalbatchsize()`, `checksystemresources()`, and `getdownloadcurloptions()` to match the actual method definitions in `file_helper.php`.
+- `file_helper.php` — Renamed 3 methods from camelCase to snake_case for naming consistency and to resolve the `call to undefined method` fatal error in `bulk_update_processor.php`: `getoptimalbatchsize()` → `get_optimal_batch_size()`, `checksystemresources()` → `check_system_resources()`, `getdownloadcurloptions()` → `get_download_curl_options()`. Updated corresponding calls in `bulk_update_processor.php`.
+
+---
+
+## [5.1.6] — 2026-08-05
 
 ### Added
 - Custom Moodle events for key plugin operations to improve extensibility and enable integration with other Moodle components (e.g., event observers, reports, log stores):
