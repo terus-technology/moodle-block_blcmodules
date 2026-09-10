@@ -248,7 +248,7 @@ class file_helper {
      *
      * @return array Curl options array
      */
-    public static function getdownloadcurloptions() {
+    public static function get_download_curl_options() {
         return [
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_SSL_VERIFYPEER => false,
@@ -266,7 +266,7 @@ class file_helper {
      *
      * @return int Batch size
      */
-    public static function getoptimalbatchsize() {
+    public static function get_optimal_batch_size() {
         // Auto-detect based on memory and PHP limits.
         $memorylimit = ini_get('memory_limit');
         $memorybytes = self::parsememorylimit($memorylimit);
@@ -313,7 +313,7 @@ class file_helper {
      * @param ?int $estimatedfilesize Estimated file size in bytes
      * @return array Check results with warnings
      */
-    public static function checksystemresources($estimatedfilesize = 0) {
+    public static function check_system_resources($estimatedfilesize = 0) {
         $warnings = [];
         $memorylimit = ini_get('memory_limit');
         $memorybytes = self::parsememorylimit($memorylimit);

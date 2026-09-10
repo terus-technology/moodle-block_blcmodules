@@ -4,6 +4,13 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
+## [4.5.21] — 2026-09-10
+
+### Fixed
+- `file_helper.php` — Renamed 3 methods from camelCase to snake_case for naming consistency and to resolve the `call to undefined method` fatal error in `bulk_update_processor.php`: `getoptimalbatchsize()` → `get_optimal_batch_size()`, `checksystemresources()` → `check_system_resources()`, `getdownloadcurloptions()` → `get_download_curl_options()`.
+
+---
+
 ## [4.5.20] — 2026-07-27
 
 ### Changed
