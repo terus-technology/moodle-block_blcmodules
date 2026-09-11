@@ -14,22 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace block_blc_modules\output;
+
+use core\output\renderable;
+use core\output\renderer_base;
+use core\output\templatable;
+use stdClass;
+
 /**
- * Version details
+ * Class bulk_update_confirm_page
+ *
+ * Renderable class for bulk update confirmation modal using Mustache template
  *
  * @package    block_blc_modules
  * @copyright  2025 Terus Technology
  * @author     Ali <ali@teruselearning.co.uk>, Rama <rama@teruselearning.co.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class bulk_update_confirm_page implements renderable, templatable {
+    /**
+     * Export data for template.
+     *
+     * @param renderer_base $output
+     * @return stdClass
+     */
+    public function export_for_template(renderer_base $output) {
+        global $CFG;
 
-defined('MOODLE_INTERNAL') || die();
+        $data = new stdClass();
+        $data->sesskey = sesskey();
+        $data->wwwroot = $CFG->wwwroot;
 
-$plugin->version   = 2026091117;
-$plugin->requires  = 2025041400;
-$plugin->component = 'block_blc_modules';
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '5.1.8';
-$plugin->dependencies = [
-    'mod_scorm' => 2025100601,
-];
+        return $data;
+    }
+}

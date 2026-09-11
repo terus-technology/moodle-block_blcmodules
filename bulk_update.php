@@ -136,37 +136,9 @@ if ($action == 'continue') {
     // Show confirmation modal when first accessing the page.
     echo $OUTPUT->header();
 
-    // Use Moodle's native Bootstrap (version depends on theme) instead of loading old Bootstrap 3.0.3 from CDN.
-    // Modal structure compatible with both Bootstrap 4 and 5 used in Moodle 4.x themes.
-    echo '
-    <div class="modal fade" id="modalForm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title" id="myModalLabel">' . get_string('updatescormconfirm', 'block_blc_modules') . '</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <!-- Modal Body -->
-                <div class="modal-body">
-                    <p class="statusMsg">' . get_string('updateconfirmmessage', 'block_blc_modules') . '</p>
-                    <form role="form" action="' . $CFG->wwwroot . '/blocks/blc_modules/bulk_update.php"
-                    id="bulkupdatesubmit" method="post">
-                        <input type="hidden" name="action" value="continue"/>
-                        <input type="hidden" name="sesskey" value="' . sesskey() . '"/>
-                    </form>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="bulkupdatecont">Continue</button>
-                </div>
-            </div>
-        </div>
-    </div>';
+    $renderer = $PAGE->get_renderer('block_blc_modules');
+    $confirmpage = new \block_blc_modules\output\bulk_update_confirm_page();
+    echo $renderer->render($confirmpage);
 
     echo $OUTPUT->footer();
 }

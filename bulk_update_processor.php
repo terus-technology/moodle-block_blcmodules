@@ -336,6 +336,10 @@ function perform_bulk_update() {
         $scorms = [];
         $jsondata = json_decode($responses, true);
 
+        // Debug: show raw response.
+        add_progress_log("Raw response size: " . strlen($responses) . " bytes", 'info');
+        add_progress_log("Raw response (first 500 chars): " . substr($responses, 0, 500), 'info');
+
         if (json_last_error() === JSON_ERROR_NONE && is_array($jsondata)) {
             $totalfromserver = count($jsondata);
             add_progress_log("Received $totalfromserver modules from BLC server, parsing...", 'info');
@@ -394,10 +398,11 @@ function perform_bulk_update() {
             if (isset($scorms[$coursescorm->scormid])) {
                 $blcversion = $scorms[$coursescorm->scormid]['version'];
 
+                add_progress_log("comparing local version {$coursescorm->version} with BLC version {$blcversion} for SCORM ID {$coursescorm->scormid}", 'info');
                 if ($coursescorm->version < $blcversion) {
                     // Get scormname from BLC server data (not from local database).
                     $scormname = $scorms[$coursescorm->scormid]['scormname'];
-
+                    add_progress_log("Module {$scormname} (CMID: {$coursescorm->cmid}) requires update: local version {$coursescorm->version}, BLC version {$blcversion}", 'info');
                     // Store both version AND record ID for update.
                     $updatescorm[$coursescorm->cmid] = [
                         'version' => $blcversion,
@@ -412,6 +417,7 @@ function perform_bulk_update() {
             }
         }
 
+        add_progress_log("Version comparison completed: " . count($updatescorm) . " modules require updates", 'info');  
         $comparetime = round(microtime(true) - $comparestart, 3);
         add_progress_log("Version comparison completed in {$comparetime}s", 'info');
 
