@@ -85,4 +85,15 @@ class renderer extends plugin_renderer_base {
         $data = $page->export_for_template($this);
         return $this->render_from_template('block_blc_modules/scorm_load_log_page', $data);
     }
+
+    /**
+     * Render the bulk update confirmation modal.
+     *
+     * @param bulk_update_confirm_page $page
+     * @return string
+     */
+    public function render_bulk_update_confirm_page(bulk_update_confirm_page $page) {
+        $data = $page->export_for_template($this);
+        return $this->render_from_template('block_blc_modules/bulk_update_confirm', $data);
+    }
 }

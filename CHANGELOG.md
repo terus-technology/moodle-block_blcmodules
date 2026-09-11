@@ -4,6 +4,16 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.8] — 2026-09-11
+
+### Changed
+- `bulk_update.php` — Refactored confirmation modal from inline HTML to Mustache template (`bulk_update_confirm.mustache`) with a dedicated renderable class (`bulk_update_confirm_page`). Reduces inline PHP HTML, improves maintainability.
+
+### Fixed
+- Modal Cancel button not working on Moodle 5.1 — replaced Bootstrap 4 `data-dismiss="modal"` with Bootstrap 5 `data-bs-dismiss="modal"`.
+
+---
+
 ## [5.1.7] — 2026-09-08
 
 ### Fixed
