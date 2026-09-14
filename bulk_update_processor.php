@@ -25,12 +25,12 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(__FILE__).'/../../config.php');
+require_once(dirname(__FILE__) . '/../../config.php');
 
 global $DB, $CFG, $SESSION;
 
-require_once($CFG->dirroot.'/mod/scorm/locallib.php');
-require_once($CFG->dirroot.'/mod/scorm/lib.php');
+require_once($CFG->dirroot . '/mod/scorm/locallib.php');
+require_once($CFG->dirroot . '/mod/scorm/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 
 use block_blc_modules\helper\debug_helper;
@@ -417,7 +417,7 @@ function perform_bulk_update() {
             }
         }
 
-        add_progress_log("Version comparison completed: " . count($updatescorm) . " modules require updates", 'info');  
+        add_progress_log("Version comparison completed: " . count($updatescorm) . " modules require updates", 'info');
         $comparetime = round(microtime(true) - $comparestart, 3);
         add_progress_log("Version comparison completed in {$comparetime}s", 'info');
 
