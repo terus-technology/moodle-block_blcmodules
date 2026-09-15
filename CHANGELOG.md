@@ -4,6 +4,18 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ---
 
+## [5.0.7] — 2026-09-14
+
+### Changed
+- Bulk update confirmation modal refactored from inline HTML in `bulk_update.php` into a reusable Mustache template (`bulk_update_confirm.mustache`) with a dedicated renderable class (`bulk_update_confirm_page.php`) and renderer method, following Moodle output best practices.
+- Enhanced debug logging in `bulk_update_processor.php` with additional progress entries for raw API response size/content and per-module version comparisons during bulk update.
+
+### Fixed
+- Removed the modal header close icon and corrected the cancel button to use `data-bs-dismiss` for Bootstrap 5 compatibility.
+- `services.php` — removed unused `moodle_exception` import and widened the exception catch to `Exception` so the SCORM download error path no longer risks an uncaught exception type.
+
+---
+
 ## [5.0.6] — 2026-09-09
 
 ### Fixed
