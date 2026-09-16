@@ -4,6 +4,13 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.9] — 2026-09-17
+
+### Fixed
+- Cancel button in bulk update confirmation modal now redirects to `/admin/settings.php?section=blocksettingblc_modules` instead of just closing the modal.
+
+---
+
 ## [5.1.8] — 2026-09-11
 
 ### Changed
