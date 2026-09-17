@@ -44,7 +44,9 @@ class bulk_update_confirm_page implements renderable, templatable {
         $data = new stdClass();
         $data->sesskey = sesskey();
         $data->wwwroot = $CFG->wwwroot;
-
+        $data->settingsurl = new \moodle_url('/admin/settings.php', [
+            'section' => 'blocksettingblc_modules',
+        ]);
         return $data;
     }
 }
