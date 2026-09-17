@@ -4,15 +4,21 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ---
 
-## [5.0.7] — 2026-09-14
+## [5.0.8] — 2026-09-17
+
+### Fixed
+- Cancel button in bulk update confirmation modal now redirects to `/admin/settings.php?section=blocksettingblc_modules` instead of just closing the modal.
+
+---
+
+## [5.0.7] — 2026-09-15
 
 ### Changed
-- Bulk update confirmation modal refactored from inline HTML in `bulk_update.php` into a reusable Mustache template (`bulk_update_confirm.mustache`) with a dedicated renderable class (`bulk_update_confirm_page.php`) and renderer method, following Moodle output best practices.
+- `bulk_update.php` — Refactored confirmation modal from inline HTML to Mustache template (`bulk_update_confirm.mustache`) with a dedicated renderable class (`bulk_update_confirm_page`). Reduces inline PHP HTML, improves maintainability.
 - Enhanced debug logging in `bulk_update_processor.php` with additional progress entries for raw API response size/content and per-module version comparisons during bulk update.
 
 ### Fixed
-- Removed the modal header close icon and corrected the cancel button to use `data-bs-dismiss` for Bootstrap 5 compatibility.
-- `services.php` — removed unused `moodle_exception` import and widened the exception catch to `Exception` so the SCORM download error path no longer risks an uncaught exception type.
+- Modal Cancel button not working on Moodle 5.0 — replaced Bootstrap 4 `data-dismiss="modal"` with Bootstrap 5 `data-bs-dismiss="modal"`.
 
 ---
 
