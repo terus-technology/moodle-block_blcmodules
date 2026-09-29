@@ -533,21 +533,15 @@ if ($blcmodules) {
                 'filename' => $filename,
             ];
 
-            // Use file_helper for proper Google Drive URL handling.
+            // Always download via HTTP — the file is on the BLC server (different domain),
+            // not in internal Moodle file storage. Even pluginfile.php URLs must be
+            // fetched via HTTP because create_file_from_pluginfile_url() reads internal
+            // storage only.
             try {
-                if (strpos($filepath, '/pluginfile.php/') !== false) {
-                    // Use the file helper to create from pluginfile URL.
-                    $logger->info(
-                        "BLC add_doc: Detected pluginfile URL for module $blcmoduleid. Using file_helper to create file."
-                    );
-                    $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
-                } else {
-                    // For external URLs (including Google Drive), use the enhanced download method.
-                    $logger->info(
-                        "BLC add_doc: Detected external URL for module $blcmoduleid. Using file_helper to create file."
-                    );
-                    $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
-                }
+                $logger->info(
+                    "BLC add_doc: Downloading via HTTP for module $blcmoduleid"
+                );
+                $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
 
                 if (!$file) {
                     $logger->error(

@@ -1358,44 +1358,25 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Creating accessibility document file: ' . $filename);
         $debug->info('BLC Modules: Document URL: ' . $filepath);
 
-        // Check if this is a pluginfile URL and handle it differently.
-        if (strpos($filepath, '/pluginfile.php/') !== false) {
-            // Use the file helper to create from pluginfile URL.
-            $debug->info('BLC Modules: Using pluginfile URL method');
-            $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
-            if (!$file) {
-                $debug->error(
-                    'BLC Modules: ERROR - Failed to create file from pluginfile URL: ' . $filename,
-                    [
-                        'The pluginfile URL may be invalid or the file is no longer accessible',
-                        'The temporary file may have expired',
-                    ],
-                    [
-                        'Check the document URL accessibility',
-                        'Verify the local_scormurl temp document is still valid',
-                    ]
-                );
-                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
-            }
-        } else {
-            // For external URLs, use the enhanced download method.
-            $debug->info('BLC Modules: Using external URL method');
-            $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
-            if (!$file) {
-                $debug->error(
-                    'BLC Modules: ERROR - Failed to create file from external URL: ' . $filename,
-                    [
-                        'The external URL may be inaccessible or the download failed',
-                        'Network connectivity issue to the file server',
-                    ],
-                    [
-                        'Check the download URL accessibility',
-                        'Verify the server can reach the external URL',
-                        'Check firewall or proxy settings',
-                    ]
-                );
-                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
-            }
+        // Always download via HTTP — the file is on the BLC server (different domain),
+        // not in internal Moodle file storage. Even pluginfile.php URLs must be fetched
+        // via HTTP because create_file_from_pluginfile_url() reads internal storage only.
+        $debug->info('BLC Modules: Downloading via HTTP from: ' . $filepath);
+        $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
+        if (!$file) {
+            $debug->error(
+                'BLC Modules: ERROR - Failed to create file from external URL: ' . $filename,
+                [
+                    'The external URL may be inaccessible or the download failed',
+                    'Network connectivity issue to the file server',
+                ],
+                [
+                    'Check the download URL accessibility',
+                    'Verify the server can reach the external URL',
+                    'Check firewall or proxy settings',
+                ]
+            );
+            throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
         }
 
         $debug->info('BLC Modules: Created accessibility document: ' . $filename);
