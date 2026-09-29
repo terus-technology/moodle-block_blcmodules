@@ -1265,9 +1265,11 @@ class blcservice extends external_api {
         // Process and validate tempdocurl.
         $tempdocurl = str_replace("ppp", ",", $docobject->tempdocurl ?? '');
 
-        // Prefer docurlplus (permanent Google Drive URL) for downloading
-        // tempdocurl is from temp_doc which may be cross-site and not accessible.
-        $downloadurl = !empty($docobject->docurlplus) ? $docobject->docurlplus : $tempdocurl;
+        // Prefer tempdocurl (pluginfile URL, file already on BLC server) over
+        // docurlplus (Google Drive URL) because Google Drive requires authentication
+        // for direct download. The BLC server has already downloaded the file.
+        $downloadurl = !empty($tempdocurl) ? $tempdocurl :
+                       (!empty($docobject->docurlplus) ? $docobject->docurlplus : '');
 
         $debug->info('BLC Modules: Temp Doc URL (processed): ' . $tempdocurl);
         $debug->info('BLC Modules: Download URL (selected): ' . $downloadurl);

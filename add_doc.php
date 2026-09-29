@@ -269,9 +269,10 @@ if ($blcmodules) {
                     // Success - we have valid document data.
                     $docobject = (object) $jsondata;
 
-                    // Prefer docurlplus (permanent Google Drive URL) over tempdocurl.
-                    $downloadurl = !empty($docobject->docurlplus) ? $docobject->docurlplus :
-                                (!empty($docobject->tempdocurl) ? $docobject->tempdocurl :
+                    // Prefer tempdocurl (pluginfile URL from BLC server) over docurlplus
+                    // because Google Drive requires authentication for direct download.
+                    $downloadurl = !empty($docobject->tempdocurl) ? $docobject->tempdocurl :
+                                (!empty($docobject->docurlplus) ? $docobject->docurlplus :
                                 (!empty($docobject->docurl) ? $docobject->docurl : ''));
 
                     if (!empty($downloadurl)) {
