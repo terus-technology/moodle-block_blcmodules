@@ -339,6 +339,80 @@ class services {
     }
 
     /**
+     * Point a SCORM activity at its stored package file, as core does for the local type.
+     *
+     * Core restore calls scorm_parse(). For localsync, it deletes the restored package and downloads it
+     * again from reference, which is a temporary URL. For local, it reads the package whose file name
+     * is in reference, from the module context at itemid 0.
+     *
+     * @param int $scormid SCORM instance ID.
+     * @param int $cmid Course module ID.
+     * @return bool True if the package file exists and the SCORM record now uses it.
+     */
+    public static function use_local_package(int $scormid, int $cmid): bool {
+        global $DB;
+
+        $context = context_module::instance($cmid, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+
+        $files = get_file_storage()->get_area_files($context->id, 'mod_scorm', 'package', 0, 'itemid, filepath, filename', false);
+        $packagefile = reset($files);
+        if (!$packagefile) {
+            return false;
+        }
+
+        $DB->update_record('scorm', (object) [
+            'id' => $scormid,
+            'scormtype' => 'local',
+            'reference' => $packagefile->get_filename(),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Delete a BLC course module and its block_blc_modules and block_blc_modules_doc rows.
+     *
+     * Used for course modules that a failed BLC create left behind, including a document activity
+     * whose file download failed.
+     * course_delete_module() throws when the module has no activity instance record. Such a module
+     * is removed from its section and deleted here.
+     * course_delete_module() also throws when the module is not in its section sequence. A failed
+     * create adds the module to the sequence only after the instance is created, so the module is
+     * put in the sequence first.
+     *
+     * @param int $cmid Course module ID.
+     * @return void
+     */
+    public static function delete_blc_module(int $cmid): void {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $cm = $DB->get_record('course_modules', ['id' => $cmid]);
+        if ($cm) {
+            $modulename = $DB->get_field('modules', 'name', ['id' => $cm->module], MUST_EXIST);
+            if (!empty($cm->instance) && $DB->record_exists($modulename, ['id' => $cm->instance])) {
+                $section = $DB->get_record('course_sections', ['id' => $cm->section]);
+                if (!$section || !in_array($cm->id, explode(',', $section->sequence))) {
+                    course_add_cm_to_section($cm->course, $cm->id, $section->section ?? 0, null, $modulename);
+                }
+                course_delete_module($cm->id);
+            } else {
+                delete_mod_from_section($cm->id, $cm->section);
+                \context_helper::delete_instance(CONTEXT_MODULE, $cm->id);
+                $DB->delete_records('course_modules', ['id' => $cm->id]);
+                rebuild_course_cache($cm->course, true);
+            }
+        }
+
+        $DB->delete_records('block_blc_modules', ['cmid' => $cmid]);
+        $DB->delete_records('block_blc_modules_doc', ['cmid' => $cmid]);
+    }
+
+    /**
      * Check whether a SCORM URL points to a file with a detectable size.
      *
      * @param string $scormurl The SCORM package URL.

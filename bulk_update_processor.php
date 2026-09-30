@@ -883,10 +883,12 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
         $packer = get_file_packer('application/zip');
         $fs = get_file_storage();
 
-        $context = context_course::instance($courseid);
+        // Core reads the package from the module context at itemid 0 only.
+        $context = context_module::instance($scormcm->id);
 
-        // Delete old files.
-        $fs->delete_area_files($context->id, 'mod_scorm', 'package', $scormcm->instance);
+        // Delete old files, and the course context copy that earlier versions stored by mistake.
+        $fs->delete_area_files($context->id, 'mod_scorm', 'package');
+        $fs->delete_area_files(context_course::instance($courseid)->id, 'mod_scorm', 'package', $scormcm->instance);
 
         // Extract new package with progress indication.
         $extractdir = $tempdir . '/extract_' . time() . '_' . $scormcm->id;
@@ -915,7 +917,7 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
             'contextid' => $context->id,
             'component' => 'mod_scorm',
             'filearea' => 'package',
-            'itemid' => $scormcm->instance,
+            'itemid' => 0,
             'filepath' => '/',
             'filename' => basename($zipfilepath),
         ];
@@ -938,6 +940,8 @@ function update_scorm_module($scormcm, $recordid, $courseid, $scormname, $tempsc
         $scorm->course = $courseid;
         $scorm->coursemodule = $scormcm->id;
         $scorm->scormtype = 'local';
+        // Core finds the package by this file name, then extracts the new content.
+        $scorm->reference = $storedfile->get_filename();
         $scorm->timemodified = time();
 
         // Set default values to prevent undefined property errors.
