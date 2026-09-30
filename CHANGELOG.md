@@ -4,6 +4,27 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 
 ---
 
+## [5.1.10] — 2026-09-30
+
+### Fixed
+- BLC SCORM activities now end as `scormtype = 'local'` with the package file name in `reference`, the same as a core uploaded package. Before, `reference` kept the temporary `local_scormurl` URL, and course restore failed or restored an empty SCORM. An upgrade step repairs existing activities that have a package file.
+- Bulk update stores the new package in the module context at itemid 0, where core reads it.
+- A failed SCORM load no longer leaves a half-created activity in the course. `create_scorm_module()` and both load callers delete the course modules of a failed package (`services::delete_blc_module()`).
+- A browser retry after a PHP fatal error or a timeout no longer creates the same SCORM again. The processor marks the package as failed.
+- `validate_scorm_url()` accepts only `local_scormurl` temporary URLs. A Google Drive share URL is rejected.
+- The accessibility document is now linked to its own SCORM record. Before, it was linked to the previous SCORM loaded in the course.
+- Added the missing language strings `nopackagefile` and `scormpackagedownloaderror`.
+- Accessibility documents (ported from PR #35 for Moodle 4.5): all document downloads use HTTP. `create_file_from_pluginfile_url()` read the client site's own file storage, but the document is on the BLC server. The now unused `file_helper::create_file_from_pluginfile_url()` is deleted.
+- Accessibility documents are downloaded only from `tempdocurl`. The `docurlplus` and `docurl` fallbacks are removed from `fetch_accessibility_document()` and `add_doc.php`, because a Google Drive viewer URL returns a sign-in HTML page.
+- `file_helper::create_file_from_external_url()` rejects content that does not start with the ZIP signature (`PK\x03\x04`). A SCORM package and a DOCX are both ZIP files, so an HTML page is no longer stored.
+- A failed document download no longer leaves a document activity without a file, in `create_accessibility_document()` and `add_doc.php`.
+- `rtrim($name, '.docx')` and `rtrim($name, '.zip')` removed trailing characters, not the extension (for example `Audio Trip.zip` became `Audio Tr`). They now remove only the extension.
+
+### Added
+- `cli/cleanup_broken_scorm.php` lists, and with `--execute` deletes, SCORM activities that a failed load left behind. It skips activities added in the last hour, because a load can still be running.
+
+---
+
 ## [5.1.9] — 2026-09-17
 
 ### Fixed

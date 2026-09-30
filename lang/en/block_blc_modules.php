@@ -145,6 +145,8 @@ $string['scormfilenotaccessible'] = 'SCORM file not accessible in Google Drive. 
 $string['missingscormpackagedependency'] = 'BLC Modules warning: Required database table "{$a}" was not found. This is usually caused by a missing or incomplete scorm_package plugin installation. Please verify the scorm_package plugin is installed correctly, then run Moodle database upgrade via Site administration > Notifications.';
 $string['jsondecodeerror'] = 'Error decoding JSON response from BLC API: {$a}';
 $string['cannotaddcoursemodule'] = 'Cannot add course module';
+$string['nopackagefile'] = 'The SCORM package file was not stored for {$a}. The activity was not created.';
+$string['scormpackagedownloaderror'] = 'The SCORM package could not be downloaded from {$a}';
 $string['invalidmodule'] = 'Invalid course module';
 $string['scormpackagedownloadfailed'] = 'Failed to download SCORM package from URL: {$a}. Please check the URL and ensure it is accessible.';
 

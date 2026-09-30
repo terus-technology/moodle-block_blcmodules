@@ -561,6 +561,8 @@ class blcservice extends external_api {
 
             $count = 0;
             foreach ($scormurls as $url) {
+                // Course modules created for this URL. They are deleted if the URL fails.
+                $createdcmids = [];
                 try {
                     // Call the helper functions (extracted from original load_scorm.php logic).
                     $scormdata = self::fetch_scorm_data($apikey, $url, $token, $domainname);
@@ -611,6 +613,10 @@ class blcservice extends external_api {
                         $hidebrowse,
                         $completion
                     );
+                    $createdcmids[] = $scormcm;
+
+                    // Record the SCORM first. create_accessibility_document() links the document to the newest record.
+                    self::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
                     // Create accessibility document if available.
                     $resourcecm = self::create_accessibility_document(
@@ -624,9 +630,9 @@ class blcservice extends external_api {
                         $domainname,
                         $url  // Pass the original URL for lookup.
                     );
-
-                    // Record the creation in block_blc_modules table.
-                    self::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
+                    if ($resourcecm) {
+                        $createdcmids[] = $resourcecm;
+                    }
 
                     // Trigger event: SCORM module created.
                     $scormevent = scorm_module_created::create([
@@ -679,7 +685,15 @@ class blcservice extends external_api {
                             'type' => 'resource',
                         ];
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
+                    // Do not leave part of a failed package in the course.
+                    foreach ($createdcmids as $createdcmid) {
+                        try {
+                            services::delete_blc_module($createdcmid);
+                        } catch (Throwable $cleanupe) {
+                            $results['messages'][] = "Could not delete course module $createdcmid: " . $cleanupe->getMessage();
+                        }
+                    }
                     $results['failed']++;
                     $results['messages'][] = "Error processing URL $url: " . $e->getMessage();
                 }
@@ -907,8 +921,19 @@ class blcservice extends external_api {
             return true; // Server already validated when creating temp URL.
         }
 
-        // For any other URL, do basic format validation.
-        return self::basic_url_validation($scormurl);
+        // Reject any other URL. A Google Drive share URL returns an HTML page, not a SCORM package,
+        // and core restore tries to download it again.
+        $debug->error(
+            'SCORM URL is not a local_scormurl temporary URL: ' . substr($scormurl, 0, 100),
+            [
+                'The local_scormurl service returned the original URL instead of a temporary file URL',
+            ],
+            [
+                'Update local_scormurl on the BLC server',
+                'Check the Google Drive file of this SCORM package',
+            ]
+        );
+        return false;
     }
 
     /**
@@ -926,6 +951,33 @@ class blcservice extends external_api {
         global $DB, $CFG;
 
         $debug = new debug_helper();
+
+        // Validate the package URL before anything is created in the course.
+        if (empty($scormdata['scormurl'])) {
+            throw new moodle_exception(
+                'invalidpackageurl',
+                'block_blc_modules',
+                '',
+                'Package URL is empty for SCORM: ' . $scormdata['scormname']
+            );
+        }
+
+        // Validate URL has a valid filename.
+        $urlparts = parse_url($scormdata['scormurl']);
+        if (!isset($urlparts['path']) || empty(basename($urlparts['path']))) {
+            throw new moodle_exception(
+                'invalidpackageurl',
+                'block_blc_modules',
+                '',
+                'Package URL has no filename: ' . $scormdata['scormurl'] . ' for SCORM: ' . $scormdata['scormname']
+            );
+        }
+
+        // Validate filename has extension (basic sanity check).
+        $filename = basename($urlparts['path']);
+        if (strpos($filename, '.') === false) {
+            $debug->warning('Package URL filename has no extension: ' . $filename . ' - this may cause issues', true);
+        }
 
         $scormsection = $DB->get_record('course_sections', ['course' => $course->id, 'section' => $sectionnumber]);
 
@@ -948,86 +1000,71 @@ class blcservice extends external_api {
             throw new moodle_exception('cannotaddcoursemodule', 'block_blc_modules');
         }
 
-        // Create SCORM instance.
-        $scorminstance = new stdClass();
-        $scorminstance->course = $course->id;
-        $scorminstance->coursemodule = $coursemodule;
-        $scorminstance->name = rtrim($scormdata['scormname'], '.zip');
-        $scorminstance->section = $sectionnumber;
-        $scorminstance->module = $moduleid;
-        $scorminstance->modulename = 'scorm';
-        $scorminstance->intro = '';
-        $scorminstance->introformat = 1;
-        $scorminstance->version = 'SCORM_1.2';
-        $scorminstance->maxgrade = 100;
-        $scorminstance->grademethod = 1;
-        $scorminstance->maxattempt = 0;
-        $scorminstance->width = 100;
-        $scorminstance->height = 500;
-        $scorminstance->hidetoc = 3;
-        $scorminstance->hidebrowse = $hidebrowse;
-        $scorminstance->displaycoursestructure = 0;
-        $scorminstance->skipview = 2;
-        $scorminstance->packageurl = $scormdata['scormurl'];
-        $scorminstance->scormtype = 'localsync';
-        $scorminstance->cmidnumber = '';
+        try {
+            // Create SCORM instance.
+            $scorminstance = new stdClass();
+            $scorminstance->course = $course->id;
+            $scorminstance->coursemodule = $coursemodule;
+            $scorminstance->name = preg_replace('/\.zip$/i', '', $scormdata['scormname']);
+            $scorminstance->section = $sectionnumber;
+            $scorminstance->module = $moduleid;
+            $scorminstance->modulename = 'scorm';
+            $scorminstance->intro = '';
+            $scorminstance->introformat = 1;
+            $scorminstance->version = 'SCORM_1.2';
+            $scorminstance->maxgrade = 100;
+            $scorminstance->grademethod = 1;
+            $scorminstance->maxattempt = 0;
+            $scorminstance->width = 100;
+            $scorminstance->height = 500;
+            $scorminstance->hidetoc = 3;
+            $scorminstance->hidebrowse = $hidebrowse;
+            $scorminstance->displaycoursestructure = 0;
+            $scorminstance->skipview = 2;
+            $scorminstance->packageurl = $scormdata['scormurl'];
+            $scorminstance->scormtype = 'localsync';
+            $scorminstance->cmidnumber = '';
 
-        // Store the package ID for database reference.
-        $scorminstance->blc_package_id = (int)$scormdata['scormid'];
+            // Store the package ID for database reference.
+            $scorminstance->blc_package_id = (int)$scormdata['scormid'];
 
-        // Reference field stores the temporary URL from local_scormurl service.
-        // The service handles Google Drive downloads server-side.
-        $scorminstance->reference = $scormdata['scormurl'];
+            // Reference field stores the temporary URL from local_scormurl service.
+            // The service handles Google Drive downloads server-side.
+            $scorminstance->reference = $scormdata['scormurl'];
 
-        // Validate packageurl before proceeding.
-        if (empty($scorminstance->packageurl)) {
-            throw new moodle_exception(
-                'invalidpackageurl',
-                'block_blc_modules',
-                '',
-                'Package URL is empty for SCORM: ' . $scormdata['scormname']
-            );
-        }
+            if ($completion == 2) {
+                $scorminstance->completionstatusrequired = 6;
+            }
 
-        // Validate URL has a valid filename.
-        $urlparts = parse_url($scorminstance->packageurl);
-        if (!isset($urlparts['path']) || empty(basename($urlparts['path']))) {
-            throw new moodle_exception(
-                'invalidpackageurl',
-                'block_blc_modules',
-                '',
-                'Package URL has no filename: ' . $scorminstance->packageurl . ' for SCORM: ' . $scormdata['scormname']
-            );
-        }
+            if ($CFG->branch >= 36) {
+                $scorminstance->forcenewattempt = 2;
+            }
 
-        // Validate filename has extension (basic sanity check).
-        $filename = basename($urlparts['path']);
-        if (strpos($filename, '.') === false) {
-            $debug->warning('Package URL filename has no extension: ' . $filename . ' - this may cause issues', true);
-        }
+            $id = services::blcscorm_add_instance($scorminstance);
 
-        if ($completion == 2) {
-            $scorminstance->completionstatusrequired = 6;
-        }
+            // Update course sections.
+            $record = new stdClass();
+            $record->id = $scormsection->id;
+            $record->sequence = !empty($scormsection->sequence)
+                ? $scormsection->sequence . "," . $coursemodule
+                : $coursemodule;
 
-        if ($CFG->branch >= 36) {
-            $scorminstance->forcenewattempt = 2;
-        }
+            $DB->update_record('course_sections', $record);
 
-        $id = services::blcscorm_add_instance($scorminstance);
-
-        // Update course sections.
-        $record = new stdClass();
-        $record->id = $scormsection->id;
-        $record->sequence = !empty($scormsection->sequence)
-            ? $scormsection->sequence . "," . $coursemodule
-            : $coursemodule;
-
-        $DB->update_record('course_sections', $record);
-
-        // Switch to the local type and store the package file name, not the temporary URL, in reference.
-        if (!services::use_local_package($id, $coursemodule)) {
-            $DB->set_field('scorm', 'scormtype', 'local', ['id' => $id]);
+            // Switch to the local type and store the package file name, not the temporary URL, in reference.
+            // Without a package file the activity has no content, so the create fails.
+            if (!services::use_local_package($id, $coursemodule)) {
+                throw new moodle_exception('nopackagefile', 'block_blc_modules', '', $scormdata['scormname']);
+            }
+        } catch (Throwable $e) {
+            // Do not leave a half-created activity in the course. Backup includes it and restore fails on it.
+            try {
+                services::delete_blc_module($coursemodule);
+            } catch (Throwable $cleanupe) {
+                $debug->error('Could not delete the half-created SCORM course module ' . $coursemodule .
+                    ': ' . $cleanupe->getMessage(), [], ['Run blocks/blc_modules/cli/cleanup_broken_scorm.php']);
+            }
+            throw $e;
         }
 
         return $coursemodule;
@@ -1156,7 +1193,7 @@ class blcservice extends external_api {
         $resourceinstance = new stdClass();
         $resourceinstance->course = $course->id;
         $resourceinstance->coursemodule = $resourcecoursemodule;
-        $resourceinstance->name = rtrim($docdata['docname'], '.docx');
+        $resourceinstance->name = preg_replace('/\.docx$/i', '', $docdata['docname']);
         $resourceinstance->intro = '';
         $resourceinstance->introformat = 1;
         $resourceinstance->completionexpected = 0;
@@ -1191,10 +1228,17 @@ class blcservice extends external_api {
         try {
             self::create_resource_file($resourcecoursemodule, $docdata);
             $debug->info('BLC Modules: Accessibility document file created successfully');
-        } catch (Exception $e) {
-            // Continue even if file creation fails.
+        } catch (Throwable $e) {
+            // Do not keep a document activity without a file. The SCORM stays, and add_doc.php can add the
+            // document later, because no block_blc_modules_doc row is written.
             $debug->warning('BLC Modules: Failed to create accessibility document file: ' . $e->getMessage());
-            $debug->warning("Failed to create accessibility document file: " . $e->getMessage());
+            try {
+                services::delete_blc_module($resourcecoursemodule);
+            } catch (Throwable $cleanupe) {
+                $debug->warning('BLC Modules: Could not delete the document course module ' . $resourcecoursemodule .
+                    ': ' . $cleanupe->getMessage());
+            }
+            return null;
         }
 
         // Record the resource in block_blc_modules_doc table
@@ -1306,9 +1350,9 @@ class blcservice extends external_api {
         // Process and validate tempdocurl.
         $tempdocurl = str_replace("ppp", ",", $docobject->tempdocurl ?? '');
 
-        // Prefer docurlplus (permanent Google Drive URL) for downloading
-        // tempdocurl is from temp_doc which may be cross-site and not accessible.
-        $downloadurl = !empty($docobject->docurlplus) ? $docobject->docurlplus : $tempdocurl;
+        // Download only from tempdocurl, the file that the BLC server already copied. docurlplus is a
+        // Google Drive viewer URL. Without authentication, Drive answers it with a sign-in HTML page.
+        $downloadurl = $tempdocurl;
 
         $debug->info('BLC Modules: Temp Doc URL (processed): ' . $tempdocurl);
         $debug->info('BLC Modules: Download URL (selected): ' . $downloadurl);
@@ -1358,10 +1402,10 @@ class blcservice extends external_api {
         }
 
         $result = [
-            'docname' => rtrim($docobject->docname ?? '', '.docx'),
+            'docname' => preg_replace('/\.docx$/i', '', $docobject->docname ?? ''),
             'docversion' => $docobject->version ?? '5',
             'docid' => $docobject->id ?? '',
-            'docurl' => $downloadurl, // Use docurlplus if available, fallback to tempdocurl.
+            'docurl' => $downloadurl,
         ];
 
         $debug->info('BLC Modules: Successfully prepared accessibility document data for: ' . $result['docname']);
@@ -1397,44 +1441,23 @@ class blcservice extends external_api {
         $debug->info('BLC Modules: Creating accessibility document file: ' . $filename);
         $debug->info('BLC Modules: Document URL: ' . $filepath);
 
-        // Check if this is a pluginfile URL and handle it differently.
-        if (strpos($filepath, '/pluginfile.php/') !== false) {
-            // Use the file helper to create from pluginfile URL.
-            $debug->info('BLC Modules: Using pluginfile URL method');
-            $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
-            if (!$file) {
-                $debug->error(
-                    'BLC Modules: ERROR - Failed to create file from pluginfile URL: ' . $filename,
-                    [
-                        'The pluginfile URL may be invalid or the file is no longer accessible',
-                        'The temporary file may have expired',
-                    ],
-                    [
-                        'Check the document URL accessibility',
-                        'Verify the local_scormurl temp document is still valid',
-                    ]
-                );
-                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
-            }
-        } else {
-            // For external URLs, use the enhanced download method.
-            $debug->info('BLC Modules: Using external URL method');
-            $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
-            if (!$file) {
-                $debug->error(
-                    'BLC Modules: ERROR - Failed to create file from external URL: ' . $filename,
-                    [
-                        'The external URL may be inaccessible or the download failed',
-                        'Network connectivity issue to the file server',
-                    ],
-                    [
-                        'Check the download URL accessibility',
-                        'Verify the server can reach the external URL',
-                        'Check firewall or proxy settings',
-                    ]
-                );
-                throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
-            }
+        // Always download via HTTP. The file is on the BLC server, not in this site's file storage.
+        $debug->info('BLC Modules: Downloading via HTTP from: ' . $filepath);
+        $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
+        if (!$file) {
+            $debug->error(
+                'BLC Modules: ERROR - Failed to create file from external URL: ' . $filename,
+                [
+                    'The external URL may be inaccessible or the download failed',
+                    'Network connectivity issue to the file server',
+                ],
+                [
+                    'Check the download URL accessibility',
+                    'Verify the server can reach the external URL',
+                    'Check firewall or proxy settings',
+                ]
+            );
+            throw new moodle_exception('failedtocreatefile', 'block_blc_modules', '', $filename);
         }
 
         $debug->info('BLC Modules: Created accessibility document: ' . $filename);
@@ -1487,48 +1510,6 @@ class blcservice extends external_api {
 
         $debug = new debug_helper();
         $debug->info('BLC Modules: Temporary document files cleaned up on BLC server');
-    }
-
-    /**
-     * Basic URL format validation.
-     *
-     * @param string $url URL to validate
-     * @return bool True if URL format is valid
-     */
-    private static function basic_url_validation(string $url): bool {
-        $debug = new debug_helper();
-
-        // Basic validation - check if URL is not empty and has proper format.
-        if (empty($url)) {
-            $debug->warning('BLC Modules: URL validation failed - empty URL');
-            return false;
-        }
-
-        // Check if it's a valid URL format.
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            $debug->warning('BLC Modules: URL validation failed - invalid URL format: ' . $url);
-            return false;
-        }
-
-        // For pluginfile URLs, we assume they're valid since they come from our API.
-        if (strpos($url, 'pluginfile.php') !== false) {
-            return true;
-        }
-
-        // For other URLs, do basic checks.
-        $parsed = parse_url($url);
-        if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
-            $debug->warning('BLC Modules: URL validation failed - missing scheme or host: ' . $url);
-            return false;
-        }
-
-        // Allow http and https.
-        if (!in_array($parsed['scheme'], ['http', 'https'])) {
-            $debug->warning('BLC Modules: URL validation failed - unsupported scheme: ' . $parsed['scheme']);
-            return false;
-        }
-
-        return true;
     }
 
     /**

@@ -33,6 +33,7 @@ use block_blc_modules\event\scorm_load_completed;
 use block_blc_modules\event\scorm_module_created;
 use block_blc_modules\event\accessibility_document_created;
 use block_blc_modules\logger;
+use block_blc_modules\middleware\services;
 
 define('AJAX_SCRIPT', true);
 
@@ -270,6 +271,8 @@ switch ($action) {
         break;
 
     case 'process':
+        // Course modules created for the current package. They are deleted if the package fails.
+        $createdcmids = [];
         try {
             $progress = get_load_progress();
 
@@ -315,6 +318,14 @@ switch ($action) {
                 ]);
                 exit;
             }
+
+            // The previous request for this package ended without a result, for example after a PHP fatal error
+            // or a timeout. Count the package as failed and do not create it again.
+            if (isset($task['inprogress']) && $task['inprogress'] === $index) {
+                throw new Exception('The previous attempt for module ' . ($index + 1) . ' ended without a result');
+            }
+            $task['inprogress'] = $index;
+            update_load_progress(['task_data' => $task]);
 
             $url = $task['scormurls'][$index];
             $courseid = $task['courseid'];
@@ -364,6 +375,10 @@ switch ($action) {
                 $task['hidebrowse'],
                 $task['completion']
             );
+            $createdcmids[] = $scormcm;
+
+            // Record the SCORM first. create_accessibility_document() links the document to the newest record.
+            blcservice::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
 
             $resourcecm = blcservice::create_accessibility_document(
                 $course,
@@ -376,8 +391,9 @@ switch ($action) {
                 $domainname,
                 $url
             );
-
-            blcservice::record_blc_module($courseid, $sectionnumber, $scormcm, $scormdata, $url);
+            if ($resourcecm) {
+                $createdcmids[] = $resourcecm;
+            }
 
             // Trigger event: SCORM module created.
             $coursecontext = context_course::instance($courseid);
@@ -411,6 +427,7 @@ switch ($action) {
             ]);
 
             $task['current_index'] = $index + 1;
+            unset($task['inprogress']);
             update_load_progress(['task_data' => $task]);
 
             add_load_log('Successfully loaded: ' . $scormdata['scormname'], 'success', [
@@ -424,13 +441,23 @@ switch ($action) {
                 'success' => true,
                 'data' => get_load_progress(),
             ]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            // Do not leave part of a failed package in the course.
+            foreach ($createdcmids as $createdcmid) {
+                try {
+                    services::delete_blc_module($createdcmid);
+                } catch (Throwable $cleanupe) {
+                    add_load_log('Could not delete course module ' . $createdcmid . ': ' . $cleanupe->getMessage(), 'error');
+                }
+            }
+
             $progress = get_load_progress();
             $errors = $progress['errors'];
             $errors[] = $e->getMessage();
 
             $task = $progress['task_data'];
             $task['current_index'] = $task['current_index'] + 1;
+            unset($task['inprogress']);
 
             update_load_progress([
                 'failed' => $progress['failed'] + 1,

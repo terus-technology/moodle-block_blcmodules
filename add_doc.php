@@ -28,6 +28,7 @@
 
 use block_blc_modules\helper\debug_helper;
 use block_blc_modules\helper\file_helper;
+use block_blc_modules\middleware\services;
 use core\output\notification;
 use core_completion\api;
 
@@ -268,14 +269,13 @@ if ($blcmodules) {
                     // Success - we have valid document data.
                     $docobject = (object) $jsondata;
 
-                    // Prefer docurlplus (permanent Google Drive URL) over tempdocurl.
-                    $downloadurl = !empty($docobject->docurlplus) ? $docobject->docurlplus :
-                                (!empty($docobject->tempdocurl) ? $docobject->tempdocurl :
-                                (!empty($docobject->docurl) ? $docobject->docurl : ''));
+                    // Download only from tempdocurl, the file that the BLC server already copied. docurlplus
+                    // and docurl can be a Google Drive viewer URL, which returns a sign-in HTML page.
+                    $downloadurl = $docobject->tempdocurl ?? '';
 
                     if (!empty($downloadurl)) {
                         $docdata = [
-                            'docname' => rtrim($docobject->docname ?? '', '.docx'),
+                            'docname' => preg_replace('/\.docx$/i', '', $docobject->docname ?? ''),
                             'docversion' => $docobject->version ?? '1',
                             'docid' => $docobject->id ?? 0,
                             'docurl' => $downloadurl,
@@ -531,21 +531,12 @@ if ($blcmodules) {
                 'filename' => $filename,
             ];
 
-            // Use file_helper for proper Google Drive URL handling.
+            // Always download via HTTP. The file is on the BLC server, not in this site's file storage.
             try {
-                if (strpos($filepath, '/pluginfile.php/') !== false) {
-                    // Use the file helper to create from pluginfile URL.
-                    $logger->info(
-                        "BLC add_doc: Detected pluginfile URL for module $blcmoduleid. Using file_helper to create file."
-                    );
-                    $file = file_helper::create_file_from_pluginfile_url($fs, $filerecord, $filepath);
-                } else {
-                    // For external URLs (including Google Drive), use the enhanced download method.
-                    $logger->info(
-                        "BLC add_doc: Detected external URL for module $blcmoduleid. Using file_helper to create file."
-                    );
-                    $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
-                }
+                $logger->info(
+                    "BLC add_doc: Downloading via HTTP for module $blcmoduleid"
+                );
+                $file = file_helper::create_file_from_external_url($fs, $filerecord, $filepath);
 
                 if (!$file) {
                     $logger->error(
@@ -584,8 +575,10 @@ if ($blcmodules) {
                     $e->getMessage(),
                     false
                 );
-                // Continue - module created but file missing
-                // Admin can manually upload file later.
+                // Do not keep a document activity without a file. A later run of this page adds it again.
+                services::delete_blc_module($resourcecoursemodule);
+                $failcount++;
+                continue;
             }
 
             // Update section sequence.

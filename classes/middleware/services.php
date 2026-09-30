@@ -373,6 +373,39 @@ class services {
     }
 
     /**
+     * Delete a BLC course module and its block_blc_modules and block_blc_modules_doc rows.
+     *
+     * Used for course modules that a failed BLC create left behind, including a document activity
+     * whose file download failed.
+     * course_delete_module() throws when the module has no activity instance record. Such a module
+     * is removed from its section and deleted here.
+     *
+     * @param int $cmid Course module ID.
+     * @return void
+     */
+    public static function delete_blc_module(int $cmid): void {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $cm = $DB->get_record('course_modules', ['id' => $cmid]);
+        if ($cm) {
+            $modulename = $DB->get_field('modules', 'name', ['id' => $cm->module], MUST_EXIST);
+            if (!empty($cm->instance) && $DB->record_exists($modulename, ['id' => $cm->instance])) {
+                course_delete_module($cm->id);
+            } else {
+                delete_mod_from_section($cm->id, $cm->section);
+                \context_helper::delete_instance(CONTEXT_MODULE, $cm->id);
+                $DB->delete_records('course_modules', ['id' => $cm->id]);
+                rebuild_course_cache($cm->course, true);
+            }
+        }
+
+        $DB->delete_records('block_blc_modules', ['cmid' => $cmid]);
+        $DB->delete_records('block_blc_modules_doc', ['cmid' => $cmid]);
+    }
+
+    /**
      * Check whether a SCORM URL points to a file with a detectable size.
      *
      * @param string $scormurl The SCORM package URL.

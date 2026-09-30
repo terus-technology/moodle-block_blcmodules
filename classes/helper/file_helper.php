@@ -17,8 +17,7 @@
 /**
  * File helper class for BLC modules plugin.
  *
- * Provides utility methods for creating files from various sources including
- * pluginfile URLs and external URLs (including Google Drive).
+ * Provides utility methods for creating files from external URLs (including Google Drive).
  *
  * @package    block_blc_modules
  * @copyright  2022 Terus Technology
@@ -35,117 +34,9 @@ use stored_file;
 /**
  * File helper class for BLC modules plugin.
  *
- * Provides utility methods for creating files from various sources including
- * pluginfile URLs and external URLs (including Google Drive).
+ * Provides utility methods for creating files from external URLs (including Google Drive).
  */
 class file_helper {
-    /**
-     * Create a file by copying from a pluginfile URL source.
-     *
-     * @param file_storage $fs File storage instance
-     * @param array $filerecord File record for the new file
-     * @param string $pluginfileurl The pluginfile URL to copy from
-     * @return stored_file|false The created file or false on failure
-     */
-    public static function create_file_from_pluginfile_url($fs, $filerecord, $pluginfileurl) {
-        $logger = new debug_helper();
-
-        // Parse the pluginfile URL to extract file information
-        // URL format: /pluginfile.php/{contextid}/{component}/{filearea}/{itemid}/{filepath}/{filename}.
-        $urlparts = parse_url($pluginfileurl);
-        $path = $urlparts['path'];
-
-        // Remove /pluginfile.php/ from the beginning.
-        $path = str_replace('/pluginfile.php/', '', $path);
-        $parts = explode('/', $path);
-
-        if (count($parts) < 5) {
-            $logger->error(
-                'BLC file_helper: The source file URL is not in a valid Moodle pluginfile format.',
-                [
-                    'The file URL is incomplete.',
-                    'The source file URL was generated incorrectly.',
-                    'The referenced file no longer exists.',
-                ],
-                [
-                    'Verify the source file exists.',
-                    'Check that the pluginfile URL is generated correctly.',
-                    'Retry the operation after correcting the file reference.',
-                ],
-                $pluginfileurl,
-                false
-            );
-            return false;
-        }
-
-        $sourcecontextid = (int)$parts[0];
-        $sourcecomponent = $parts[1];
-        $sourcefilearea = $parts[2];
-        $sourceitemid = (int)$parts[3];
-
-        // The filename is the last part, filepath is everything in between.
-        $sourcefilename = array_pop($parts);
-        $sourcefilepath = '/' . implode('/', array_slice($parts, 4)) . '/';
-
-        // If there are no parts after itemid, filepath should be just '/'.
-        if (empty(array_slice($parts, 4))) {
-            $sourcefilepath = '/';
-        }
-
-        // Get the source file from storage.
-        $sourcefile = $fs->get_file(
-            $sourcecontextid,
-            $sourcecomponent,
-            $sourcefilearea,
-            $sourceitemid,
-            $sourcefilepath,
-            $sourcefilename
-        );
-
-        if (!$sourcefile || $sourcefile->is_directory()) {
-            $logger->error(
-                'BLC file_helper: The source file could not be located.',
-                [
-                    'The file has been deleted.',
-                    'The file reference is invalid.',
-                    'The referenced item is a directory rather than a file.',
-                ],
-                [
-                    'Verify the source file still exists.',
-                    'Check that the file reference is correct.',
-                    'Retry the operation after restoring the file.',
-                ],
-                $pluginfileurl,
-                false
-            );
-            return false;
-        }
-
-        // Create the new file by copying content from the source file.
-        try {
-            $newfile = $fs->create_file_from_storedfile($filerecord, $sourcefile);
-            $logger->info('BLC file_helper: Successfully created file from pluginfile: ' . $filerecord['filename']);
-            return $newfile;
-        } catch (Exception $e) {
-            $logger->error(
-                'BLC file_helper: The file could not be copied into Moodle storage.',
-                [
-                    'The destination file record is invalid.',
-                    'The Moodle file storage system encountered an error.',
-                    'A database or file permission issue occurred.',
-                ],
-                [
-                    'Verify Moodle file storage permissions.',
-                    'Check available disk space.',
-                    'Review the technical details below.',
-                ],
-                $e->getMessage(),
-                false
-            );
-            return false;
-        }
-    }
-
     /**
      * Create a file from an external URL with enhanced handling for Google Drive and other cloud services.
      *
@@ -192,6 +83,23 @@ class file_helper {
         }
 
         $logger->info("BLC file_helper: Downloaded content size: " . strlen($content) . " bytes");
+
+        // Every caller downloads a ZIP container: a SCORM package or a DOCX. Google Drive answers a request
+        // without authentication with HTTP 200 and a sign-in HTML page, which must not be stored.
+        if (strncmp($content, "PK\x03\x04", 4) !== 0) {
+            $logger->error(
+                'BLC file_helper: The downloaded content is not a ZIP file (SCORM package or DOCX).',
+                [
+                    'The URL returned an HTML page, for example a Google Drive sign-in page.',
+                ],
+                [
+                    'Check that the BLC server copied the file and returned a temporary URL.',
+                ],
+                sprintf('url=%s, first bytes=%s', $downloadurl, bin2hex(substr($content, 0, 8))),
+                false
+            );
+            return false;
+        }
 
         // Create file from the downloaded content.
         try {
