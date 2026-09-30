@@ -33,11 +33,13 @@ use block_blc_modules\middleware\services;
     [
         'help' => false,
         'courseid' => 0,
+        'categoryid' => 0,
         'execute' => false,
     ],
     [
         'h' => 'help',
         'c' => 'courseid',
+        'k' => 'categoryid',
         'e' => 'execute',
     ]
 );
@@ -63,11 +65,13 @@ Without --execute, the script only lists the broken activities.
 Options:
 -h, --help                Print out this help
 -c, --courseid=ID         Check one course only
+-k, --categoryid=ID       Check the courses in one category and its subcategories
 -e, --execute             Delete the broken activities
 
 Examples:
 \$ sudo -u www-data /usr/bin/php blocks/blc_modules/cli/cleanup_broken_scorm.php
 \$ sudo -u www-data /usr/bin/php blocks/blc_modules/cli/cleanup_broken_scorm.php --courseid=12 --execute
+\$ sudo -u www-data /usr/bin/php blocks/blc_modules/cli/cleanup_broken_scorm.php --categoryid=3 --execute
 ";
 
     echo $help;
@@ -82,6 +86,19 @@ $coursewhere = '';
 if (!empty($options['courseid'])) {
     $coursewhere = 'AND cm.course = :courseid';
     $params['courseid'] = (int) $options['courseid'];
+}
+if (!empty($options['categoryid'])) {
+    $category = $DB->get_record('course_categories', ['id' => (int) $options['categoryid']], 'id, path');
+    if (!$category) {
+        cli_error("Category {$options['categoryid']} does not exist.");
+    }
+    $coursewhere .= " AND cm.course IN (
+                          SELECT c.id
+                            FROM {course} c
+                            JOIN {course_categories} cc ON cc.id = c.category
+                           WHERE cc.id = :categoryid OR " . $DB->sql_like('cc.path', ':categorypath') . ")";
+    $params['categoryid'] = $category->id;
+    $params['categorypath'] = $DB->sql_like_escape($category->path) . '/%';
 }
 
 $likes = [];

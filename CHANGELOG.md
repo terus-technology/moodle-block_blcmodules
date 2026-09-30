@@ -21,7 +21,7 @@ All notable changes to `block_blc_modules` for Moodle 5.1 are documented in this
 - `rtrim($name, '.docx')` and `rtrim($name, '.zip')` removed trailing characters, not the extension (for example `Audio Trip.zip` became `Audio Tr`). They now remove only the extension.
 
 ### Added
-- `cli/cleanup_broken_scorm.php` lists, and with `--execute` deletes, SCORM activities that a failed load left behind. It skips activities added in the last hour, because a load can still be running.
+- `cli/cleanup_broken_scorm.php` lists, and with `--execute` deletes, SCORM activities that a failed load left behind. It skips activities added in the last hour, because a load can still be running. `--courseid` limits it to one course, and `--categoryid` limits it to one category and its subcategories.
 
 ---
 
