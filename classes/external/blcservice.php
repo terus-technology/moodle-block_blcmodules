@@ -1025,8 +1025,10 @@ class blcservice extends external_api {
 
         $DB->update_record('course_sections', $record);
 
-        // Update SCORM to local type.
-        $DB->execute("UPDATE {scorm} SET scormtype = 'local' WHERE id = :id", ['id' => $id]);
+        // Switch to the local type and store the package file name, not the temporary URL, in reference.
+        if (!services::use_local_package($id, $coursemodule)) {
+            $DB->set_field('scorm', 'scormtype', 'local', ['id' => $id]);
+        }
 
         return $coursemodule;
     }

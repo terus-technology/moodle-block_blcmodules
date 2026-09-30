@@ -16,6 +16,7 @@
 
 namespace block_blc_modules\output;
 
+use block_blc_modules\middleware\services;
 use core\output\renderable;
 use core\output\renderer_base;
 use core\output\templatable;
@@ -164,6 +165,12 @@ class update_scorm_page implements renderable, templatable {
             // Update SCORM instance.
             require_once($CFG->dirroot . '/mod/scorm/lib.php');
             if (scorm_update_instance($scorm)) {
+                // Leave localsync. The temporary URL is deleted below, and core restore downloads
+                // the package again from reference for localsync.
+                if (!services::use_local_package($scormcm->instance, $this->coursemodule)) {
+                    throw new moodle_exception('error');
+                }
+
                 // Update version in block_blc_modules table.
                 $scormrecord = new stdClass();
                 $scormrecord->id = $coursescorm->id;

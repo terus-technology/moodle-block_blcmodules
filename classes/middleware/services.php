@@ -339,6 +339,40 @@ class services {
     }
 
     /**
+     * Point a SCORM activity at its stored package file, as core does for the local type.
+     *
+     * Core restore calls scorm_parse(). For localsync, it deletes the restored package and downloads it
+     * again from reference, which is a temporary URL. For local, it reads the package whose file name
+     * is in reference, from the module context at itemid 0.
+     *
+     * @param int $scormid SCORM instance ID.
+     * @param int $cmid Course module ID.
+     * @return bool True if the package file exists and the SCORM record now uses it.
+     */
+    public static function use_local_package(int $scormid, int $cmid): bool {
+        global $DB;
+
+        $context = context_module::instance($cmid, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+
+        $files = get_file_storage()->get_area_files($context->id, 'mod_scorm', 'package', 0, 'itemid, filepath, filename', false);
+        $packagefile = reset($files);
+        if (!$packagefile) {
+            return false;
+        }
+
+        $DB->update_record('scorm', (object) [
+            'id' => $scormid,
+            'scormtype' => 'local',
+            'reference' => $packagefile->get_filename(),
+        ]);
+
+        return true;
+    }
+
+    /**
      * Check whether a SCORM URL points to a file with a detectable size.
      *
      * @param string $scormurl The SCORM package URL.

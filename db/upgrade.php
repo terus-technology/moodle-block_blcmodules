@@ -188,5 +188,23 @@ function xmldb_block_blc_modules_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2025120100, 'blc_modules');
     }
 
+    if ($oldversion < 2026092900) {
+        // Repair BLC SCORM activities that core cannot restore: localsync, or local with a URL in reference.
+        // Point each one at the package file that is already stored in its module context.
+        $sql = "SELECT s.id, cm.id AS cmid
+                  FROM {block_blc_modules} b
+                  JOIN {course_modules} cm ON cm.id = b.cmid
+                  JOIN {modules} m ON m.id = cm.module AND m.name = 'scorm'
+                  JOIN {scorm} s ON s.id = cm.instance
+                 WHERE s.scormtype IN ('local', 'localsync')";
+        $scorms = $DB->get_recordset_sql($sql);
+        foreach ($scorms as $scorm) {
+            \block_blc_modules\middleware\services::use_local_package($scorm->id, $scorm->cmid);
+        }
+        $scorms->close();
+
+        upgrade_block_savepoint(true, 2026092900, 'blc_modules');
+    }
+
     return true;
 }
