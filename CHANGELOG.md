@@ -4,6 +4,17 @@ All notable changes to `block_blc_modules` for Moodle 4.5 are documented in this
 
 ---
 
+## [4.5.23] — 2026-09-29
+
+### Fixed
+- Accessibility documents (.docx) were unreadable after download. The root cause was that `fetch_accessibility_document()` and `add_doc.php` both prioritized `docurlplus` (Google Drive sharing URL) over `tempdocurl` (pluginfile URL from the BLC server). Google Drive requires authentication for direct download and returns an HTML login/access-denied page even for small files, which was saved as the `.docx` content — making it unreadable.
+- `blcservice.php` `fetch_accessibility_document()` — URL priority changed: `tempdocurl` → `docurlplus` (previously `docurlplus` → `tempdocurl`).
+- `add_doc.php` — Same URL priority fix.
+- `blcservice.php` `create_resource_file()` — Removed the `pluginfile.php` special-case branch that used `create_file_from_pluginfile_url()`. That method reads local Moodle file storage only, but the accessibility document lives on the BLC server (a different domain), so it always failed with "file not found". All document downloads now go through HTTP (`file_helper::create_file_from_external_url()`), which works cross-domain — the same approach SCORM packages already use successfully.
+- `add_doc.php` — Removed the same `pluginfile.php` special-case branch for consistency; all document downloads now use HTTP.
+
+---
+
 ## [4.5.22] — 2026-09-17
 
 ### Fixed
