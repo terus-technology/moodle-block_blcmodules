@@ -379,6 +379,9 @@ class services {
      * whose file download failed.
      * course_delete_module() throws when the module has no activity instance record. Such a module
      * is removed from its section and deleted here.
+     * course_delete_module() also throws when the module is not in its section sequence. A failed
+     * create adds the module to the sequence only after the instance is created, so the module is
+     * put in the sequence first.
      *
      * @param int $cmid Course module ID.
      * @return void
@@ -392,6 +395,10 @@ class services {
         if ($cm) {
             $modulename = $DB->get_field('modules', 'name', ['id' => $cm->module], MUST_EXIST);
             if (!empty($cm->instance) && $DB->record_exists($modulename, ['id' => $cm->instance])) {
+                $section = $DB->get_record('course_sections', ['id' => $cm->section]);
+                if (!$section || !in_array($cm->id, explode(',', $section->sequence))) {
+                    course_add_cm_to_section($cm->course, $cm->id, $section->section ?? 0, null, $modulename);
+                }
                 course_delete_module($cm->id);
             } else {
                 delete_mod_from_section($cm->id, $cm->section);
