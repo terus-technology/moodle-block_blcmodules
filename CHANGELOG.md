@@ -4,6 +4,16 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 
 ---
 
+## [5.0.9] — 2026-09-29
+### Fixed
+- Accessibility documents (.docx) were unreadable after download. The root cause was that `fetch_accessibility_document()` and `add_doc.php` both prioritized `docurlplus` (Google Drive sharing URL) over `tempdocurl` (pluginfile URL from the BLC server). Google Drive requires authentication for direct download and returns an HTML login/access-denied page even for small files, which was saved as the `.docx` content — making it unreadable.
+- `blcservice.php` `fetch_accessibility_document()` — URL priority changed: `tempdocurl` → `docurlplus` (previously `docurlplus` → `tempdocurl`).
+- `add_doc.php` — Same URL priority fix.
+- `blcservice.php` `create_resource_file()` — Removed the `pluginfile.php` special-case branch that used `create_file_from_pluginfile_url()`. That method reads local Moodle file storage only, but the accessibility document lives on the BLC server (a different domain), so it always failed with "file not found". All document downloads now go through HTTP (`file_helper::create_file_from_external_url()`), which works cross-domain — the same approach SCORM packages already use successfully.
+- `add_doc.php` — Removed the same `pluginfile.php` special-case branch for consistency; all document downloads now use HTTP.
+
+---
+
 ## [5.0.8] — 2026-09-17
 
 ### Fixed
@@ -104,6 +114,31 @@ All notable changes to `block_blc_modules` for Moodle 5.0 are documented in this
 - Collapse/expand toggle button not responding on the SCORM load logs page.
 - Intermittent failure when downloading SCORM packages through the BLC selector.
 - Moodle 5.0 compatibility issues in plugin upgrade and rendering paths.
+
+---
+
+## [4.5.23] — 2026-09-29
+
+### Fixed
+- Accessibility documents (.docx) were unreadable after download. The root cause was that `fetch_accessibility_document()` and `add_doc.php` both prioritized `docurlplus` (Google Drive sharing URL) over `tempdocurl` (pluginfile URL from the BLC server). Google Drive requires authentication for direct download and returns an HTML login/access-denied page even for small files, which was saved as the `.docx` content — making it unreadable.
+- `blcservice.php` `fetch_accessibility_document()` — URL priority changed: `tempdocurl` → `docurlplus` (previously `docurlplus` → `tempdocurl`).
+- `add_doc.php` — Same URL priority fix.
+- `blcservice.php` `create_resource_file()` — Removed the `pluginfile.php` special-case branch that used `create_file_from_pluginfile_url()`. That method reads local Moodle file storage only, but the accessibility document lives on the BLC server (a different domain), so it always failed with "file not found". All document downloads now go through HTTP (`file_helper::create_file_from_external_url()`), which works cross-domain — the same approach SCORM packages already use successfully.
+- `add_doc.php` — Removed the same `pluginfile.php` special-case branch for consistency; all document downloads now use HTTP.
+
+---
+
+## [4.5.22] — 2026-09-17
+
+### Fixed
+- Cancel button in bulk update confirmation modal now redirects to `/admin/settings.php?section=blocksettingblc_modules` instead of just closing the modal.
+
+---
+
+## [4.5.21] — 2026-09-10
+
+### Fixed
+- `file_helper.php` — Renamed 3 methods from camelCase to snake_case for naming consistency and to resolve the `call to undefined method` fatal error in `bulk_update_processor.php`: `getoptimalbatchsize()` → `get_optimal_batch_size()`, `checksystemresources()` → `check_system_resources()`, `getdownloadcurloptions()` → `get_download_curl_options()`.
 
 ---
 
